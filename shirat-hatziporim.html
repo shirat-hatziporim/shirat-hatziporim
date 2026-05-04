@@ -29,7 +29,10 @@ const HOLIDAYS=["2025-04-12","2025-04-13","2025-04-14","2025-04-18","2025-04-19"
 function isHoliday(ds){return HOLIDAYS.includes(ds);}
 function getDailyPrice(ds){const w=isWeekend(ds)||isHoliday(ds);return w?1200:800;}
 function getDayType(ds){if(isHoliday(ds))return"חג";if(isWeekend(ds))return'סופ"ש';return"חול";}
-function calcNights(a,b){return Math.max(0,Math.round((new Date(b)-new Date(a))/86400000));}
+function calcNights(a,b){
+  a=parseDate(a);b=parseDate(b);
+  return Math.max(0,Math.round((new Date(b)-new Date(a))/86400000));
+}
 function calcTotal(checkin,checkout,extra=0){
   const nights=calcNights(checkin,checkout);
   if(!nights)return{total:0,nights:0,breakdown:[],guestExtra:0};
@@ -38,7 +41,19 @@ function calcTotal(checkin,checkout,extra=0){
   const guestExtra=Math.max(0,extra)*300;
   return{total:base+guestExtra,nights,breakdown:bd,guestExtra};
 }
-function fd(ds){if(!ds)return"";return new Date(ds).toLocaleDateString("he-IL",{day:"2-digit",month:"2-digit",year:"numeric"});}
+function parseDate(ds){
+  if(!ds)return null;
+  // אם התאריך מכיל T (ISO format) - קח רק את חלק התאריך
+  if(typeof ds==="string"&&ds.includes("T")) ds=ds.split("T")[0];
+  return ds;
+}
+function fd(ds){
+  if(!ds)return"";
+  ds=parseDate(ds);
+  if(!ds)return"";
+  const [y,m,d]=ds.split("-");
+  return `${d}.${m}.${y}`;
+}
 function fm(n){return`₪${Number(n).toLocaleString("he-IL")}`;}
 
 const STATUS={confirmed:"מאושר",pending:"ממתין",cancelled:"מבוטל"};
@@ -85,6 +100,8 @@ function mapBooking(b){
     babies:Number(b.babies)||0,
     guestExtra:Number(b.guestExtra)||0,
     email:b.email||"",
+    checkin:parseDate(b.checkin)||b.checkin,
+    checkout:parseDate(b.checkout)||b.checkout,
   };
 }
 
@@ -418,8 +435,10 @@ function CalendarView({bookings,onEdit}){
   const firstDay=new Date(yr,mo,1).getDay(),dim=new Date(yr,mo+1,0).getDate();
   const occ={};
   bookings.filter(b=>b.status!=="cancelled").forEach(b=>{
-    const cur=new Date(b.checkin),end=new Date(b.checkout);
-    while(cur<end){const ds=cur.toISOString().split("T")[0];(occ[ds]=occ[ds]||[]).push(b);cur.setDate(cur.getDate()+1);}
+    const cur=new Date(b.checkin);
+    const end=new Date(b.checkout);
+    end.setDate(end.getDate()-1); // יום היציאה לא נחשב תפוס
+    while(cur<=end){const ds=cur.toISOString().split("T")[0];(occ[ds]=occ[ds]||[]).push(b);cur.setDate(cur.getDate()+1);}
   });
   const cells=[];for(let i=0;i<firstDay;i++)cells.push(null);for(let d=1;d<=dim;d++)cells.push(d);
   return(
