@@ -49,10 +49,20 @@ let nid=10;
 
 const SCRIPT_URL="https://script.google.com/macros/s/AKfycbyKUvfneAaQwRYiQ67xvzfBQH0CTnoUfOuX3QgfUpOXoEaKUCRhjx5jEytDCYAeLX1N/exec";
 
+function jsonp(url){
+  return new Promise((resolve,reject)=>{
+    const cb="cb_"+Math.random().toString(36).slice(2);
+    window[cb]=function(data){resolve(data);delete window[cb];document.head.removeChild(s);};
+    const s=document.createElement("script");
+    s.src=url+(url.includes("?")?"&":"?")+"callback="+cb;
+    s.onerror=()=>{reject(new Error("jsonp error"));delete window[cb];};
+    document.head.appendChild(s);
+  });
+}
+
 async function loadFromSheets(){
   try{
-    const r=await fetch(SCRIPT_URL+"?action=get");
-    const data=await r.json();
+    const data=await jsonp(SCRIPT_URL+"?action=get");
     if(Array.isArray(data)&&data.length>0){
       return data.map(b=>({
         ...b,
@@ -73,7 +83,8 @@ async function loadFromSheets(){
 
 async function saveToSheets(bookings){
   try{
-    await fetch(SCRIPT_URL,{method:"POST",body:JSON.stringify({action:"save",bookings})});
+    const encoded=encodeURIComponent(JSON.stringify(bookings));
+    await jsonp(`${SCRIPT_URL}?action=save&bookings=${encoded}`);
   }catch(e){console.error("שגיאה בשמירה:",e);}
 }
 
@@ -101,14 +112,9 @@ function buildMsg(b){
 }
 
 function sendWhatsApp(b){
-  const phone=b.phone.replace(/\D/g,"").replace(/^0/,"972");
+  const phone="972"+b.phone.replace(/\D/g,"").replace(/^0/,"");
   const msg=encodeURIComponent(buildMsg(b));
-  window.open(`https://wa.me/${phone}?text=${msg}`,"_blank");
-}
-
-function sendSMS(b){
-  const msg=encodeURIComponent(buildMsg(b));
-  window.open(`sms:${b.phone}?body=${msg}`,"_blank");
+  window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${msg}`,"_blank");
 }
 
 // ── מיילים ──
@@ -157,32 +163,31 @@ function buildWelcomeEmail(b){
 }
 
 function buildReviewEmail(b){
-  const subject=encodeURIComponent(`תודה שביקרתם בשירת הציפורים! 🐦`);
+  const subject=encodeURIComponent(`שמחנו לארח אתכם בצימר "שירת הציפורים"`);
   const body=encodeURIComponent(
-`שלום ${b.name},
+`שלום וברכה ${b.name},
 
-תודה שבחרתם לבלות אצלנו בשירת הציפורים! 🐦
-מקווים שנהניתם ושהנופש עמד בציפיותיכם.
+רצינו להודות לכם מקרב לב על שבחרתם להתארח אצלנו בצימר "שירת הציפורים".
+שמחנו מאוד לארח אתכם, ומקווים שנהנתם מהשהות, מהאווירה הנעימה ומהשקט הייחודי של המקום.
 
-היינו שמחים מאוד לשמוע את חוות דעתכם — ביקורת קצרה עוזרת לנו להשתפר ומסייעת לאורחים נוספים לבחור נכון.
+נשמח מאוד אם תמליצו עלינו לחברים ומכרים, וכן אם תוכלו להקדיש רגע קצר לשתף את חוויתכם ולהשאיר המלצה – הדבר מסייע לנו רבות בהמשך הדרך.
 
-ניתן להשאיר ביקורת באחד מהאתרים הבאים (לחיצה אחת בתחתית המודעה):
+מצורפים קישורים לאתרים בהם אנו מפרסמים, וניתן לכתוב את ההמלצה בתחתית המודעה:
 
-🌐 מאמי מוש:
+אתר מאמי מוש:
 https://mamimush.co.il/rooms/%D7%A6%D7%99%D7%9E%D7%A8%D7%99%D7%9D-308/
 
-🌐 דירה לשבת:
+אתר דירה לשבת:
 https://dira4shabat.co.il/listing/%D7%A6%D7%99%D7%9E%D7%A8-%D7%A9%D7%99%D7%A8%D7%AA-%D7%94%D7%A6%D7%99%D7%A4%D7%95%D7%A8%D7%99%D7%9D-%D7%9E%D7%99%D7%A6%D7%93/
 
-🌐 הלוח החרדי:
+אתר הלוח החרדי:
 https://charedi.net/tzimar/25569/
 
-תודה רבה ומקווים לראותכם שוב! 🏡
+לכל צורך או ביקור נוסף בעתיד – נשמח לעמוד לשירותכם: 050-4103353
 
-בברכה,
+בברכה ובהערכה,
 יעקב
-שירת הציפורים
-📞 050-410-3353`
+צימר שירת הציפורים`
   );
   return {subject,body};
 }
@@ -196,6 +201,63 @@ function sendWelcomeEmail(b){
 function sendReviewEmail(b){
   if(!b.email){alert("לא הוזן מייל ללקוח זה");return;}
   const {subject,body}=buildReviewEmail(b);
+  window.open(`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(b.email)}&su=${subject}&body=${body}`,"_blank");
+}
+
+function guestType(b){
+  const extra=parseInt(b.extraGuests)||0;
+  const babies=parseInt(b.babies)||0;
+  if(extra===0&&babies===0) return "זוג";
+  if(extra===0&&babies>0) return `זוג + ${babies===1?"תינוק":"תינוקות"}`;
+  if(extra>0&&babies===0) return `זוג + ${extra}`;
+  return `זוג + ${extra} + ${babies===1?"תינוק":"תינוקות"}`;
+}
+
+function buildConfirmEmail(b){
+  const nights=b.nights||calcNights(b.checkin,b.checkout);
+  const subject=encodeURIComponent(`צימר שירת הציפורים מיצד - אישור הזמנה`);
+  const body=encodeURIComponent(
+`שלום וברכה ${b.name},
+
+שמחים לאשר את הזמנתכם בצימר שירת הציפורים!
+
+פרטי ההזמנה:
+• סוג אירוח: ${guestType(b)}
+• תאריכים: ${fd(b.checkin)} עד ${fd(b.checkout)} (${nights} לילות)
+• עלות: ${fm(b.total||0)}
+
+נא להעביר מקדמה בסך 500 ₪ לצורך שמירת ההזמנה:
+
+אפשרויות תשלום:
+בנק לאומי
+סניף: 904
+מספר חשבון: 10765165
+ע"ש: יעקב גרזון
+
+ביט / פייבוקס: 0504103353
+
+נא לשלוח אסמכתא לאחר התשלום.
+
+מצורפת חוברת מידע על הצימר עם כל הפרטים החשובים לשהות נעימה.
+
+כתובת הצימר: נחל קדם 93, מיצד
+
+תחבורה למיצד:
+קו 364 מירושלים
+קו 411 מביתר
+מידע נוסף ניתן לקבל במוקד התחבורה *8787
+
+לכל שאלה אנחנו כאן: 050-4103353
+
+מחכים לבואכם!
+צימר "שירת הציפורים"`
+  );
+  return {subject,body};
+}
+
+function sendConfirmEmail(b){
+  if(!b.email){alert("לא הוזן מייל ללקוח זה");return;}
+  const {subject,body}=buildConfirmEmail(b);
   window.open(`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(b.email)}&su=${subject}&body=${body}`,"_blank");
 }
 
@@ -531,8 +593,8 @@ function App(){
                             <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
                               <button onClick={()=>openEdit(b)} style={{border:"none",background:"#f0eee8",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="עריכה">✏️</button>
                               <button onClick={()=>sendWhatsApp(b)} style={{border:"none",background:"#e7f7e7",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="שלח WhatsApp">💬</button>
-                              <button onClick={()=>sendSMS(b)} style={{border:"none",background:"#e8f0fe",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="שלח SMS">📱</button>
-                              <button onClick={()=>sendWelcomeEmail(b)} style={{border:"none",background:"#fff3e0",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="מייל ברכה לפני הגעה">✉️</button>
+
+                              <button onClick={()=>sendConfirmEmail(b)} style={{border:"none",background:"#e3f2fd",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="מייל אישור הזמנה">📧</button>
                               <button onClick={()=>sendReviewEmail(b)} style={{border:"none",background:"#f3e5f5",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="מייל בקשת ביקורת">⭐</button>
                               <button onClick={()=>setDelC(b.id)} style={{border:"none",background:"#fce4ec",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="מחיקה">🗑️</button>
                             </div>
