@@ -629,7 +629,10 @@ function App(){
                         <tr key={b.id} style={{borderBottom:"1px solid #f4f0ea",transition:"background .1s"}}
                           onMouseEnter={e=>e.currentTarget.style.background="#fdfaf6"}
                           onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                          <td style={{padding:"11px 12px",fontWeight:700,color:"#1a1a2e"}}>{b.name}</td>
+                          <td style={{padding:"11px 12px"}}>
+                            <div style={{fontWeight:700,color:"#1a1a2e"}}>{b.name}</div>
+                            {b.notes&&<div style={{fontSize:11,color:"#a09080",marginTop:2}}>{b.notes}</div>}
+                          </td>
                           <td style={{padding:"11px 12px",color:"#6a5e50",direction:"ltr"}}>{b.phone}</td>
                           <td style={{padding:"11px 12px",color:"#6a5e50",whiteSpace:"nowrap"}}>{fd(b.checkin)}</td>
                           <td style={{padding:"11px 12px",color:"#6a5e50",whiteSpace:"nowrap"}}>{fd(b.checkout)}</td>
