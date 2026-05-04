@@ -501,13 +501,19 @@ function CalendarView({bookings,onEdit}){
   const firstDay=new Date(yr,mo,1).getDay(),dim=new Date(yr,mo+1,0).getDate();
   const occ={};
   bookings.filter(b=>b.status!=="cancelled").forEach(b=>{
-    const cur=new Date(b.checkin);
-    const checkout=new Date(b.checkout);
-    const checkoutDay=checkout.getDay();
-    const end=new Date(b.checkout);
+    const checkin=parseDate(b.checkin);
+    const checkout=parseDate(b.checkout);
+    if(!checkin||!checkout)return;
+    const cur=new Date(checkin+"T12:00:00");
+    const end=new Date(checkout+"T12:00:00");
+    const checkoutDay=end.getDay();
     // אם יום היציאה הוא שבת (6) — סמן גם אותו תפוס
     if(checkoutDay!==6) end.setDate(end.getDate()-1);
-    while(cur<=end){const ds=cur.toISOString().split("T")[0];(occ[ds]=occ[ds]||[]).push(b);cur.setDate(cur.getDate()+1);}
+    while(cur<=end){
+      const ds=cur.getFullYear()+"-"+String(cur.getMonth()+1).padStart(2,"0")+"-"+String(cur.getDate()).padStart(2,"0");
+      (occ[ds]=occ[ds]||[]).push(b);
+      cur.setDate(cur.getDate()+1);
+    }
   });
   const cells=[];for(let i=0;i<firstDay;i++)cells.push(null);for(let d=1;d<=dim;d++)cells.push(d);
   return(
