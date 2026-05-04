@@ -472,13 +472,13 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[]}){
               <Lbl>מייל (לשליחת הודעות)</Lbl><input style={iS()} type="email" value={f.email||""} onChange={e=>set("email",e.target.value)} placeholder="example@gmail.com" dir="ltr"/>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
-              <div><Lbl>אורחים בסיס (עד 2)</Lbl><input style={iS()} type="number" min={1} max={2} value={f.guests} onChange={e=>set("guests",parseInt(e.target.value)||1)}/></div>
-              <div><Lbl>נוספים (₪300/אדם)</Lbl><input style={iS()} type="number" min={0} max={4} value={f.extraGuests} onChange={e=>set("extraGuests",parseInt(e.target.value)||0)}/></div>
-              <div><Lbl>תינוקות (ללא תשלום)</Lbl><input style={iS()} type="number" min={0} max={3} value={f.babies||0} onChange={e=>set("babies",parseInt(e.target.value)||0)}/></div>
+              <div><Lbl>אורחים בסיס (עד 2)</Lbl><input style={iS()} type="number" min={1} max={2} value={f.guests} onFocus={e=>e.target.select()} onChange={e=>set("guests",parseInt(e.target.value)||1)}/></div>
+              <div><Lbl>נוספים (₪300/אדם)</Lbl><input style={iS()} type="number" min={0} max={4} value={f.extraGuests} onFocus={e=>e.target.select()} onChange={e=>set("extraGuests",parseInt(e.target.value)||0)}/></div>
+              <div><Lbl>תינוקות (ללא תשלום)</Lbl><input style={iS()} type="number" min={0} max={3} value={f.babies||0} onFocus={e=>e.target.select()} onChange={e=>set("babies",parseInt(e.target.value)||0)}/></div>
             </div>
             <div style={{marginBottom:12}}>
               <Lbl>הנחה (₪) — השאר 0 אם אין הנחה</Lbl>
-              <input style={{...iS(),borderColor:"#c8e6c9"}} type="number" min={0} value={f.discount||0} onChange={e=>set("discount",parseInt(e.target.value)||0)}/>
+              <input style={{...iS(),borderColor:"#c8e6c9"}} type="number" min={0} value={f.discount||0} onFocus={e=>e.target.select()} onChange={e=>set("discount",parseInt(e.target.value)||0)}/>
               <div><Lbl>סטטוס</Lbl>
                 <select style={iS()} value={f.status} onChange={e=>set("status",e.target.value)}>
                   <option value="confirmed">מאושר</option><option value="pending">ממתין</option><option value="cancelled">מבוטל</option>
@@ -517,7 +517,7 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[]}){
           )}
           <Sec title="תשלום">
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              <div><Lbl>שולם (₪)</Lbl><input style={iS()} type="number" min={0} value={f.paid} onChange={e=>set("paid",parseInt(e.target.value)||0)}/></div>
+              <div><Lbl>שולם (₪)</Lbl><input style={iS()} type="number" min={0} value={f.paid} onFocus={e=>e.target.select()} onChange={e=>set("paid",parseInt(e.target.value)||0)}/></div>
               <div><Lbl>יתרה לתשלום</Lbl><input readOnly style={{...iS(),background:"#f8f4ec",color:balance>0?"#c62828":"#2e7d32",fontWeight:700}} value={balance}/></div>
             </div>
           </Sec>
