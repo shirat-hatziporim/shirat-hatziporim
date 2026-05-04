@@ -83,8 +83,24 @@ async function loadFromSheets(){
 
 async function saveToSheets(bookings){
   try{
-    const encoded=encodeURIComponent(JSON.stringify(bookings));
-    await jsonp(`${SCRIPT_URL}?action=save&bookings=${encoded}`);
+    // שמירה דרך iframe POST לעקוף מגבלת אורך URL
+    const form=document.createElement("form");
+    form.method="POST";
+    form.action=SCRIPT_URL;
+    form.target="hidden_iframe";
+    form.style.display="none";
+    const inp=document.createElement("input");
+    inp.type="hidden";inp.name="bookings";
+    inp.value=JSON.stringify(bookings);
+    form.appendChild(inp);
+    const inp2=document.createElement("input");
+    inp2.type="hidden";inp2.name="action";inp2.value="save";
+    form.appendChild(inp2);
+    let iframe=document.getElementById("hidden_iframe");
+    if(!iframe){iframe=document.createElement("iframe");iframe.name="hidden_iframe";iframe.id="hidden_iframe";iframe.style.display="none";document.body.appendChild(iframe);}
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
   }catch(e){console.error("שגיאה בשמירה:",e);}
 }
 
