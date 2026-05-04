@@ -295,7 +295,7 @@ function Lbl({children}){return <label style={{display:"block",fontSize:12,color
 function Sec({title,children}){return<div style={{marginBottom:18}}><div style={{fontSize:11,fontWeight:700,color:"#a0896e",letterSpacing:1,marginBottom:8}}>{title}</div>{children}</div>;}
 
 // ── Booking Form ──
-function BookingForm({booking,onSave,onCancel}){
+function BookingForm({booking,onSave,onCancel,existingBookings=[]}){
   const empty={name:"",phone:"",checkin:"",checkout:"",guests:2,extraGuests:0,status:"confirmed",notes:"",paid:0};
   const [f,setF]=useState(booking||empty);
   const [err,setErr]=useState({});
@@ -312,7 +312,7 @@ function BookingForm({booking,onSave,onCancel}){
     if(f.checkin&&f.checkout&&f.checkin>=f.checkout)e.checkout="יציאה אחרי כניסה";
     // בדיקת חפיפה עם הזמנות קיימות
     if(f.checkin&&f.checkout&&f.checkin<f.checkout){
-      const conflict=bookings.find(b=>{
+      const conflict=existingBookings.find(b=>{
         if(b.id===f.id) return false; // אותה הזמנה בעריכה
         if(b.status==="cancelled") return false;
         return f.checkin<b.checkout && f.checkout>b.checkin;
@@ -727,7 +727,7 @@ function App(){
         )}
       </div>
 
-      {showForm&&<BookingForm booking={editB} onSave={save} onCancel={()=>{setShowForm(false);setEditB(null);}}/>}
+      {showForm&&<BookingForm booking={editB} onSave={save} onCancel={()=>{setShowForm(false);setEditB(null);}} existingBookings={bookings}/>}
 
       {delC&&(
         <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.5)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center"}}>
