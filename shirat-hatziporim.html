@@ -465,9 +465,9 @@ function App(){
   const [delC,setDelC]=useState(null);
   const [showPrices,setShowPrices]=useState(false);
 
-  // טעינה ראשונית — localStorage קודם, אחר כך גוגל שיטס
+  // טעינה ראשונית — תמיד מגוגל שיטס (המקור האמיתי)
   useEffect(()=>{
-    // קודם טען מ-localStorage מיידית
+    // הצג נתונים מקומיים מיידית בזמן הטעינה
     try{
       const local=localStorage.getItem("shirat_bookings");
       if(local){
@@ -475,14 +475,15 @@ function App(){
         if(Array.isArray(parsed)&&parsed.length>0){
           setBookings(parsed);
           setLoading(false);
-          setLastSync(new Date());
-          return; // אל תטען מגוגל אם יש נתונים מקומיים
         }
       }
     }catch(e){}
-    // אם localStorage ריק — טען מגוגל שיטס
+    // תמיד טען מגוגל שיטס לקבל את הנתונים העדכניים
     loadFromSheets().then(data=>{
-      setBookings(data);
+      if(data.length>0){
+        setBookings(data);
+        try{localStorage.setItem("shirat_bookings",JSON.stringify(data));}catch(e){}
+      }
       setLoading(false);
       setLastSync(new Date());
     });
