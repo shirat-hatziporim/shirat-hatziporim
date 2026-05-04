@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
@@ -17,8 +16,6 @@ input,select,textarea{font-family:'Heebo',sans-serif;}
 ::-webkit-scrollbar-track{background:#f0eee8;}
 ::-webkit-scrollbar-thumb{background:#c8b898;border-radius:3px;}
 </style>
-
-<meta name="NetsparkQuiltingResult" total-length="49721" removed="0" rules-found="w73,w2655,w3390,w6563,w3012,w11756,w340,w2952,w21829,w31050,w30581,w30661,w21217,w16749,w16715,w6284,w2577,w6565,w4299,w17902,w3034,w4748,w4749,w10785,w10786,w3829,w3830" />
 </head>
 <body>
 <div id="root"></div>
@@ -36,7 +33,7 @@ function LoginScreen({onLogin}){
   }
   return(
     <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"linear-gradient(160deg,#faf7f2,#f0ece3)",direction:"rtl"}}>
-      <div style={{fontSize:52,marginBottom:16}}>🐦</div>
+      <img src="https://shirat-hatziporim.github.io/shirat-hatziporim/logo.jpeg" style={width:100,height:100,borderRadius:"50%",objectFit:"cover",background:"#fff",padding:6,boxShadow:"0 4px 20px rgba(0,0,0,0.1)",marginBottom:16} alt="לוגו"/>
       <h1 style={{fontFamily:"'Heebo',sans-serif",fontSize:24,fontWeight:800,color:"#1a1a2e",marginBottom:4}}>שירת הציפורים</h1>
       <p style={{fontFamily:"'Heebo',sans-serif",fontSize:14,color:"#a09070",marginBottom:32}}>ניהול הזמנות</p>
       <div style={{background:"#fff",borderRadius:20,padding:"32px 40px",boxShadow:"0 8px 40px rgba(0,0,0,0.1)",minWidth:280,textAlign:"center"}}>
@@ -686,7 +683,10 @@ function App(){
       <div style={{background:"#1a1a2e",padding:"0 20px",position:"sticky",top:0,zIndex:50}}>
         <div style={{maxWidth:1100,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center",height:56}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <span style={{color:"#fff",fontSize:16,fontWeight:800}}>🐦 שירת הציפורים</span>
+            <div style={display:"flex",alignItems:"center",gap:8}>
+            <img src="https://shirat-hatziporim.github.io/shirat-hatziporim/logo.jpeg" style={height:36,width:36,borderRadius:"50%",objectFit:"cover",background:"#fff",padding:2} alt="לוגו"/>
+            <span style={color:"#fff",fontSize:16,fontWeight:800}>שירת הציפורים</span>
+          </div>
             <span style={{color:"#5a5878",fontSize:12,borderRight:"1px solid #3a3a5e",paddingRight:10}}>ניהול הזמנות</span>
             {syncing
               ? <span style={{fontSize:11,color:"#f4c26a",fontFamily:"'Heebo',sans-serif"}}>⏳ שומר...</span>
