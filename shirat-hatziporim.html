@@ -52,44 +52,56 @@ const SCRIPT_URL="https://script.google.com/macros/s/AKfycbyKUvfneAaQwRYiQ67xvzf
 function jsonp(url){
   return new Promise((resolve,reject)=>{
     const cb="cb_"+Math.random().toString(36).slice(2);
-    window[cb]=function(data){resolve(data);delete window[cb];document.head.removeChild(s);};
+    let done=false;
+    window[cb]=function(data){
+      if(done)return;done=true;
+      resolve(data);
+      delete window[cb];
+      try{document.head.removeChild(s);}catch(e){}
+    };
     const s=document.createElement("script");
-    s.src=url+(url.includes("?")?"&":"?")+"callback="+cb;
-    s.onerror=()=>{reject(new Error("jsonp error"));delete window[cb];};
+    s.src=url+(url.includes("?")?"&":"?")+"callback="+cb+"&t="+Date.now();
+    s.onerror=()=>{
+      if(done)return;done=true;
+      reject(new Error("jsonp error"));
+      delete window[cb];
+    };
+    setTimeout(()=>{
+      if(!done){done=true;reject(new Error("jsonp timeout"));delete window[cb];}
+    },10000);
     document.head.appendChild(s);
   });
 }
 
+function mapBooking(b){
+  return{
+    ...b,
+    id:Number(b.id)||Math.random(),
+    paid:Number(b.paid)||0,
+    total:Number(b.total)||0,
+    nights:Number(b.nights)||0,
+    guests:Number(b.guests)||2,
+    extraGuests:Number(b.extraGuests)||0,
+    babies:Number(b.babies)||0,
+    guestExtra:Number(b.guestExtra)||0,
+    email:b.email||"",
+  };
+}
+
 async function loadFromSheets(){
-  // קודם נסה localStorage
-  try{
-    const local=localStorage.getItem("shirat_bookings");
-    if(local){
-      const parsed=JSON.parse(local);
-      if(Array.isArray(parsed)&&parsed.length>0) return parsed;
-    }
-  }catch(e){}
-  // אם localStorage ריק - טען מגוגל שיטס
   try{
     const data=await jsonp(SCRIPT_URL+"?action=get");
     if(Array.isArray(data)&&data.length>0){
-      const mapped=data.map(b=>({
-        ...b,
-        id:Number(b.id)||Math.random(),
-        paid:Number(b.paid)||0,
-        total:Number(b.total)||0,
-        nights:Number(b.nights)||0,
-        guests:Number(b.guests)||2,
-        extraGuests:Number(b.extraGuests)||0,
-        babies:Number(b.babies)||0,
-        guestExtra:Number(b.guestExtra)||0,
-        email:b.email||"",
-      }));
+      const mapped=data.map(mapBooking);
       try{localStorage.setItem("shirat_bookings",JSON.stringify(mapped));}catch(e){}
       return mapped;
     }
-  }catch(e){console.error("שגיאה בטעינה:",e);}
-  return [];
+    return [];
+  }catch(e){
+    console.error("שגיאה בטעינה מגוגל:",e);
+    try{const local=localStorage.getItem("shirat_bookings");if(local)return JSON.parse(local);}catch(e2){}
+    return [];
+  }
 }
 
 async function saveToSheets(bookings){
