@@ -672,7 +672,7 @@ function App(){
 
   if(loading) return(
     <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"linear-gradient(160deg,#faf7f2,#f0ece3)",direction:"rtl"}}>
-      <img src="https://shirat-hatziporim.github.io/shirat-hatziporim/logo.jpeg" style={{width:100,height:100,borderRadius:"50%",objectFit:"cover",background:"#fff",padding:6,boxShadow:"0 4px 20px rgba(0,0,0,0.1)",marginBottom:16}} alt="לוגו"/>
+      <div style={{fontSize:48,marginBottom:16}}>🐦</div>
       <div style={{fontSize:20,fontWeight:800,color:"#1a1a2e",marginBottom:8,fontFamily:"'Heebo',sans-serif"}}>שירת הציפורים</div>
       <div style={{fontSize:14,color:"#8a7e6e",fontFamily:"'Heebo',sans-serif",marginBottom:24}}>טוען הזמנות מ־Google Sheets...</div>
       <div style={{width:40,height:40,border:"4px solid #e0d8cc",borderTop:"4px solid #1a1a2e",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
@@ -686,8 +686,7 @@ function App(){
       <div style={{background:"#1a1a2e",padding:"0 20px",position:"sticky",top:0,zIndex:50}}>
         <div style={{maxWidth:1100,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center",height:56}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <img src="https://shirat-hatziporim.github.io/shirat-hatziporim/logo.jpeg" style={height:36,width:36,borderRadius:"50%",objectFit:"cover",background:"#fff",padding:2} alt="לוגו"/>
-            <span style={color:"#fff",fontSize:16,fontWeight:800}>שירת הציפורים</span>
+            <span style={{color:"#fff",fontSize:16,fontWeight:800}}>🐦 שירת הציפורים</span>
             <span style={{color:"#5a5878",fontSize:12,borderRight:"1px solid #3a3a5e",paddingRight:10}}>ניהול הזמנות</span>
             {syncing
               ? <span style={{fontSize:11,color:"#f4c26a",fontFamily:"'Heebo',sans-serif"}}>⏳ שומר...</span>
