@@ -93,9 +93,23 @@ async function loadFromSheets(){
 }
 
 async function saveToSheets(bookings){
+  // שמירה מקומית תמיד
   try{localStorage.setItem("shirat_bookings",JSON.stringify(bookings));}catch(e){}
+  // שמירה לגוגל שיטס — שליחה בחלקים אם צריך
   try{
-    await jsonp(`${SCRIPT_URL}?action=save&bookings=${encodeURIComponent(JSON.stringify(bookings))}`);
+    const str=JSON.stringify(bookings);
+    // אם קצר מספיק — שלח ישירות
+    if(str.length<3000){
+      await jsonp(`${SCRIPT_URL}?action=save&bookings=${encodeURIComponent(str)}`);
+    } else {
+      // שלח בחלקים
+      const parts=Math.ceil(str.length/2000);
+      for(let i=0;i<parts;i++){
+        const chunk=str.slice(i*2000,(i+1)*2000);
+        await jsonp(`${SCRIPT_URL}?action=chunk&index=${i}&total=${parts}&data=${encodeURIComponent(chunk)}`);
+      }
+      await jsonp(`${SCRIPT_URL}?action=commitChunks`);
+    }
   }catch(e){console.error("שגיאה בסנכרון:",e);}
 }
 
@@ -290,7 +304,23 @@ function BookingForm({booking,onSave,onCancel}){
     if(f.checkin&&f.checkout&&f.checkin<f.checkout)return calcTotal(f.checkin,f.checkout,parseInt(f.extraGuests)||0);
     return{total:0,nights:0,breakdown:[],guestExtra:0};
   },[f.checkin,f.checkout,f.extraGuests]);
-  function validate(){const e={};if(!f.name.trim())e.name="חובה";if(!f.checkin)e.checkin="חובה";if(!f.checkout)e.checkout="חובה";if(f.checkin&&f.checkout&&f.checkin>=f.checkout)e.checkout="יציאה אחרי כניסה";setErr(e);return!Object.keys(e).length;}
+  function validate(){
+    const e={};
+    if(!f.name.trim())e.name="חובה";
+    if(!f.checkin)e.checkin="חובה";
+    if(!f.checkout)e.checkout="חובה";
+    if(f.checkin&&f.checkout&&f.checkin>=f.checkout)e.checkout="יציאה אחרי כניסה";
+    // בדיקת חפיפה עם הזמנות קיימות
+    if(f.checkin&&f.checkout&&f.checkin<f.checkout){
+      const conflict=bookings.find(b=>{
+        if(b.id===f.id) return false; // אותה הזמנה בעריכה
+        if(b.status==="cancelled") return false;
+        return f.checkin<b.checkout && f.checkout>b.checkin;
+      });
+      if(conflict) e.checkin=`תאריכים תפוסים! (${conflict.name})`;
+    }
+    setErr(e);return!Object.keys(e).length;
+  }
   function save(){if(!validate())return;onSave({...f,total,nights,guestExtra,id:f.id||nid++});}
   const balance=Math.max(0,total-(parseInt(f.paid)||0));
   return(
