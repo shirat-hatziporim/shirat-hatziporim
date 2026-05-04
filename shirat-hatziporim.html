@@ -33,13 +33,77 @@ function calcNights(a,b){
   a=parseDate(a);b=parseDate(b);
   return Math.max(0,Math.round((new Date(b)-new Date(a))/86400000));
 }
+
+function hasPackageDeal(checkin,checkout){
+  // חבילת חמישי+שישי+שבת — כניסה חמישי יציאה שבת/ראשון
+  const cin=new Date(checkin);
+  const cout=new Date(checkout);
+  const nights=Math.round((cout-cin)/86400000);
+  const cinDay=cin.getDay(); // 4=חמישי
+  // כניסה חמישי ולפחות 2 לילות (חמישי+שישי)
+  if(cinDay===4&&nights>=2){
+    return true;
+  }
+  return false;
+}
+
 function calcTotal(checkin,checkout,extra=0){
+  checkin=parseDate(checkin);checkout=parseDate(checkout);
   const nights=calcNights(checkin,checkout);
-  if(!nights)return{total:0,nights:0,breakdown:[],guestExtra:0};
-  let base=0;const bd=[];const cur=new Date(checkin);
-  for(let i=0;i<nights;i++){const ds=cur.toISOString().split("T")[0];const p=getDailyPrice(ds);bd.push({date:ds,price:p,type:getDayType(ds)});base+=p;cur.setDate(cur.getDate()+1);}
+  if(!nights)return{total:0,nights:0,breakdown:[],guestExtra:0,packageDeal:false,sundayExtra:0};
+
+  const cout=new Date(checkout);
+  const coutDay=cout.getDay(); // 0=ראשון
+  const sundayExtra=coutDay===0?350:0; // תוספת יציאה ראשון
+
+  // בדוק חבילת חמישי+שישי+שבת
+  const pkg=hasPackageDeal(checkin,checkout);
+
+  let base=0;const bd=[];
+
+  if(pkg){
+    // חבילה: חמישי+שישי+שבת = 1700 קבוע
+    // חשב לילות מחוץ לחבילה
+    const cur=new Date(checkin);
+    let pkgNights=0;
+    let extraNights=0;
+    for(let i=0;i<nights;i++){
+      const day=cur.getDay();
+      if(pkgNights<2||(pkgNights===2&&day===6)){
+        // חמישי, שישי, שבת — חלק מהחבילה
+        if(pkgNights<3) pkgNights++;
+      } else {
+        extraNights++;
+        const ds=cur.toISOString().split("T")[0];
+        const p=getDailyPrice(ds);
+        bd.push({date:ds,price:p,type:getDayType(ds)});
+        base+=p;
+      }
+      cur.setDate(cur.getDate()+1);
+    }
+    // הוסף חבילה
+    const pkgDays=["חמישי","שישי","שבת"];
+    const cur2=new Date(checkin);
+    for(let i=0;i<Math.min(3,nights);i++){
+      const ds=cur2.toISOString().split("T")[0];
+      bd.unshift({date:ds,price:Math.round(1700/3),type:"חבילה"});
+      cur2.setDate(cur2.getDate()+1);
+    }
+    base+=1700;
+  } else {
+    const cur=new Date(checkin);
+    for(let i=0;i<nights;i++){
+      const ds=cur.toISOString().split("T")[0];
+      const p=getDailyPrice(ds);
+      bd.push({date:ds,price:p,type:getDayType(ds)});
+      base+=p;
+      cur.setDate(cur.getDate()+1);
+    }
+  }
+
   const guestExtra=Math.max(0,extra)*300;
-  return{total:base+guestExtra,nights,breakdown:bd,guestExtra};
+  const total=base+guestExtra+sundayExtra;
+  return{total,nights,breakdown:bd,guestExtra,packageDeal:pkg,sundayExtra};
 }
 function parseDate(ds){
   if(!ds)return null;
@@ -329,9 +393,9 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[]}){
   const [f,setF]=useState(booking||empty);
   const [err,setErr]=useState({});
   const set=(k,v)=>setF(p=>({...p,[k]:v}));
-  const {total,nights,breakdown,guestExtra}=useMemo(()=>{
+  const {total,nights,breakdown,guestExtra,packageDeal,sundayExtra}=useMemo(()=>{
     if(f.checkin&&f.checkout&&f.checkin<f.checkout)return calcTotal(f.checkin,f.checkout,parseInt(f.extraGuests)||0);
-    return{total:0,nights:0,breakdown:[],guestExtra:0};
+    return{total:0,nights:0,breakdown:[],guestExtra:0,packageDeal:false,sundayExtra:0};
   },[f.checkin,f.checkout,f.extraGuests]);
   function validate(){
     const e={};
@@ -401,6 +465,8 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[]}){
                   </span>
                 ))}
               </div>
+              {packageDeal&&<div style={{fontSize:12,color:"#2e7d32",marginBottom:4,fontWeight:700}}>✅ חבילת חמישי+שישי+שבת: ₪1,700</div>}
+              {sundayExtra>0&&<div style={{fontSize:12,color:"#7a6040",marginBottom:4}}>תוספת יציאה ראשון: {fm(sundayExtra)}</div>}
               {guestExtra>0&&<div style={{fontSize:12,color:"#7a6040",marginBottom:6}}>תוספת {f.extraGuests} אורחים נוספים: {fm(guestExtra)}</div>}
               <div style={{display:"flex",justifyContent:"space-between",borderTop:"1px solid #e2d5bc",paddingTop:8}}>
                 <span style={{color:"#5a4030",fontSize:13}}>סה"כ לתשלום</span>
@@ -436,8 +502,11 @@ function CalendarView({bookings,onEdit}){
   const occ={};
   bookings.filter(b=>b.status!=="cancelled").forEach(b=>{
     const cur=new Date(b.checkin);
+    const checkout=new Date(b.checkout);
+    const checkoutDay=checkout.getDay();
     const end=new Date(b.checkout);
-    end.setDate(end.getDate()-1); // יום היציאה לא נחשב תפוס
+    // אם יום היציאה הוא שבת (6) — סמן גם אותו תפוס
+    if(checkoutDay!==6) end.setDate(end.getDate()-1);
     while(cur<=end){const ds=cur.toISOString().split("T")[0];(occ[ds]=occ[ds]||[]).push(b);cur.setDate(cur.getDate()+1);}
   });
   const cells=[];for(let i=0;i<firstDay;i++)cells.push(null);for(let d=1;d<=dim;d++)cells.push(d);
@@ -588,8 +657,10 @@ function App(){
               <button onClick={()=>setShowPrices(false)} style={{border:"none",background:"none",fontSize:20,cursor:"pointer",color:"#aaa"}}>✕</button>
             </div>
             {[
-              {l:"אמצע שבוע",p:"₪800"},
+              {l:"אמצע שבוע (א-ה)",p:"₪800"},
               {l:'שישי–שבת / חג',p:"₪1,200"},
+              {l:"חבילה חמישי+שישי+שבת",p:"₪1,700"},
+              {l:"תוספת יציאה ראשון",p:"₪350"},
               {l:"אורח נוסף (מעל 2)",p:"₪300 / אדם"},
               {l:"תינוק",p:"ללא תשלום"},
             ].map(r=>(
