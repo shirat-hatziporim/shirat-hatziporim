@@ -22,6 +22,40 @@ input,select,textarea{font-family:'Heebo',sans-serif;}
 <script type="text/babel">
 const {useState,useMemo,useEffect}=React;
 
+const PASSWORD="0561";
+
+function LoginScreen({onLogin}){
+  const [pw,setPw]=useState("");
+  const [err,setErr]=useState(false);
+  function tryLogin(){
+    if(pw===PASSWORD){onLogin();}
+    else{setErr(true);setTimeout(()=>setErr(false),2000);}
+  }
+  return(
+    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"linear-gradient(160deg,#faf7f2,#f0ece3)",direction:"rtl"}}>
+      <div style={{fontSize:52,marginBottom:16}}>🐦</div>
+      <h1 style={{fontFamily:"'Heebo',sans-serif",fontSize:24,fontWeight:800,color:"#1a1a2e",marginBottom:4}}>שירת הציפורים</h1>
+      <p style={{fontFamily:"'Heebo',sans-serif",fontSize:14,color:"#a09070",marginBottom:32}}>ניהול הזמנות</p>
+      <div style={{background:"#fff",borderRadius:20,padding:"32px 40px",boxShadow:"0 8px 40px rgba(0,0,0,0.1)",minWidth:280,textAlign:"center"}}>
+        <p style={{fontFamily:"'Heebo',sans-serif",fontSize:14,color:"#5a4e40",marginBottom:12}}>הזן סיסמה להמשך</p>
+        <input
+          type="password"
+          value={pw}
+          onChange={e=>setPw(e.target.value)}
+          onKeyDown={e=>e.key==="Enter"&&tryLogin()}
+          placeholder="סיסמה"
+          style={{width:"100%",boxSizing:"border-box",padding:"10px 14px",borderRadius:10,border:`1.5px solid ${err?"#e53935":"#e0d8cc"}`,fontSize:18,textAlign:"center",fontFamily:"'Heebo',sans-serif",outline:"none",marginBottom:12,letterSpacing:4}}
+          autoFocus
+        />
+        {err&&<p style={{color:"#e53935",fontSize:13,fontFamily:"'Heebo',sans-serif",marginBottom:8}}>סיסמה שגויה</p>}
+        <button onClick={tryLogin} style={{width:"100%",padding:"11px",borderRadius:10,border:"none",background:"#1a1a2e",color:"#fff",fontFamily:"'Heebo',sans-serif",fontWeight:800,fontSize:15,cursor:"pointer"}}>
+          כניסה
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── מחירון ──
 function isSummer(ds){const md=ds.slice(5);return md>="06-01"&&md<="08-31";}
 function isWeekend(ds){const d=new Date(ds);return d.getDay()===5||d.getDay()===6;}
@@ -559,6 +593,7 @@ function CalendarView({bookings,onEdit}){
 
 // ── Main App ──
 function App(){
+  const [auth,setAuth]=useState(()=>sessionStorage.getItem("shirat_auth")==="1");
   const [bookings,setBookings]=useState([]);
   const [loading,setLoading]=useState(true);
   const [syncing,setSyncing]=useState(false);
@@ -622,6 +657,8 @@ function App(){
   const totalRev=confirmed.reduce((s,b)=>s+(b.total||0),0);
   const totalPaid=confirmed.reduce((s,b)=>s+(b.paid||0),0);
   const totalNights=confirmed.reduce((s,b)=>s+(b.nights||0),0);
+
+  if(!auth) return <LoginScreen onLogin={()=>{sessionStorage.setItem("shirat_auth","1");setAuth(true);}}/>;
 
   if(loading) return(
     <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"linear-gradient(160deg,#faf7f2,#f0ece3)",direction:"rtl"}}>
