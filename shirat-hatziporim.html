@@ -427,10 +427,12 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[]}){
   const [f,setF]=useState(booking||empty);
   const [err,setErr]=useState({});
   const set=(k,v)=>setF(p=>({...p,[k]:v}));
-  const {total,nights,breakdown,guestExtra,packageDeal,sundayExtra}=useMemo(()=>{
+  const discount=parseInt(f.discount)||0;
+  const {total:baseTotal,nights,breakdown,guestExtra,packageDeal,sundayExtra}=useMemo(()=>{
     if(f.checkin&&f.checkout&&f.checkin<f.checkout)return calcTotal(f.checkin,f.checkout,parseInt(f.extraGuests)||0);
     return{total:0,nights:0,breakdown:[],guestExtra:0,packageDeal:false,sundayExtra:0};
   },[f.checkin,f.checkout,f.extraGuests]);
+  const total=Math.max(0,baseTotal-(parseInt(f.discount)||0));
   function validate(){
     const e={};
     if(!f.name.trim())e.name="חובה";
@@ -448,7 +450,7 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[]}){
     }
     setErr(e);return!Object.keys(e).length;
   }
-  function save(){if(!validate())return;onSave({...f,total,nights,guestExtra,id:f.id||nid++});}
+  function save(){if(!validate())return;onSave({...f,total,nights,guestExtra,discount:discount||0,id:f.id||nid++});}
   const balance=Math.max(0,total-(parseInt(f.paid)||0));
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -473,6 +475,10 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[]}){
               <div><Lbl>אורחים בסיס (עד 2)</Lbl><input style={iS()} type="number" min={1} max={2} value={f.guests} onChange={e=>set("guests",parseInt(e.target.value)||1)}/></div>
               <div><Lbl>נוספים (₪300/אדם)</Lbl><input style={iS()} type="number" min={0} max={4} value={f.extraGuests} onChange={e=>set("extraGuests",parseInt(e.target.value)||0)}/></div>
               <div><Lbl>תינוקות (ללא תשלום)</Lbl><input style={iS()} type="number" min={0} max={3} value={f.babies||0} onChange={e=>set("babies",parseInt(e.target.value)||0)}/></div>
+            </div>
+            <div style={{marginBottom:12}}>
+              <Lbl>הנחה (₪) — השאר 0 אם אין הנחה</Lbl>
+              <input style={{...iS(),borderColor:"#c8e6c9"}} type="number" min={0} value={f.discount||0} onChange={e=>set("discount",parseInt(e.target.value)||0)}/>
               <div><Lbl>סטטוס</Lbl>
                 <select style={iS()} value={f.status} onChange={e=>set("status",e.target.value)}>
                   <option value="confirmed">מאושר</option><option value="pending">ממתין</option><option value="cancelled">מבוטל</option>
@@ -501,7 +507,8 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[]}){
               </div>
               {packageDeal&&<div style={{fontSize:12,color:"#2e7d32",marginBottom:4,fontWeight:700}}>✅ חבילת חמישי+שישי+שבת: ₪1,700</div>}
               {sundayExtra>0&&<div style={{fontSize:12,color:"#7a6040",marginBottom:4}}>תוספת יציאה ראשון: {fm(sundayExtra)}</div>}
-              {guestExtra>0&&<div style={{fontSize:12,color:"#7a6040",marginBottom:6}}>תוספת {f.extraGuests} אורחים נוספים: {fm(guestExtra)}</div>}
+              {guestExtra>0&&<div style={{fontSize:12,color:"#7a6040",marginBottom:4}}>תוספת {f.extraGuests} אורחים נוספים: {fm(guestExtra)}</div>}
+              {discount>0&&<div style={{fontSize:12,color:"#c62828",marginBottom:4}}>הנחה: -{fm(discount)}</div>}
               <div style={{display:"flex",justifyContent:"space-between",borderTop:"1px solid #e2d5bc",paddingTop:8}}>
                 <span style={{color:"#5a4030",fontSize:13}}>סה"כ לתשלום</span>
                 <span style={{fontWeight:900,color:"#1a1a2e",fontSize:20}}>{fm(total)}</span>
