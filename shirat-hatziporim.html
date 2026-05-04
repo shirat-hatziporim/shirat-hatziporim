@@ -61,6 +61,15 @@ function jsonp(url){
 }
 
 async function loadFromSheets(){
+  // קודם נסה localStorage
+  try{
+    const local=localStorage.getItem("shirat_bookings");
+    if(local){
+      const parsed=JSON.parse(local);
+      if(Array.isArray(parsed)&&parsed.length>0) return parsed;
+    }
+  }catch(e){}
+  // אם localStorage ריק - טען מגוגל שיטס
   try{
     const data=await jsonp(SCRIPT_URL+"?action=get");
     if(Array.isArray(data)&&data.length>0){
@@ -76,31 +85,17 @@ async function loadFromSheets(){
         guestExtra:Number(b.guestExtra)||0,
         email:b.email||"",
       }));
-      // שמור גם מקומית
       try{localStorage.setItem("shirat_bookings",JSON.stringify(mapped));}catch(e){}
       return mapped;
     }
-    // אם גוגל שיטס ריק - נסה localStorage
-    const local=localStorage.getItem("shirat_bookings");
-    if(local) return JSON.parse(local);
-    return [];
-  }catch(e){
-    console.error("שגיאה בטעינה מגוגל, טוען מקומית:",e);
-    try{const local=localStorage.getItem("shirat_bookings");if(local)return JSON.parse(local);}catch(e2){}
-    return [];
-  }
+  }catch(e){console.error("שגיאה בטעינה:",e);}
+  return [];
 }
 
 async function saveToSheets(bookings){
-  // שמירה מקומית תמיד
   try{localStorage.setItem("shirat_bookings",JSON.stringify(bookings));}catch(e){}
-  // סנכרון לגוגל שיטס
   try{
-    const chunks=[];
-    const str=JSON.stringify(bookings);
-    const size=1500;
-    for(let i=0;i<str.length;i+=size) chunks.push(str.slice(i,i+size));
-    await jsonp(`${SCRIPT_URL}?action=save&total=${chunks.length}&bookings=${encodeURIComponent(str.slice(0,1500))}&full=${encodeURIComponent(str)}`);
+    await jsonp(`${SCRIPT_URL}?action=save&bookings=${encodeURIComponent(JSON.stringify(bookings))}`);
   }catch(e){console.error("שגיאה בסנכרון:",e);}
 }
 
@@ -440,8 +435,22 @@ function App(){
   const [delC,setDelC]=useState(null);
   const [showPrices,setShowPrices]=useState(false);
 
-  // טעינה ראשונית מגוגל שיטס
+  // טעינה ראשונית — localStorage קודם, אחר כך גוגל שיטס
   useEffect(()=>{
+    // קודם טען מ-localStorage מיידית
+    try{
+      const local=localStorage.getItem("shirat_bookings");
+      if(local){
+        const parsed=JSON.parse(local);
+        if(Array.isArray(parsed)&&parsed.length>0){
+          setBookings(parsed);
+          setLoading(false);
+          setLastSync(new Date());
+          return; // אל תטען מגוגל אם יש נתונים מקומיים
+        }
+      }
+    }catch(e){}
+    // אם localStorage ריק — טען מגוגל שיטס
     loadFromSheets().then(data=>{
       setBookings(data);
       setLoading(false);
