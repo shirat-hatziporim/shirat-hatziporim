@@ -64,7 +64,7 @@ async function loadFromSheets(){
   try{
     const data=await jsonp(SCRIPT_URL+"?action=get");
     if(Array.isArray(data)&&data.length>0){
-      return data.map(b=>({
+      const mapped=data.map(b=>({
         ...b,
         id:Number(b.id)||Math.random(),
         paid:Number(b.paid)||0,
@@ -76,32 +76,32 @@ async function loadFromSheets(){
         guestExtra:Number(b.guestExtra)||0,
         email:b.email||"",
       }));
+      // שמור גם מקומית
+      try{localStorage.setItem("shirat_bookings",JSON.stringify(mapped));}catch(e){}
+      return mapped;
     }
+    // אם גוגל שיטס ריק - נסה localStorage
+    const local=localStorage.getItem("shirat_bookings");
+    if(local) return JSON.parse(local);
     return [];
-  }catch(e){console.error("שגיאה בטעינה:",e);return [];}
+  }catch(e){
+    console.error("שגיאה בטעינה מגוגל, טוען מקומית:",e);
+    try{const local=localStorage.getItem("shirat_bookings");if(local)return JSON.parse(local);}catch(e2){}
+    return [];
+  }
 }
 
 async function saveToSheets(bookings){
+  // שמירה מקומית תמיד
+  try{localStorage.setItem("shirat_bookings",JSON.stringify(bookings));}catch(e){}
+  // סנכרון לגוגל שיטס
   try{
-    // שמירה דרך iframe POST לעקוף מגבלת אורך URL
-    const form=document.createElement("form");
-    form.method="POST";
-    form.action=SCRIPT_URL;
-    form.target="hidden_iframe";
-    form.style.display="none";
-    const inp=document.createElement("input");
-    inp.type="hidden";inp.name="bookings";
-    inp.value=JSON.stringify(bookings);
-    form.appendChild(inp);
-    const inp2=document.createElement("input");
-    inp2.type="hidden";inp2.name="action";inp2.value="save";
-    form.appendChild(inp2);
-    let iframe=document.getElementById("hidden_iframe");
-    if(!iframe){iframe=document.createElement("iframe");iframe.name="hidden_iframe";iframe.id="hidden_iframe";iframe.style.display="none";document.body.appendChild(iframe);}
-    document.body.appendChild(form);
-    form.submit();
-    document.body.removeChild(form);
-  }catch(e){console.error("שגיאה בשמירה:",e);}
+    const chunks=[];
+    const str=JSON.stringify(bookings);
+    const size=1500;
+    for(let i=0;i<str.length;i+=size) chunks.push(str.slice(i,i+size));
+    await jsonp(`${SCRIPT_URL}?action=save&total=${chunks.length}&bookings=${encodeURIComponent(str.slice(0,1500))}&full=${encodeURIComponent(str)}`);
+  }catch(e){console.error("שגיאה בסנכרון:",e);}
 }
 
 // ── הודעת סגירה ללקוח ──
