@@ -792,11 +792,11 @@ function App(){
               <button onClick={()=>setShowPrices(false)} style={{border:"none",background:"none",fontSize:20,cursor:"pointer",color:"#aaa"}}>✕</button>
             </div>
             {[
-              {l:"אמצע שבוע (א-ה)",p:fmt(prices.weekday)},
-              {l:'שישי–שבת / חג',p:fmt(prices.weekend)},
-              {l:"חבילה חמישי+שישי+שבת",p:fmt(prices.packageDeal)},
-              {l:"תוספת יציאה ראשון",p:fmt(prices.sundayExtra)},
-              {l:"אורח נוסף (מעל 2)",p:`${fmt(prices.extraGuest)} / אדם`},
+              {l:"אמצע שבוע (א-ה)",p:fmt(getActivePrices().weekday)},
+              {l:'שישי–שבת / חג',p:fmt(getActivePrices().weekend)},
+              {l:"חבילה חמישי+שישי+שבת",p:fmt(getActivePrices().packageDeal)},
+              {l:"תוספת יציאה ראשון",p:fmt(getActivePrices().sundayExtra)},
+              {l:"אורח נוסף (מעל 2)",p:`${fmt(getActivePrices().extraGuest)} / אדם`},
               {l:"תינוק",p:"ללא תשלום"},
             ].map(r=>(
               <div key={r.l} style={{display:"flex",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid #f0eee8"}}>
