@@ -27,6 +27,40 @@ const {useState,useMemo,useEffect}=React;
 
 const PASSWORD="0561";
 
+const DEFAULT_PRICES={
+  weekday:800,
+  weekend:1200,
+  packageDeal:1700,
+  sundayExtra:350,
+  extraGuest:300,
+};
+
+const DEFAULT_INQUIRY_TEMPLATE=`שלום,
+
+תודה על פנייתכם לצימר "שירת הציפורים" במיצד!
+
+אנו שמחים לספק לכם מידע על הצימר שלנו:
+
+🏡 *שירת הציפורים* — צימר מפנק ואיכותי במיצד (אספר)
+📍 כתובת: נחל קדם 93, מיצד
+
+💰 *מחירים:*
+• אמצע שבוע: ₪800 ללילה
+• סוף שבוע (שישי–שבת): ₪1,200
+• חבילת חמישי+שישי+שבת: ₪1,700
+• תוספת יציאה ראשון: ₪350
+• אורח נוסף: ₪300 לאדם
+
+⏰ *שעות:*
+• כניסה: 13:00
+• יציאה: 11:00
+
+לפרטים נוספים ולהזמנות:
+📞 050-410-3353 יעקב
+
+מחכים לבואכם!
+צימר "שירת הציפורים"`;
+
 function LoginScreen({onLogin}){
   const [pw,setPw]=useState("");
   const [err,setErr]=useState(false);
@@ -615,6 +649,15 @@ function App(){
   const [fStatus,setFStatus]=useState("all");
   const [delC,setDelC]=useState(null);
   const [showPrices,setShowPrices]=useState(false);
+  const [showPriceEditor,setShowPriceEditor]=useState(false);
+  const [prices,setPrices]=useState(()=>{
+    try{const s=localStorage.getItem("shirat_prices");return s?JSON.parse(s):DEFAULT_PRICES;}catch{return DEFAULT_PRICES;}
+  });
+  const [showInquiry,setShowInquiry]=useState(false);
+  const [inquiryTemplate,setInquiryTemplate]=useState(()=>{
+    try{const s=localStorage.getItem("shirat_inquiry");return s||DEFAULT_INQUIRY_TEMPLATE;}catch{return DEFAULT_INQUIRY_TEMPLATE;}
+  });
+  const [inquiryEmail,setInquiryEmail]=useState("");
 
   // טעינה ראשונית — תמיד מגוגל שיטס (המקור האמיתי)
   useEffect(()=>{
@@ -672,7 +715,7 @@ function App(){
 
   if(loading) return(
     <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"linear-gradient(160deg,#faf7f2,#f0ece3)",direction:"rtl"}}>
-      <div style={{fontSize:48,marginBottom:16}}>🐦</div>
+      <img src="https://shirat-hatziporim.github.io/shirat-hatziporim/logo.jpeg" style={{width:100,height:100,borderRadius:"50%",objectFit:"cover",background:"#fff",padding:6,boxShadow:"0 4px 20px rgba(0,0,0,0.1)",marginBottom:16}}/>
       <div style={{fontSize:20,fontWeight:800,color:"#1a1a2e",marginBottom:8,fontFamily:"'Heebo',sans-serif"}}>שירת הציפורים</div>
       <div style={{fontSize:14,color:"#8a7e6e",fontFamily:"'Heebo',sans-serif",marginBottom:24}}>טוען הזמנות מ־Google Sheets...</div>
       <div style={{width:40,height:40,border:"4px solid #e0d8cc",borderTop:"4px solid #1a1a2e",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
@@ -686,7 +729,7 @@ function App(){
       <div style={{background:"#1a1a2e",padding:"0 20px",position:"sticky",top:0,zIndex:50}}>
         <div style={{maxWidth:1100,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center",height:56}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <span style={{color:"#fff",fontSize:16,fontWeight:800}}>🐦 שירת הציפורים</span>
+            <img src="https://shirat-hatziporim.github.io/shirat-hatziporim/logo.jpeg" style={{height:36,width:36,borderRadius:"50%",objectFit:"cover",background:"#fff",padding:2}}/><span style={{color:"#fff",fontSize:16,fontWeight:800,marginRight:8}}>שירת הציפורים</span>
             <span style={{color:"#5a5878",fontSize:12,borderRight:"1px solid #3a3a5e",paddingRight:10}}>ניהול הזמנות</span>
             {syncing
               ? <span style={{fontSize:11,color:"#f4c26a",fontFamily:"'Heebo',sans-serif"}}>⏳ שומר...</span>
@@ -696,6 +739,8 @@ function App(){
           <div style={{display:"flex",gap:8}}>
             <button onClick={()=>loadFromSheets().then(d=>{setBookings(d);setLastSync(new Date());})} style={{background:"#252545",color:"#a0c0ff",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}} title="רענן מגוגל שיטס">🔄</button>
             <button onClick={()=>setShowPrices(p=>!p)} style={{background:"#252545",color:"#f4c26a",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📋 מחירון</button>
+            <button onClick={()=>setShowPriceEditor(true)} style={{background:"#252545",color:"#90caf9",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>✏️ עריכת מחירון</button>
+            <button onClick={()=>setShowInquiry(true)} style={{background:"#252545",color:"#a5d6a7",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📨 מייל מתעניינים</button>
             <button onClick={()=>{setEditB(null);setShowForm(true);}} style={{background:"#f4c26a",color:"#1a1a2e",border:"none",borderRadius:10,padding:"7px 14px",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>+ הזמנה חדשה</button>
           </div>
         </div>
@@ -887,6 +932,81 @@ function App(){
       </div>
 
       {showForm&&<BookingForm booking={editB} onSave={save} onCancel={()=>{setShowForm(false);setEditB(null);}} existingBookings={bookings}/>}
+
+      {/* מודל עריכת מחירון */}
+      {showPriceEditor&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <div style={{background:"#fff",borderRadius:20,width:"min(480px,96vw)",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.22)",direction:"rtl",padding:"24px 28px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <h2 style={{margin:0,fontSize:19,fontFamily:"'Heebo',sans-serif",color:"#1a1a2e",fontWeight:800}}>✏️ עריכת מחירון</h2>
+              <button onClick={()=>setShowPriceEditor(false)} style={{border:"none",background:"none",fontSize:22,cursor:"pointer",color:"#aaa"}}>✕</button>
+            </div>
+            {[
+              {key:"weekday",label:"אמצע שבוע (א-ה)"},
+              {key:"weekend",label:"סוף שבוע / חג (שישי-שבת)"},
+              {key:"packageDeal",label:"חבילת חמישי+שישי+שבת"},
+              {key:"sundayExtra",label:"תוספת יציאה ראשון"},
+              {key:"extraGuest",label:"תוספת אורח נוסף"},
+            ].map(({key,label})=>(
+              <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #f0eee8"}}>
+                <span style={{fontFamily:"'Heebo',sans-serif",color:"#3d2c1e",fontSize:14}}>{label}</span>
+                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                  <span style={{color:"#a09080",fontSize:13}}>₪</span>
+                  <input type="number" value={prices[key]} onFocus={e=>e.target.select()}
+                    onChange={e=>setPrices(p=>({...p,[key]:parseInt(e.target.value)||0}))}
+                    style={{width:90,padding:"6px 10px",borderRadius:8,border:"1.5px solid #e0d8cc",fontSize:14,fontFamily:"'Heebo',sans-serif",textAlign:"center"}}/>
+                </div>
+              </div>
+            ))}
+            <div style={{display:"flex",gap:10,marginTop:20}}>
+              <button onClick={()=>{
+                localStorage.setItem("shirat_prices",JSON.stringify(prices));
+                setShowPriceEditor(false);
+                alert("המחירון עודכן בהצלחה!");
+              }} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#1a1a2e",color:"#fff",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>שמירה</button>
+              <button onClick={()=>{setPrices(DEFAULT_PRICES);}} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#f0eee8",color:"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>איפוס לברירת מחדל</button>
+              <button onClick={()=>setShowPriceEditor(false)} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#f0eee8",color:"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>ביטול</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* מודל מייל מתעניינים */}
+      {showInquiry&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <div style={{background:"#fff",borderRadius:20,width:"min(560px,96vw)",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.22)",direction:"rtl",padding:"24px 28px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <h2 style={{margin:0,fontSize:19,fontFamily:"'Heebo',sans-serif",color:"#1a1a2e",fontWeight:800}}>📨 מייל למתעניינים</h2>
+              <button onClick={()=>setShowInquiry(false)} style={{border:"none",background:"none",fontSize:22,cursor:"pointer",color:"#aaa"}}>✕</button>
+            </div>
+            <div style={{marginBottom:14}}>
+              <label style={{display:"block",fontSize:12,color:"#7a6a58",marginBottom:4,fontWeight:600,fontFamily:"'Heebo',sans-serif"}}>מייל המתעניין</label>
+              <input type="email" value={inquiryEmail} onChange={e=>setInquiryEmail(e.target.value)}
+                placeholder="example@gmail.com" dir="ltr"
+                style={{width:"100%",boxSizing:"border-box",padding:"9px 12px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:14,fontFamily:"'Heebo',sans-serif"}}/>
+            </div>
+            <div style={{marginBottom:14}}>
+              <label style={{display:"block",fontSize:12,color:"#7a6a58",marginBottom:4,fontWeight:600,fontFamily:"'Heebo',sans-serif"}}>תבנית המייל (ניתן לערוך)</label>
+              <textarea value={inquiryTemplate} onChange={e=>setInquiryTemplate(e.target.value)}
+                style={{width:"100%",boxSizing:"border-box",padding:"10px 12px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:13,fontFamily:"'Heebo',sans-serif",minHeight:280,resize:"vertical",direction:"rtl"}}/>
+            </div>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+              <button onClick={()=>{
+                if(!inquiryEmail){alert("הזן כתובת מייל");return;}
+                const sub=encodeURIComponent('מידע על צימר שירת הציפורים');
+                const body=encodeURIComponent(inquiryTemplate);
+                window.open(`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(inquiryEmail)}&su=${sub}&body=${body}`,"_blank");
+              }} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#1a1a2e",color:"#fff",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>שלח מייל</button>
+              <button onClick={()=>{
+                localStorage.setItem("shirat_inquiry",inquiryTemplate);
+                alert("התבנית נשמרה!");
+              }} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#e8f5e9",color:"#2e7d32",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>שמור תבנית</button>
+              <button onClick={()=>setInquiryTemplate(DEFAULT_INQUIRY_TEMPLATE)} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#f0eee8",color:"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>איפוס</button>
+              <button onClick={()=>setShowInquiry(false)} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#f0eee8",color:"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>סגור</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {delC&&(
         <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.5)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center"}}>
