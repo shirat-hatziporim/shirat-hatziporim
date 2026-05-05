@@ -11,13 +11,22 @@
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-.desktop-actions{display:table-cell !important;}
-@media(max-width:700px){.desktop-actions{display:none !important;}}
 body{font-family:'Heebo',sans-serif;background:linear-gradient(160deg,#faf7f2,#f0ece3);min-height:100vh;direction:rtl;}
 input,select,textarea{font-family:'Heebo',sans-serif;}
 ::-webkit-scrollbar{width:6px;height:6px;}
 ::-webkit-scrollbar-track{background:#f0eee8;}
 ::-webkit-scrollbar-thumb{background:#c8b898;border-radius:3px;}
+</style>
+<style>
+.desktop-actions{display:table-cell !important;}
+.hide-mobile{display:table-cell;}
+.btn-text{display:inline;}
+@media(max-width:700px){
+  .desktop-actions{display:none !important;}
+  .hide-mobile{display:none !important;}
+  table{font-size:12px;}
+  .btn-text{display:none;}
+}
 </style>
 
 <meta name="NetsparkQuiltingResult" total-length="49721" removed="0" rules-found="w73,w2655,w3390,w6563,w3012,w11756,w340,w2952,w21829,w31050,w30581,w30661,w21217,w16749,w16715,w6284,w2577,w6565,w4299,w17902,w3034,w4748,w4749,w10785,w10786,w3829,w3830" />
@@ -678,7 +687,6 @@ function App(){
   const [search,setSearch]=useState("");
   const [fStatus,setFStatus]=useState("all");
   const [delC,setDelC]=useState(null);
-  const [mobileMenu,setMobileMenu]=useState(null); // booking object for mobile action menu
   const [showPrices,setShowPrices]=useState(false);
   const [showPriceEditor,setShowPriceEditor]=useState(false);
   const [priceTab,setPriceTab]=useState("view"); // view | edit
@@ -778,10 +786,10 @@ function App(){
           </div>
           <div style={{display:"flex",gap:8}}>
             
-            <button onClick={()=>{setPriceTab('view');setShowPriceEditor(true);}} style={{background:"#252545",color:"#f4c26a",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📋 מחירון</button>
-            <button onClick={()=>setShowInquiry(true)} style={{background:"#252545",color:"#a5d6a7",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📨 מייל מתעניינים</button>
-            <button onClick={()=>{setEmailEditorType("confirm");setShowEmailEditor(true);}} style={{background:"#252545",color:"#ce93d8",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📝 עריכת מיילים</button>
-            <button onClick={()=>{setEditB(null);setShowForm(true);}} style={{background:"#f4c26a",color:"#1a1a2e",border:"none",borderRadius:10,padding:"7px 14px",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>+ הזמנה חדשה</button>
+            <button onClick={()=>{setPriceTab('view');setShowPriceEditor(true);}} style={{background:"#252545",color:"#f4c26a",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}><span class="btn-text">📋 <span class="btn-text">מחירון</span></span><span style={{display:"none"}} className="btn-icon">📋</span></button>
+            <button onClick={()=>setShowInquiry(true)} style={{background:"#252545",color:"#a5d6a7",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📨 <span class="btn-text">מייל מתעניינים</span></button>
+            <button onClick={()=>{setEmailEditorType("confirm");setShowEmailEditor(true);}} style={{background:"#252545",color:"#ce93d8",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📝 <span class="btn-text">עריכת מיילים</span></button>
+            <button onClick={()=>{setEditB(null);setShowForm(true);}} style={{background:"#f4c26a",color:"#1a1a2e",border:"none",borderRadius:10,padding:"7px 14px",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>+ <span class="btn-text">הזמנה חדשה</span></button>
           </div>
         </div>
       </div>
@@ -867,10 +875,9 @@ function App(){
                     {filtered.sort((a,b)=>a.checkin.localeCompare(b.checkin)).map(b=>{
                       const sc=SC[b.status],bal=Math.max(0,(b.total||0)-(b.paid||0));
                       return(
-                        <tr key={b.id} style={{borderBottom:"1px solid #f4f0ea",transition:"background .1s",cursor:"pointer"}}
+                        <tr key={b.id} style={{borderBottom:"1px solid #f4f0ea",transition:"background .1s"}}
                           onMouseEnter={e=>e.currentTarget.style.background="#fdfaf6"}
-                          onMouseLeave={e=>e.currentTarget.style.background="transparent"}
-                          onClick={()=>{if(window.innerWidth<700)setMobileMenu(b);}}>
+                          onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                           <td style={{padding:"11px 12px"}}>
                             <div style={{fontWeight:700,color:"#1a1a2e"}}>{b.name}</div>
                             {b.notes&&<div style={{fontSize:11,color:"#a09080",marginTop:2}}>{b.notes}</div>}
@@ -889,14 +896,14 @@ function App(){
                           <td style={{padding:"11px 12px",fontWeight:700,color:"#1a1a2e"}}>{fm(b.total||0)}</td>
                           <td style={{padding:"11px 12px",color:"#2e7d32",fontWeight:600}}>{fm(b.paid||0)}</td>
                           <td style={{padding:"11px 12px",color:bal>0?"#c62828":"#2e7d32",fontWeight:600}}>{fm(bal)}</td>
-                          <td style={{padding:"11px 12px",display:"none"}} className="desktop-actions">
+                          <td style={{padding:"11px 12px"}}>
                             <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-                              <button onClick={e=>{e.stopPropagation();openEdit(b);}} style={{border:"none",background:"#f0eee8",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="עריכה">✏️</button>
-                              <button onClick={e=>{e.stopPropagation();sendWhatsApp(b);}} style={{border:"none",background:"#e7f7e7",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="שלח WhatsApp">💬</button>
+                              <button onClick={()=>openEdit(b)} style={{border:"none",background:"#f0eee8",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="עריכה">✏️</button>
+                              <button onClick={()=>sendWhatsApp(b)} style={{border:"none",background:"#e7f7e7",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="שלח WhatsApp">💬</button>
 
-                              <button onClick={e=>{e.stopPropagation();sendConfirmEmail(b);}} style={{border:"none",background:"#e3f2fd",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="מייל אישור הזמנה">📧</button>
-                              <button onClick={e=>{e.stopPropagation();sendReviewEmail(b);}} style={{border:"none",background:"#f3e5f5",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="מייל בקשת ביקורת">⭐</button>
-                              <button onClick={e=>{e.stopPropagation();setDelC(b.id);}} style={{border:"none",background:"#fce4ec",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="מחיקה">🗑️</button>
+                              <button onClick={()=>sendConfirmEmail(b)} style={{border:"none",background:"#e3f2fd",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="מייל אישור הזמנה">📧</button>
+                              <button onClick={()=>sendReviewEmail(b)} style={{border:"none",background:"#f3e5f5",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="מייל בקשת ביקורת">⭐</button>
+                              <button onClick={()=>setDelC(b.id)} style={{border:"none",background:"#fce4ec",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="מחיקה">🗑️</button>
                             </div>
                           </td>
                         </tr>
@@ -1136,35 +1143,6 @@ https://mamimush.co.il/rooms/...
               }} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#e8f5e9",color:"#2e7d32",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>שמור תבנית</button>
               <button onClick={()=>setInquiryTemplate(DEFAULT_INQUIRY_TEMPLATE)} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#f0eee8",color:"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>איפוס</button>
               <button onClick={()=>setShowInquiry(false)} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#f0eee8",color:"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>סגור</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-            {/* Mobile action menu */}
-      {mobileMenu&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.5)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"}}
-          onClick={()=>setMobileMenu(null)}>
-          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"20px 20px 0 0",width:"100%",maxWidth:500,padding:"20px 20px 32px",direction:"rtl"}}>
-            <div style={{textAlign:"center",marginBottom:16}}>
-              <div style={{width:40,height:4,background:"#e0d8cc",borderRadius:2,margin:"0 auto 12px"}}/>
-              <div style={{fontFamily:"'Heebo',sans-serif",fontWeight:800,color:"#1a1a2e",fontSize:16}}>{mobileMenu.name}</div>
-              <div style={{fontFamily:"'Heebo',sans-serif",color:"#8a7e6e",fontSize:13}}>{fd(mobileMenu.checkin)} — {fd(mobileMenu.checkout)}</div>
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              {[
-                {icon:"✏️",label:"עריכה",color:"#f0eee8",tc:"#1a1a2e",action:()=>{openEdit(mobileMenu);setMobileMenu(null);}},
-                {icon:"💬",label:"WhatsApp",color:"#e7f7e7",tc:"#2e7d32",action:()=>{sendWhatsApp(mobileMenu);setMobileMenu(null);}},
-                {icon:"📧",label:"אישור הזמנה",color:"#e3f2fd",tc:"#1565c0",action:()=>{sendConfirmEmail(mobileMenu);setMobileMenu(null);}},
-                {icon:"⭐",label:"בקשת ביקורת",color:"#f3e5f5",tc:"#7b1fa2",action:()=>{sendReviewEmail(mobileMenu);setMobileMenu(null);}},
-                {icon:"🗑️",label:"מחיקה",color:"#fce4ec",tc:"#c62828",action:()=>{setDelC(mobileMenu.id);setMobileMenu(null);}},
-              ].map(({icon,label,color,tc,action})=>(
-                <button key={label} onClick={action}
-                  style={{background:color,color:tc,border:"none",borderRadius:12,padding:"14px 10px",cursor:"pointer",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
-                  <span style={{fontSize:24}}>{icon}</span>
-                  <span>{label}</span>
-                </button>
-              ))}
             </div>
           </div>
         </div>
