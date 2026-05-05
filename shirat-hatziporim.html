@@ -98,7 +98,17 @@ function isSummer(ds){const md=ds.slice(5);return md>="06-01"&&md<="08-31";}
 function isWeekend(ds){const d=new Date(ds);return d.getDay()===5||d.getDay()===6;}
 const HOLIDAYS=["2025-04-12","2025-04-13","2025-04-14","2025-04-18","2025-04-19","2025-06-01","2025-06-02","2025-09-22","2025-09-23","2025-09-24","2025-09-25","2025-10-01","2025-10-02","2025-10-06","2025-10-07","2025-10-13","2025-10-14"];
 function isHoliday(ds){return HOLIDAYS.includes(ds);}
-function getDailyPrice(ds){const w=isWeekend(ds)||isHoliday(ds);return w?1200:800;}
+function getActivePrices(){
+  try{
+    const s=localStorage.getItem("shirat_prices");
+    return s?JSON.parse(s):DEFAULT_PRICES;
+  }catch{return DEFAULT_PRICES;}
+}
+function getDailyPrice(ds){
+  const p=getActivePrices();
+  const w=isWeekend(ds)||isHoliday(ds);
+  return w?p.weekend:p.weekday;
+}
 function getDayType(ds){if(isHoliday(ds))return"חג";if(isWeekend(ds))return'סופ"ש';return"חול";}
 function calcNights(a,b){
   a=parseDate(a);b=parseDate(b);
@@ -125,7 +135,8 @@ function calcTotal(checkin,checkout,extra=0){
 
   const cout=new Date(checkout);
   const coutDay=cout.getDay(); // 0=ראשון
-  const sundayExtra=coutDay===0?350:0; // תוספת יציאה ראשון
+  const activePrices=getActivePrices();
+  const sundayExtra=coutDay===0?activePrices.sundayExtra:0; // תוספת יציאה ראשון
 
   // בדוק חבילת חמישי+שישי+שבת
   const pkg=hasPackageDeal(checkin,checkout);
@@ -160,7 +171,7 @@ function calcTotal(checkin,checkout,extra=0){
       bd.unshift({date:ds,price:Math.round(1700/3),type:"חבילה"});
       cur2.setDate(cur2.getDate()+1);
     }
-    base+=1700;
+    base+=activePrices.packageDeal;
   } else {
     const cur=new Date(checkin);
     for(let i=0;i<nights;i++){
@@ -172,7 +183,7 @@ function calcTotal(checkin,checkout,extra=0){
     }
   }
 
-  const guestExtra=Math.max(0,extra)*300;
+  const guestExtra=Math.max(0,extra)*(activePrices.extraGuest||300);
   const total=base+guestExtra+sundayExtra;
   return{total,nights,breakdown:bd,guestExtra,packageDeal:pkg,sundayExtra};
 }
@@ -351,8 +362,12 @@ function buildWelcomeEmail(b){
   return {subject,body};
 }
 
-function buildReviewEmail(b){
+function buildReviewEmail(b,customTemplate){
   const subject=encodeURIComponent(`שמחנו לארח אתכם בצימר "שירת הציפורים"`);
+  if(customTemplate){
+    const body=encodeURIComponent(customTemplate.replace("{שם}",b.name));
+    return{subject,body};
+  }
   const body=encodeURIComponent(
 `שלום וברכה ${b.name},
 
@@ -389,7 +404,8 @@ function sendWelcomeEmail(b){
 
 function sendReviewEmail(b){
   if(!b.email){alert("לא הוזן מייל ללקוח זה");return;}
-  const {subject,body}=buildReviewEmail(b);
+  const custom=localStorage.getItem("shirat_review_template")||"";
+  const {subject,body}=buildReviewEmail(b,custom||null);
   window.open(`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(b.email)}&su=${subject}&body=${body}`,"_blank");
 }
 
@@ -402,9 +418,20 @@ function guestType(b){
   return `זוג + ${extra} + ${babies===1?"תינוק":"תינוקות"}`;
 }
 
-function buildConfirmEmail(b){
+function buildConfirmEmail(b,customTemplate){
   const nights=b.nights||calcNights(b.checkin,b.checkout);
   const subject=encodeURIComponent(`צימר שירת הציפורים מיצד - אישור הזמנה`);
+  if(customTemplate){
+    const body=encodeURIComponent(customTemplate
+      .replace("{שם}",b.name)
+      .replace("{סוג}",guestType(b))
+      .replace("{כניסה}",fd(b.checkin))
+      .replace("{יציאה}",fd(b.checkout))
+      .replace("{לילות}",nights)
+      .replace("{סכום}",fm(b.total||0))
+    );
+    return{subject,body};
+  }
   const body=encodeURIComponent(
 `שלום וברכה ${b.name},
 
@@ -446,7 +473,8 @@ function buildConfirmEmail(b){
 
 function sendConfirmEmail(b){
   if(!b.email){alert("לא הוזן מייל ללקוח זה");return;}
-  const {subject,body}=buildConfirmEmail(b);
+  const custom=localStorage.getItem("shirat_confirm_template")||"";
+  const {subject,body}=buildConfirmEmail(b,custom||null);
   window.open(`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(b.email)}&su=${subject}&body=${body}`,"_blank");
 }
 
@@ -658,6 +686,14 @@ function App(){
     try{const s=localStorage.getItem("shirat_inquiry");return s||DEFAULT_INQUIRY_TEMPLATE;}catch{return DEFAULT_INQUIRY_TEMPLATE;}
   });
   const [inquiryEmail,setInquiryEmail]=useState("");
+  const [showEmailEditor,setShowEmailEditor]=useState(false);
+  const [emailEditorType,setEmailEditorType]=useState("confirm"); // confirm | review
+  const [confirmTemplate,setConfirmTemplate]=useState(()=>{
+    try{const s=localStorage.getItem("shirat_confirm_template");return s||"";}catch{return "";}
+  });
+  const [reviewTemplate,setReviewTemplate]=useState(()=>{
+    try{const s=localStorage.getItem("shirat_review_template");return s||"";}catch{return "";}
+  });
 
   // טעינה ראשונית — תמיד מגוגל שיטס (המקור האמיתי)
   useEffect(()=>{
@@ -741,6 +777,7 @@ function App(){
             <button onClick={()=>setShowPrices(p=>!p)} style={{background:"#252545",color:"#f4c26a",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📋 מחירון</button>
             <button onClick={()=>setShowPriceEditor(true)} style={{background:"#252545",color:"#90caf9",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>✏️ עריכת מחירון</button>
             <button onClick={()=>setShowInquiry(true)} style={{background:"#252545",color:"#a5d6a7",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📨 מייל מתעניינים</button>
+            <button onClick={()=>{setEmailEditorType("confirm");setShowEmailEditor(true);}} style={{background:"#252545",color:"#ce93d8",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📝 עריכת מיילים</button>
             <button onClick={()=>{setEditB(null);setShowForm(true);}} style={{background:"#f4c26a",color:"#1a1a2e",border:"none",borderRadius:10,padding:"7px 14px",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>+ הזמנה חדשה</button>
           </div>
         </div>
@@ -755,11 +792,11 @@ function App(){
               <button onClick={()=>setShowPrices(false)} style={{border:"none",background:"none",fontSize:20,cursor:"pointer",color:"#aaa"}}>✕</button>
             </div>
             {[
-              {l:"אמצע שבוע (א-ה)",p:"₪800"},
-              {l:'שישי–שבת / חג',p:"₪1,200"},
-              {l:"חבילה חמישי+שישי+שבת",p:"₪1,700"},
-              {l:"תוספת יציאה ראשון",p:"₪350"},
-              {l:"אורח נוסף (מעל 2)",p:"₪300 / אדם"},
+              {l:"אמצע שבוע (א-ה)",p:fmt(prices.weekday)},
+              {l:'שישי–שבת / חג',p:fmt(prices.weekend)},
+              {l:"חבילה חמישי+שישי+שבת",p:fmt(prices.packageDeal)},
+              {l:"תוספת יציאה ראשון",p:fmt(prices.sundayExtra)},
+              {l:"אורח נוסף (מעל 2)",p:`${fmt(prices.extraGuest)} / אדם`},
               {l:"תינוק",p:"ללא תשלום"},
             ].map(r=>(
               <div key={r.l} style={{display:"flex",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid #f0eee8"}}>
@@ -970,6 +1007,68 @@ function App(){
           </div>
         </div>
       )}
+
+      {/* מודל עריכת תבניות מייל */}
+      {showEmailEditor&&(()=>{
+        const isConfirm=emailEditorType==="confirm";
+        const template=isConfirm?confirmTemplate:reviewTemplate;
+        const setTemplate=isConfirm?setConfirmTemplate:setReviewTemplate;
+        const storageKey=isConfirm?"shirat_confirm_template":"shirat_review_template";
+        const defaultText=isConfirm?`שלום וברכה {שם},
+
+שמחים לאשר את הזמנתכם בצימר שירת הציפורים!
+
+פרטי ההזמנה:
+• סוג אירוח: {סוג}
+• תאריכים: {כניסה} עד {יציאה} ({לילות} לילות)
+• עלות: {סכום}
+
+נא להעביר מקדמה בסך 500 ₪...
+
+ביט / פייבוקס: 0504103353
+
+מחכים לבואכם!
+צימר "שירת הציפורים"`:
+          `שלום וברכה {שם},
+
+רצינו להודות לכם מקרב לב...
+
+מצורפים קישורים:
+https://mamimush.co.il/rooms/...
+
+בברכה,
+יעקב`;
+        return(
+          <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <div style={{background:"#fff",borderRadius:20,width:"min(580px,96vw)",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.22)",direction:"rtl",padding:"24px 28px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+                <h2 style={{margin:0,fontSize:19,fontFamily:"'Heebo',sans-serif",color:"#1a1a2e",fontWeight:800}}>📝 עריכת תבנית מייל</h2>
+                <button onClick={()=>setShowEmailEditor(false)} style={{border:"none",background:"none",fontSize:22,cursor:"pointer",color:"#aaa"}}>✕</button>
+              </div>
+              <div style={{display:"flex",gap:8,marginBottom:16}}>
+                <button onClick={()=>setEmailEditorType("confirm")} style={{padding:"7px 16px",borderRadius:10,border:"none",cursor:"pointer",background:isConfirm?"#1a1a2e":"#f0eee8",color:isConfirm?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>📧 אישור הזמנה</button>
+                <button onClick={()=>setEmailEditorType("review")} style={{padding:"7px 16px",borderRadius:10,border:"none",cursor:"pointer",background:!isConfirm?"#1a1a2e":"#f0eee8",color:!isConfirm?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>⭐ בקשת ביקורת</button>
+              </div>
+              {isConfirm&&<div style={{background:"#f0f4ff",borderRadius:8,padding:"8px 12px",marginBottom:12,fontSize:12,color:"#3a4a8a",fontFamily:"'Heebo',sans-serif"}}>
+                ניתן להשתמש במשתנים: <b>{"{שם}"}</b> שם לקוח, <b>{"{סוג}"}</b> סוג אירוח, <b>{"{כניסה}"}</b> <b>{"{יציאה}"}</b> תאריכים, <b>{"{לילות}"}</b> מספר לילות, <b>{"{סכום}"}</b> מחיר
+              </div>}
+              {!isConfirm&&<div style={{background:"#f0f4ff",borderRadius:8,padding:"8px 12px",marginBottom:12,fontSize:12,color:"#3a4a8a",fontFamily:"'Heebo',sans-serif"}}>
+                ניתן להשתמש במשתנה: <b>{"{שם}"}</b> שם לקוח
+              </div>}
+              <textarea value={template||defaultText} onChange={e=>setTemplate(e.target.value)}
+                style={{width:"100%",boxSizing:"border-box",padding:"10px 12px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:13,fontFamily:"'Heebo',sans-serif",minHeight:300,resize:"vertical",direction:"rtl"}}/>
+              <div style={{display:"flex",gap:10,marginTop:16,flexWrap:"wrap"}}>
+                <button onClick={()=>{
+                  localStorage.setItem(storageKey,template||defaultText);
+                  alert("התבנית נשמרה!");
+                }} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#1a1a2e",color:"#fff",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>שמירה</button>
+                <button onClick={()=>setTemplate("")} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#f0eee8",color:"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>איפוס לברירת מחדל</button>
+                <button onClick={()=>setShowEmailEditor(false)} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#f0eee8",color:"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>סגור</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* מודל מייל מתעניינים */}
       {showInquiry&&(
