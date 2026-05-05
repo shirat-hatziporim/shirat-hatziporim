@@ -762,8 +762,8 @@ function App(){
   return(
     <div style={{minHeight:"100vh",direction:"rtl"}}>
       {/* Header */}
-      <div style={{background:"#1a1a2e",padding:"0 20px",position:"sticky",top:0,zIndex:50}}>
-        <div style={{maxWidth:1100,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center",height:56}}>
+      <div style={{background:"#1a1a2e",padding:"0 12px",position:"sticky",top:0,zIndex:50}}>
+        <div style={{maxWidth:1100,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center",minHeight:48,flexWrap:"wrap",gap:4,padding:"4px 0"}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             <img src="https://shirat-hatziporim.github.io/shirat-hatziporim/logo.jpeg" style={{height:36,width:36,borderRadius:"50%",objectFit:"cover",background:"#fff",padding:2}}/><span style={{color:"#fff",fontSize:16,fontWeight:800,marginRight:8}}>שירת הציפורים</span>
             <span style={{color:"#5a5878",fontSize:12,borderRight:"1px solid #3a3a5e",paddingRight:10}}>ניהול הזמנות</span>
@@ -773,12 +773,12 @@ function App(){
             }
           </div>
           <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>loadFromSheets().then(d=>{setBookings(d);setLastSync(new Date());})} style={{background:"#252545",color:"#a0c0ff",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 8px",fontSize:16,cursor:"pointer"}} title="רענון">🔄</button>
-            <button onClick={()=>setShowPrices(p=>!p)} style={{background:"#252545",color:"#f4c26a",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 8px",fontSize:16,cursor:"pointer"}} title="מחירון">📋</button>
-            <button onClick={()=>setShowPriceEditor(true)} style={{background:"#252545",color:"#90caf9",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 8px",fontSize:16,cursor:"pointer"}} title="עריכת מחירון">✏️</button>
-            <button onClick={()=>setShowInquiry(true)} style={{background:"#252545",color:"#a5d6a7",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 8px",fontSize:16,cursor:"pointer"}} title="מייל מתעניינים">📨</button>
-            <button onClick={()=>{setEmailEditorType("confirm");setShowEmailEditor(true);}} style={{background:"#252545",color:"#ce93d8",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 8px",fontSize:16,cursor:"pointer"}} title="עריכת מיילים">📝</button>
-            <button onClick={()=>{setEditB(null);setShowForm(true);}} style={{background:"#f4c26a",color:"#1a1a2e",border:"none",borderRadius:10,padding:"7px 12px",fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>+ הזמנה</button>
+            <button onClick={()=>loadFromSheets().then(d=>{setBookings(d);setLastSync(new Date());})} style={{background:"#252545",color:"#a0c0ff",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}} title="רענן מגוגל שיטס">🔄</button>
+            <button onClick={()=>setShowPrices(p=>!p)} style={{background:"#252545",color:"#f4c26a",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📋</button>
+            <button onClick={()=>setShowPriceEditor(true)} style={{background:"#252545",color:"#90caf9",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>✏️ עריכת מחירון</button>
+            <button onClick={()=>setShowInquiry(true)} style={{background:"#252545",color:"#a5d6a7",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📨 מייל מתעניינים</button>
+            <button onClick={()=>{setEmailEditorType("confirm");setShowEmailEditor(true);}} style={{background:"#252545",color:"#ce93d8",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📝 עריכת מיילים</button>
+            <button onClick={()=>{setEditB(null);setShowForm(true);}} style={{background:"#f4c26a",color:"#1a1a2e",border:"none",borderRadius:10,padding:"6px 10px",fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>+ הזמנה</button>
           </div>
         </div>
       </div>
@@ -886,12 +886,13 @@ function App(){
                           <td style={{padding:"11px 12px",color:"#2e7d32",fontWeight:600}}>{fm(b.paid||0)}</td>
                           <td style={{padding:"11px 12px",color:bal>0?"#c62828":"#2e7d32",fontWeight:600}}>{fm(bal)}</td>
                           <td style={{padding:"11px 12px"}}>
-                            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:3}}>
-                              <button onClick={()=>openEdit(b)} style={{border:"none",background:"#f0eee8",borderRadius:6,padding:"5px",cursor:"pointer",fontSize:13}} title="עריכה">✏️</button>
-                              <button onClick={()=>sendWhatsApp(b)} style={{border:"none",background:"#e7f7e7",borderRadius:6,padding:"5px",cursor:"pointer",fontSize:13}} title="WhatsApp">💬</button>
-                              <button onClick={()=>sendConfirmEmail(b)} style={{border:"none",background:"#e3f2fd",borderRadius:6,padding:"5px",cursor:"pointer",fontSize:13}} title="אישור">📧</button>
-                              <button onClick={()=>sendReviewEmail(b)} style={{border:"none",background:"#f3e5f5",borderRadius:6,padding:"5px",cursor:"pointer",fontSize:13}} title="ביקורת">⭐</button>
-                              <button onClick={()=>setDelC(b.id)} style={{border:"none",background:"#fce4ec",borderRadius:6,padding:"5px",cursor:"pointer",fontSize:13,gridColumn:"1/-1"}} title="מחיקה">🗑️</button>
+                            <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                              <button onClick={()=>openEdit(b)} style={{border:"none",background:"#f0eee8",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="עריכה">✏️</button>
+                              <button onClick={()=>sendWhatsApp(b)} style={{border:"none",background:"#e7f7e7",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="שלח WhatsApp">💬</button>
+
+                              <button onClick={()=>sendConfirmEmail(b)} style={{border:"none",background:"#e3f2fd",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="מייל אישור הזמנה">📧</button>
+                              <button onClick={()=>sendReviewEmail(b)} style={{border:"none",background:"#f3e5f5",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="מייל בקשת ביקורת">⭐</button>
+                              <button onClick={()=>setDelC(b.id)} style={{border:"none",background:"#fce4ec",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="מחיקה">🗑️</button>
                             </div>
                           </td>
                         </tr>
