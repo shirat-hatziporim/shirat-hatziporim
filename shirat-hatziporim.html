@@ -678,6 +678,7 @@ function App(){
   const [delC,setDelC]=useState(null);
   const [showPrices,setShowPrices]=useState(false);
   const [showPriceEditor,setShowPriceEditor]=useState(false);
+  const [priceTab,setPriceTab]=useState("view"); // view | edit
   const [prices,setPrices]=useState(()=>{
     try{const s=localStorage.getItem("shirat_prices");return s?JSON.parse(s):DEFAULT_PRICES;}catch{return DEFAULT_PRICES;}
   });
@@ -762,8 +763,8 @@ function App(){
   return(
     <div style={{minHeight:"100vh",direction:"rtl"}}>
       {/* Header */}
-      <div style={{background:"#1a1a2e",padding:"0 12px",position:"sticky",top:0,zIndex:50}}>
-        <div style={{maxWidth:1100,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center",minHeight:48,flexWrap:"wrap",gap:4,padding:"4px 0"}}>
+      <div style={{background:"#1a1a2e",padding:"0 20px",position:"sticky",top:0,zIndex:50}}>
+        <div style={{maxWidth:1100,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center",height:56}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             <img src="https://shirat-hatziporim.github.io/shirat-hatziporim/logo.jpeg" style={{height:36,width:36,borderRadius:"50%",objectFit:"cover",background:"#fff",padding:2}}/><span style={{color:"#fff",fontSize:16,fontWeight:800,marginRight:8}}>שירת הציפורים</span>
             <span style={{color:"#5a5878",fontSize:12,borderRight:"1px solid #3a3a5e",paddingRight:10}}>ניהול הזמנות</span>
@@ -773,12 +774,11 @@ function App(){
             }
           </div>
           <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>loadFromSheets().then(d=>{setBookings(d);setLastSync(new Date());})} style={{background:"#252545",color:"#a0c0ff",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}} title="רענן מגוגל שיטס">🔄</button>
-            <button onClick={()=>setShowPrices(p=>!p)} style={{background:"#252545",color:"#f4c26a",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📋</button>
-            <button onClick={()=>setShowPriceEditor(true)} style={{background:"#252545",color:"#90caf9",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>✏️ עריכת מחירון</button>
+            
+            <button onClick={()=>{setPriceTab('view');setShowPriceEditor(true);}} style={{background:"#252545",color:"#f4c26a",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📋</button>
             <button onClick={()=>setShowInquiry(true)} style={{background:"#252545",color:"#a5d6a7",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📨 מייל מתעניינים</button>
             <button onClick={()=>{setEmailEditorType("confirm");setShowEmailEditor(true);}} style={{background:"#252545",color:"#ce93d8",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📝 עריכת מיילים</button>
-            <button onClick={()=>{setEditB(null);setShowForm(true);}} style={{background:"#f4c26a",color:"#1a1a2e",border:"none",borderRadius:10,padding:"6px 10px",fontWeight:800,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>+ הזמנה</button>
+            <button onClick={()=>{setEditB(null);setShowForm(true);}} style={{background:"#f4c26a",color:"#1a1a2e",border:"none",borderRadius:10,padding:"7px 14px",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>+ הזמנה חדשה</button>
           </div>
         </div>
       </div>
@@ -970,14 +970,42 @@ function App(){
 
       {showForm&&<BookingForm booking={editB} onSave={save} onCancel={()=>{setShowForm(false);setEditB(null);}} existingBookings={bookings}/>}
 
-      {/* מודל עריכת מחירון */}
+      {/* מודל מחירון */}
       {showPriceEditor&&(
         <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}}>
           <div style={{background:"#fff",borderRadius:20,width:"min(480px,96vw)",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.22)",direction:"rtl",padding:"24px 28px"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-              <h2 style={{margin:0,fontSize:19,fontFamily:"'Heebo',sans-serif",color:"#1a1a2e",fontWeight:800}}>✏️ עריכת מחירון</h2>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+              <h2 style={{margin:0,fontSize:19,fontFamily:"'Heebo',sans-serif",color:"#1a1a2e",fontWeight:800}}>📋 מחירון</h2>
               <button onClick={()=>setShowPriceEditor(false)} style={{border:"none",background:"none",fontSize:22,cursor:"pointer",color:"#aaa"}}>✕</button>
             </div>
+            <div style={{display:"flex",gap:8,marginBottom:16}}>
+              <button onClick={()=>setPriceTab("view")} style={{padding:"7px 16px",borderRadius:10,border:"none",cursor:"pointer",background:priceTab==="view"?"#1a1a2e":"#f0eee8",color:priceTab==="view"?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>צפייה</button>
+              <button onClick={()=>setPriceTab("edit")} style={{padding:"7px 16px",borderRadius:10,border:"none",cursor:"pointer",background:priceTab==="edit"?"#1a1a2e":"#f0eee8",color:priceTab==="edit"?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>עריכה</button>
+            </div>
+            {priceTab==="view"&&(
+              <div>
+                {[
+                  {l:"אמצע שבוע (א-ה)",p:fm(getActivePrices().weekday)},
+                  {l:'שישי–שבת / חג',p:fm(getActivePrices().weekend)},
+                  {l:"חבילה חמישי+שישי+שבת",p:fm(getActivePrices().packageDeal)},
+                  {l:"תוספת יציאה ראשון",p:fm(getActivePrices().sundayExtra)},
+                  {l:"אורח נוסף (מעל 2)",p:`${fm(getActivePrices().extraGuest)} / אדם`},
+                  {l:"תינוק",p:"ללא תשלום"},
+                ].map(r=>(
+                  <div key={r.l} style={{display:"flex",justifyContent:"space-between",padding:"10px 0",borderBottom:"1px solid #f0eee8",fontFamily:"'Heebo',sans-serif"}}>
+                    <span style={{color:"#5a4e40",fontSize:14}}>{r.l}</span>
+                    <span style={{fontWeight:800,color:"#1a1a2e",fontSize:14}}>{r.p}</span>
+                  </div>
+                ))}
+                <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid #e0d8cc"}}>
+                  <div style={{fontSize:13,color:"#7a6a58",fontFamily:"'Heebo',sans-serif"}}>⏰ כניסה: 13:00 · יציאה: 11:00</div>
+                  <div style={{fontSize:13,color:"#7a6a58",fontFamily:"'Heebo',sans-serif",marginTop:3}}>📞 050-410-3353 יעקב</div>
+                  <div style={{fontSize:13,color:"#7a6a58",fontFamily:"'Heebo',sans-serif",marginTop:3}}>📍 נחל קדם 93, מיצד (אספר)</div>
+                </div>
+              </div>
+            )}
+            {priceTab==="edit"&&(
+              <div>
             {[
               {key:"weekday",label:"אמצע שבוע (א-ה)"},
               {key:"weekend",label:"סוף שבוע / חג (שישי-שבת)"},
@@ -995,15 +1023,17 @@ function App(){
                 </div>
               </div>
             ))}
-            <div style={{display:"flex",gap:10,marginTop:20}}>
-              <button onClick={()=>{
-                localStorage.setItem("shirat_prices",JSON.stringify(prices));
-                setShowPriceEditor(false);
-                alert("המחירון עודכן בהצלחה!");
-              }} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#1a1a2e",color:"#fff",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>שמירה</button>
-              <button onClick={()=>{setPrices(DEFAULT_PRICES);}} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#f0eee8",color:"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>איפוס לברירת מחדל</button>
-              <button onClick={()=>setShowPriceEditor(false)} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#f0eee8",color:"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>ביטול</button>
-            </div>
+              <div style={{display:"flex",gap:10,marginTop:20}}>
+                <button onClick={()=>{
+                  localStorage.setItem("shirat_prices",JSON.stringify(prices));
+                  setShowPriceEditor(false);
+                  alert("המחירון עודכן בהצלחה!");
+                }} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#1a1a2e",color:"#fff",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>שמירה</button>
+                <button onClick={()=>setPrices(DEFAULT_PRICES)} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#f0eee8",color:"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>איפוס</button>
+                <button onClick={()=>setShowPriceEditor(false)} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#f0eee8",color:"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>ביטול</button>
+              </div>
+              </div>
+            )}
           </div>
         </div>
       )}
