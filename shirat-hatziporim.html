@@ -21,11 +21,14 @@ input,select,textarea{font-family:'Heebo',sans-serif;}
 .desktop-actions{display:table-cell !important;}
 .hide-mobile{display:table-cell;}
 .btn-text{display:inline;}
+.hamburger-btn{display:none !important;}
 @media(max-width:700px){
   .desktop-actions{display:none !important;}
   .hide-mobile{display:none !important;}
   table{font-size:12px;}
   .btn-text{display:none;}
+  .hamburger-btn{display:block !important;}
+  .desktop-btns{display:none !important;}
 }
 </style>
 
@@ -687,6 +690,8 @@ function App(){
   const [search,setSearch]=useState("");
   const [fStatus,setFStatus]=useState("all");
   const [delC,setDelC]=useState(null);
+  const [hamburgerOpen,setHamburgerOpen]=useState(false);
+  const [mobileActionMenu,setMobileActionMenu]=useState(null);
   const [showPrices,setShowPrices]=useState(false);
   const [showPriceEditor,setShowPriceEditor]=useState(false);
   const [priceTab,setPriceTab]=useState("view"); // view | edit
@@ -784,15 +789,44 @@ function App(){
               : lastSync && <span style={{fontSize:11,color:"#4a6a4a",fontFamily:"'Heebo',sans-serif"}}>✅ מסונכרן</span>
             }
           </div>
-          <div style={{display:"flex",gap:8}}>
+          <div className="desktop-btns" style={{display:"flex",gap:8}}>
             
             <button onClick={()=>{setPriceTab('view');setShowPriceEditor(true);}} style={{background:"#252545",color:"#f4c26a",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}><span class="btn-text">📋 <span class="btn-text">מחירון</span></span><span style={{display:"none"}} className="btn-icon">📋</span></button>
             <button onClick={()=>setShowInquiry(true)} style={{background:"#252545",color:"#a5d6a7",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📨 <span class="btn-text">מייל מתעניינים</span></button>
             <button onClick={()=>{setEmailEditorType("confirm");setShowEmailEditor(true);}} style={{background:"#252545",color:"#ce93d8",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📝 <span class="btn-text">עריכת מיילים</span></button>
             <button onClick={()=>{setEditB(null);setShowForm(true);}} style={{background:"#f4c26a",color:"#1a1a2e",border:"none",borderRadius:10,padding:"7px 14px",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>+ <span class="btn-text">הזמנה חדשה</span></button>
           </div>
+          {/* המבורגר - נייד בלבד */}
+          <button className="hamburger-btn" onClick={()=>setHamburgerOpen(true)}
+            style={{border:"none",background:"none",color:"#fff",fontSize:24,cursor:"pointer",display:"none",padding:"4px 8px"}}>
+            ☰
+          </button>
         </div>
       </div>
+
+      {/* תפריט המבורגר */}
+      {hamburgerOpen&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:300,display:"flex",justifyContent:"flex-start"}}
+          onClick={()=>setHamburgerOpen(false)}>
+          <div onClick={e=>e.stopPropagation()}
+            style={{background:"#1a1a2e",width:"75vw",maxWidth:280,height:"100%",padding:"24px 16px",direction:"rtl",display:"flex",flexDirection:"column",gap:12,overflowY:"auto"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <span style={{color:"#fff",fontSize:16,fontWeight:800,fontFamily:"'Heebo',sans-serif"}}>תפריט</span>
+              <button onClick={()=>setHamburgerOpen(false)} style={{border:"none",background:"none",color:"#aaa",fontSize:22,cursor:"pointer"}}>✕</button>
+            </div>
+            {[
+              {icon:"📋",label:"מחירון",action:()=>{setPriceTab("view");setShowPriceEditor(true);}},
+              {icon:"📨",label:"מייל מתעניינים",action:()=>setShowInquiry(true)},
+              {icon:"📝",label:"עריכת מיילים",action:()=>{setEmailEditorType("confirm");setShowEmailEditor(true);}},
+            ].map(({icon,label,action})=>(
+              <button key={label} onClick={()=>{action();setHamburgerOpen(false);}}
+                style={{background:"#252545",color:"#f4c26a",border:"1px solid #3a3a6e",borderRadius:10,padding:"12px 16px",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer",textAlign:"right",display:"flex",alignItems:"center",gap:10}}>
+                <span>{icon}</span><span>{label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Price popup */}
       {showPrices&&(
