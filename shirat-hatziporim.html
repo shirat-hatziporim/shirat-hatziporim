@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
@@ -16,29 +17,203 @@ input,select,textarea{font-family:'Heebo',sans-serif;}
 ::-webkit-scrollbar-track{background:#f0eee8;}
 ::-webkit-scrollbar-thumb{background:#c8b898;border-radius:3px;}
 </style>
+<style>
+.desktop-actions{display:table-cell !important;}
+.hide-mobile{display:table-cell;}
+.btn-text{display:inline;}
+.hamburger-btn{display:none !important;}
+@media(max-width:700px){
+  .desktop-actions{display:none !important;}
+  .hide-mobile{display:none !important;}
+  table{font-size:12px;}
+  .btn-text{display:none;}
+  .hamburger-btn{display:block !important;}
+  .desktop-btns{display:none !important;}
+}
+</style>
+
+<meta name="NetsparkQuiltingResult" total-length="49721" removed="0" rules-found="w73,w2655,w3390,w6563,w3012,w11756,w340,w2952,w21829,w31050,w30581,w30661,w21217,w16749,w16715,w6284,w2577,w6565,w4299,w17902,w3034,w4748,w4749,w10785,w10786,w3829,w3830" />
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
 const {useState,useMemo,useEffect}=React;
 
+const PASSWORD="0561";
+
+const DEFAULT_PRICES={
+  weekday:800,
+  weekend:1200,
+  packageDeal:1700,
+  sundayExtra:350,
+  extraGuest:300,
+};
+
+const DEFAULT_INQUIRY_TEMPLATE=`שלום,
+
+תודה על פנייתכם לצימר "שירת הציפורים" במיצד!
+
+אנו שמחים לספק לכם מידע על הצימר שלנו:
+
+🏡 *שירת הציפורים* — צימר מפנק ואיכותי במיצד (אספר)
+📍 כתובת: נחל קדם 93, מיצד
+
+💰 *מחירים:*
+• אמצע שבוע: ₪800 ללילה
+• סוף שבוע (שישי–שבת): ₪1,200
+• חבילת חמישי+שישי+שבת: ₪1,700
+• תוספת יציאה ראשון: ₪350
+• אורח נוסף: ₪300 לאדם
+
+⏰ *שעות:*
+• כניסה: 13:00
+• יציאה: 11:00
+
+לפרטים נוספים ולהזמנות:
+📞 050-410-3353 יעקב
+
+מחכים לבואכם!
+צימר "שירת הציפורים"`;
+
+function LoginScreen({onLogin}){
+  const [pw,setPw]=useState("");
+  const [err,setErr]=useState(false);
+  function tryLogin(){
+    if(pw===PASSWORD){onLogin();}
+    else{setErr(true);setTimeout(()=>setErr(false),2000);}
+  }
+  return(
+    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"linear-gradient(160deg,#faf7f2,#f0ece3)",direction:"rtl"}}>
+      <div style={{fontSize:52,marginBottom:16}}>🐦</div>
+      <h1 style={{fontFamily:"'Heebo',sans-serif",fontSize:24,fontWeight:800,color:"#1a1a2e",marginBottom:4}}>שירת הציפורים</h1>
+      <p style={{fontFamily:"'Heebo',sans-serif",fontSize:14,color:"#a09070",marginBottom:32}}>ניהול הזמנות</p>
+      <div style={{background:"#fff",borderRadius:20,padding:"32px 40px",boxShadow:"0 8px 40px rgba(0,0,0,0.1)",minWidth:280,textAlign:"center"}}>
+        <p style={{fontFamily:"'Heebo',sans-serif",fontSize:14,color:"#5a4e40",marginBottom:12}}>הזן סיסמה להמשך</p>
+        <input
+          type="password"
+          value={pw}
+          onChange={e=>setPw(e.target.value)}
+          onKeyDown={e=>e.key==="Enter"&&tryLogin()}
+          placeholder="סיסמה"
+          style={{width:"100%",boxSizing:"border-box",padding:"10px 14px",borderRadius:10,border:`1.5px solid ${err?"#e53935":"#e0d8cc"}`,fontSize:18,textAlign:"center",fontFamily:"'Heebo',sans-serif",outline:"none",marginBottom:12,letterSpacing:4}}
+          autoFocus
+        />
+        {err&&<p style={{color:"#e53935",fontSize:13,fontFamily:"'Heebo',sans-serif",marginBottom:8}}>סיסמה שגויה</p>}
+        <button onClick={tryLogin} style={{width:"100%",padding:"11px",borderRadius:10,border:"none",background:"#1a1a2e",color:"#fff",fontFamily:"'Heebo',sans-serif",fontWeight:800,fontSize:15,cursor:"pointer"}}>
+          כניסה
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── מחירון ──
 function isSummer(ds){const md=ds.slice(5);return md>="06-01"&&md<="08-31";}
 function isWeekend(ds){const d=new Date(ds);return d.getDay()===5||d.getDay()===6;}
 const HOLIDAYS=["2025-04-12","2025-04-13","2025-04-14","2025-04-18","2025-04-19","2025-06-01","2025-06-02","2025-09-22","2025-09-23","2025-09-24","2025-09-25","2025-10-01","2025-10-02","2025-10-06","2025-10-07","2025-10-13","2025-10-14"];
 function isHoliday(ds){return HOLIDAYS.includes(ds);}
-function getDailyPrice(ds){const s=isSummer(ds),w=isWeekend(ds)||isHoliday(ds);if(s)return w?1200:790;return w?1600:990;}
-function getDayType(ds){if(isHoliday(ds))return"חג";if(isWeekend(ds))return'סופ"ש';if(isSummer(ds))return"קיץ";return"חול";}
-function calcNights(a,b){return Math.max(0,Math.round((new Date(b)-new Date(a))/86400000));}
-function calcTotal(checkin,checkout,extra=0){
-  const nights=calcNights(checkin,checkout);
-  if(!nights)return{total:0,nights:0,breakdown:[],guestExtra:0};
-  let base=0;const bd=[];const cur=new Date(checkin);
-  for(let i=0;i<nights;i++){const ds=cur.toISOString().split("T")[0];const p=getDailyPrice(ds);bd.push({date:ds,price:p,type:getDayType(ds)});base+=p;cur.setDate(cur.getDate()+1);}
-  const guestExtra=Math.max(0,extra)*300;
-  return{total:base+guestExtra,nights,breakdown:bd,guestExtra};
+function getActivePrices(){
+  try{
+    const s=localStorage.getItem("shirat_prices");
+    return s?JSON.parse(s):DEFAULT_PRICES;
+  }catch{return DEFAULT_PRICES;}
 }
-function fd(ds){if(!ds)return"";return new Date(ds).toLocaleDateString("he-IL",{day:"2-digit",month:"2-digit",year:"numeric"});}
+function getDailyPrice(ds){
+  const p=getActivePrices();
+  const w=isWeekend(ds)||isHoliday(ds);
+  return w?p.weekend:p.weekday;
+}
+function getDayType(ds){if(isHoliday(ds))return"חג";if(isWeekend(ds))return'סופ"ש';return"חול";}
+function calcNights(a,b){
+  a=parseDate(a);b=parseDate(b);
+  return Math.max(0,Math.round((new Date(b)-new Date(a))/86400000));
+}
+
+function hasPackageDeal(checkin,checkout){
+  // חבילת חמישי+שישי+שבת — כניסה חמישי יציאה שבת/ראשון
+  const cin=new Date(checkin);
+  const cout=new Date(checkout);
+  const nights=Math.round((cout-cin)/86400000);
+  const cinDay=cin.getDay(); // 4=חמישי
+  // כניסה חמישי ולפחות 2 לילות (חמישי+שישי)
+  if(cinDay===4&&nights>=2){
+    return true;
+  }
+  return false;
+}
+
+function calcTotal(checkin,checkout,extra=0){
+  checkin=parseDate(checkin);checkout=parseDate(checkout);
+  const nights=calcNights(checkin,checkout);
+  if(!nights)return{total:0,nights:0,breakdown:[],guestExtra:0,packageDeal:false,sundayExtra:0};
+
+  const cout=new Date(checkout);
+  const coutDay=cout.getDay(); // 0=ראשון
+  const activePrices=getActivePrices();
+  const sundayExtra=coutDay===0?activePrices.sundayExtra:0; // תוספת יציאה ראשון
+
+  // בדוק חבילת חמישי+שישי+שבת
+  const pkg=hasPackageDeal(checkin,checkout);
+
+  let base=0;const bd=[];
+
+  if(pkg){
+    // חבילה: חמישי+שישי+שבת = 1700 קבוע
+    // חשב לילות מחוץ לחבילה
+    const cur=new Date(checkin);
+    let pkgNights=0;
+    let extraNights=0;
+    for(let i=0;i<nights;i++){
+      const day=cur.getDay();
+      if(pkgNights<2||(pkgNights===2&&day===6)){
+        // חמישי, שישי, שבת — חלק מהחבילה
+        if(pkgNights<3) pkgNights++;
+      } else {
+        extraNights++;
+        const ds=cur.toISOString().split("T")[0];
+        const p=getDailyPrice(ds);
+        bd.push({date:ds,price:p,type:getDayType(ds)});
+        base+=p;
+      }
+      cur.setDate(cur.getDate()+1);
+    }
+    // הוסף חבילה
+    const pkgDays=["חמישי","שישי","שבת"];
+    const cur2=new Date(checkin);
+    for(let i=0;i<Math.min(3,nights);i++){
+      const ds=cur2.toISOString().split("T")[0];
+      bd.unshift({date:ds,price:Math.round(1700/3),type:"חבילה"});
+      cur2.setDate(cur2.getDate()+1);
+    }
+    base+=activePrices.packageDeal;
+  } else {
+    const cur=new Date(checkin);
+    for(let i=0;i<nights;i++){
+      const ds=cur.toISOString().split("T")[0];
+      const p=getDailyPrice(ds);
+      bd.push({date:ds,price:p,type:getDayType(ds)});
+      base+=p;
+      cur.setDate(cur.getDate()+1);
+    }
+  }
+
+  const guestExtra=Math.max(0,extra)*(activePrices.extraGuest||300);
+  const total=base+guestExtra+sundayExtra;
+  return{total,nights,breakdown:bd,guestExtra,packageDeal:pkg,sundayExtra};
+}
+function parseDate(ds){
+  if(!ds)return null;
+  // אם התאריך מכיל T (ISO format) - קח רק את חלק התאריך
+  if(typeof ds==="string"&&ds.includes("T")) ds=ds.split("T")[0];
+  return ds;
+}
+function fd(ds){
+  if(!ds)return"";
+  ds=parseDate(ds);
+  if(!ds)return"";
+  const [y,m,d]=ds.split("-");
+  return `${d}.${m}.${y}`;
+}
 function fm(n){return`₪${Number(n).toLocaleString("he-IL")}`;}
 
 const STATUS={confirmed:"מאושר",pending:"ממתין",cancelled:"מבוטל"};
@@ -47,15 +222,275 @@ const MONTHS_HE=["ינואר","פברואר","מרץ","אפריל","מאי","י�
 const DAYS_HE=["א","ב","ג","ד","ה","ו","ש"];
 let nid=10;
 
-const STORAGE_KEY="shirat_bookings";
-const INIT=[
-  {id:1,name:"משפחת כהן",phone:"050-1234567",checkin:"2025-05-15",checkout:"2025-05-17",guests:2,extraGuests:0,status:"confirmed",notes:"",paid:1980,total:1980,nights:2},
-  {id:2,name:"דוד לוי",phone:"052-9876543",checkin:"2025-05-23",checkout:"2025-05-25",guests:2,extraGuests:0,status:"pending",notes:"",paid:0,total:3200,nights:2},
-  {id:3,name:"שרה ברק",phone:"054-5551234",checkin:"2025-07-11",checkout:"2025-07-14",guests:4,extraGuests:2,status:"confirmed",notes:"יום הולדת",paid:3000,total:3370,nights:3},
-];
+const SCRIPT_URL="https://script.google.com/macros/s/AKfycbyKUvfneAaQwRYiQ67xvzfBQH0CTnoUfOuX3QgfUpOXoEaKUCRhjx5jEytDCYAeLX1N/exec";
 
-function loadBookings(){try{const s=localStorage.getItem(STORAGE_KEY);return s?JSON.parse(s):INIT;}catch{return INIT;}}
-function saveBookings(bs){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(bs));}catch{}}
+function jsonp(url){
+  return new Promise((resolve,reject)=>{
+    const cb="cb_"+Math.random().toString(36).slice(2);
+    let done=false;
+    window[cb]=function(data){
+      if(done)return;done=true;
+      resolve(data);
+      delete window[cb];
+      try{document.head.removeChild(s);}catch(e){}
+    };
+    const s=document.createElement("script");
+    s.src=url+(url.includes("?")?"&":"?")+"callback="+cb+"&t="+Date.now();
+    s.onerror=()=>{
+      if(done)return;done=true;
+      reject(new Error("jsonp error"));
+      delete window[cb];
+    };
+    setTimeout(()=>{
+      if(!done){done=true;reject(new Error("jsonp timeout"));delete window[cb];}
+    },10000);
+    document.head.appendChild(s);
+  });
+}
+
+function mapBooking(b){
+  return{
+    ...b,
+    id:Number(b.id)||Math.random(),
+    paid:Number(b.paid)||0,
+    total:Number(b.total)||0,
+    nights:Number(b.nights)||0,
+    guests:Number(b.guests)||2,
+    extraGuests:Number(b.extraGuests)||0,
+    babies:Number(b.babies)||0,
+    guestExtra:Number(b.guestExtra)||0,
+    email:b.email||"",
+    checkin:parseDate(b.checkin)||b.checkin,
+    checkout:parseDate(b.checkout)||b.checkout,
+  };
+}
+
+async function loadFromSheets(){
+  try{
+    const data=await jsonp(SCRIPT_URL+"?action=get");
+    if(Array.isArray(data)&&data.length>0){
+      const mapped=data.map(mapBooking);
+      try{localStorage.setItem("shirat_bookings",JSON.stringify(mapped));}catch(e){}
+      return mapped;
+    }
+    return [];
+  }catch(e){
+    console.error("שגיאה בטעינה מגוגל:",e);
+    try{const local=localStorage.getItem("shirat_bookings");if(local)return JSON.parse(local);}catch(e2){}
+    return [];
+  }
+}
+
+async function saveToSheets(bookings){
+  // שמירה מקומית תמיד
+  try{localStorage.setItem("shirat_bookings",JSON.stringify(bookings));}catch(e){}
+  // שמירה לגוגל שיטס — שליחה בחלקים אם צריך
+  try{
+    const str=JSON.stringify(bookings);
+    // אם קצר מספיק — שלח ישירות
+    if(str.length<3000){
+      await jsonp(`${SCRIPT_URL}?action=save&bookings=${encodeURIComponent(str)}`);
+    } else {
+      // שלח בחלקים
+      const parts=Math.ceil(str.length/2000);
+      for(let i=0;i<parts;i++){
+        const chunk=str.slice(i*2000,(i+1)*2000);
+        await jsonp(`${SCRIPT_URL}?action=chunk&index=${i}&total=${parts}&data=${encodeURIComponent(chunk)}`);
+      }
+      await jsonp(`${SCRIPT_URL}?action=commitChunks`);
+    }
+  }catch(e){console.error("שגיאה בסנכרון:",e);}
+}
+
+// ── הודעת סגירה ללקוח ──
+function buildMsg(b){
+  const nights=b.nights||calcNights(b.checkin,b.checkout);
+  const balance=Math.max(0,(b.total||0)-(b.paid||0));
+  return `שלום ${b.name} 😊
+
+אנו שמחים לאשר את הזמנתך ב*שירת הציפורים* 🐦
+
+📅 *כניסה:* ${fd(b.checkin)} בשעה 13:00
+📅 *יציאה:* ${fd(b.checkout)} בשעה 11:00
+🌙 *מספר לילות:* ${nights}
+👥 *אורחים:* ${(b.guests||2)+(b.extraGuests||0)}${b.babies>0?` + ${b.babies} תינוק/ת`:""}
+
+💰 *סה"כ לתשלום:* ${fm(b.total||0)}${balance>0?`
+💳 *יתרה לתשלום:* ${fm(balance)}`:""}
+
+📍 *כתובת:* נחל קדם 93, מיצד (אספר)
+🗺️ https://waze.com/ul?q=מיצד+נחל+קדם+93
+
+לכל שאלה אנחנו כאן!
+יעקב 📞 050-410-3353`;
+}
+
+function sendWhatsApp(b){
+  const phone="972"+b.phone.replace(/\D/g,"").replace(/^0/,"");
+  const msg=encodeURIComponent(buildMsg(b));
+  window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${msg}`,"_blank");
+}
+
+// ── מיילים ──
+const MY_EMAIL="shirathatziporim@gmail.com";
+
+function buildWelcomeEmail(b){
+  const nights=b.nights||calcNights(b.checkin,b.checkout);
+  const balance=Math.max(0,(b.total||0)-(b.paid||0));
+  const subject=encodeURIComponent(`מחר מגיעים! ברוכים הבאים לשירת הציפורים 🐦`);
+  const body=encodeURIComponent(
+`שלום ${b.name},
+
+מחר אתם מגיעים אלינו לשירת הציפורים ואנחנו מתרגשים לארח אתכם! 🐦
+
+━━━━━━━━━━━━━━━━━━━━
+פרטי ההזמנה שלכם
+━━━━━━━━━━━━━━━━━━━━
+📅 כניסה: ${fd(b.checkin)} בשעה 13:00
+📅 יציאה: ${fd(b.checkout)} בשעה 11:00
+🌙 מספר לילות: ${nights}
+👥 אורחים: ${(b.guests||2)+(b.extraGuests||0)}${b.babies>0?` + ${b.babies} תינוק/ת`:""}
+💰 סה"כ: ${fm(b.total||0)}${balance>0?`
+💳 יתרה לתשלום: ${fm(balance)}`:"✅ שולם במלואו"}
+
+━━━━━━━━━━━━━━━━━━━━
+כיצד מגיעים
+━━━━━━━━━━━━━━━━━━━━
+📍 כתובת: נחל קדם 93, מיצד (אספר)
+🗺️ Waze: https://waze.com/ul?q=מיצד+נחל+קדם+93
+
+━━━━━━━━━━━━━━━━━━━━
+מידע חשוב
+━━━━━━━━━━━━━━━━━━━━
+⏰ שעת כניסה: 13:00
+⏰ שעת יציאה: 11:00 (יום שישי — שעה וחצי לאחר צאת שבת)
+
+לכל שאלה אנחנו זמינים עבורכם!
+נתראה מחר 😊
+
+בברכה,
+יעקב
+שירת הציפורים
+📞 050-410-3353`
+  );
+  return {subject,body};
+}
+
+function buildReviewEmail(b,customTemplate){
+  const subject=encodeURIComponent(`שמחנו לארח אתכם בצימר "שירת הציפורים"`);
+  if(customTemplate){
+    const body=encodeURIComponent(customTemplate.replace("{שם}",b.name));
+    return{subject,body};
+  }
+  const body=encodeURIComponent(
+`שלום וברכה ${b.name},
+
+רצינו להודות לכם מקרב לב על שבחרתם להתארח אצלנו בצימר "שירת הציפורים".
+שמחנו מאוד לארח אתכם, ומקווים שנהנתם מהשהות, מהאווירה הנעימה ומהשקט הייחודי של המקום.
+
+נשמח מאוד אם תמליצו עלינו לחברים ומכרים, וכן אם תוכלו להקדיש רגע קצר לשתף את חוויתכם ולהשאיר המלצה – הדבר מסייע לנו רבות בהמשך הדרך.
+
+מצורפים קישורים לאתרים בהם אנו מפרסמים, וניתן לכתוב את ההמלצה בתחתית המודעה:
+
+אתר מאמי מוש:
+https://mamimush.co.il/rooms/%D7%A6%D7%99%D7%9E%D7%A8%D7%99%D7%9D-308/
+
+אתר דירה לשבת:
+https://dira4shabat.co.il/listing/%D7%A6%D7%99%D7%9E%D7%A8-%D7%A9%D7%99%D7%A8%D7%AA-%D7%94%D7%A6%D7%99%D7%A4%D7%95%D7%A8%D7%99%D7%9D-%D7%9E%D7%99%D7%A6%D7%93/
+
+אתר הלוח החרדי:
+https://charedi.net/tzimar/25569/
+
+לכל צורך או ביקור נוסף בעתיד – נשמח לעמוד לשירותכם: 050-4103353
+
+בברכה ובהערכה,
+יעקב
+צימר שירת הציפורים`
+  );
+  return {subject,body};
+}
+
+function sendWelcomeEmail(b){
+  if(!b.email){alert("לא הוזן מייל ללקוח זה");return;}
+  const {subject,body}=buildWelcomeEmail(b);
+  window.open(`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(b.email)}&su=${subject}&body=${body}`,"_blank");
+}
+
+function sendReviewEmail(b){
+  if(!b.email){alert("לא הוזן מייל ללקוח זה");return;}
+  const custom=localStorage.getItem("shirat_review_template")||"";
+  const {subject,body}=buildReviewEmail(b,custom||null);
+  window.open(`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(b.email)}&su=${subject}&body=${body}`,"_blank");
+}
+
+function guestType(b){
+  const extra=parseInt(b.extraGuests)||0;
+  const babies=parseInt(b.babies)||0;
+  if(extra===0&&babies===0) return "זוג";
+  if(extra===0&&babies>0) return `זוג + ${babies===1?"תינוק":"תינוקות"}`;
+  if(extra>0&&babies===0) return `זוג + ${extra}`;
+  return `זוג + ${extra} + ${babies===1?"תינוק":"תינוקות"}`;
+}
+
+function buildConfirmEmail(b,customTemplate){
+  const nights=b.nights||calcNights(b.checkin,b.checkout);
+  const subject=encodeURIComponent(`צימר שירת הציפורים מיצד - אישור הזמנה`);
+  if(customTemplate){
+    const body=encodeURIComponent(customTemplate
+      .replace("{שם}",b.name)
+      .replace("{סוג}",guestType(b))
+      .replace("{כניסה}",fd(b.checkin))
+      .replace("{יציאה}",fd(b.checkout))
+      .replace("{לילות}",nights)
+      .replace("{סכום}",fm(b.total||0))
+    );
+    return{subject,body};
+  }
+  const body=encodeURIComponent(
+`שלום וברכה ${b.name},
+
+שמחים לאשר את הזמנתכם בצימר שירת הציפורים!
+
+פרטי ההזמנה:
+• סוג אירוח: ${guestType(b)}
+• תאריכים: ${fd(b.checkin)} עד ${fd(b.checkout)} (${nights} לילות)
+• עלות: ${fm(b.total||0)}
+
+נא להעביר מקדמה בסך 500 ₪ לצורך שמירת ההזמנה:
+
+אפשרויות תשלום:
+בנק לאומי
+סניף: 904
+מספר חשבון: 10765165
+ע"ש: יעקב גרזון
+
+ביט / פייבוקס: 0504103353
+
+נא לשלוח אסמכתא לאחר התשלום.
+
+מצורפת חוברת מידע על הצימר עם כל הפרטים החשובים לשהות נעימה.
+
+כתובת הצימר: נחל קדם 93, מיצד
+
+תחבורה למיצד:
+קו 364 מירושלים
+קו 411 מביתר
+מידע נוסף ניתן לקבל במוקד התחבורה *8787
+
+לכל שאלה אנחנו כאן: 050-4103353
+
+מחכים לבואכם!
+צימר "שירת הציפורים"`
+  );
+  return {subject,body};
+}
+
+function sendConfirmEmail(b){
+  if(!b.email){alert("לא הוזן מייל ללקוח זה");return;}
+  const custom=localStorage.getItem("shirat_confirm_template")||"";
+  const {subject,body}=buildConfirmEmail(b,custom||null);
+  window.open(`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(b.email)}&su=${subject}&body=${body}`,"_blank");
+}
 
 // ── Styles ──
 const IS={width:"100%",padding:"9px 12px",borderRadius:10,fontSize:14,fontFamily:"'Heebo',sans-serif",color:"#1a1a2e",background:"#fdfaf6",outline:"none",direction:"rtl",border:"1.5px solid #e0d8cc"};
@@ -66,17 +501,35 @@ function Lbl({children}){return <label style={{display:"block",fontSize:12,color
 function Sec({title,children}){return<div style={{marginBottom:18}}><div style={{fontSize:11,fontWeight:700,color:"#a0896e",letterSpacing:1,marginBottom:8}}>{title}</div>{children}</div>;}
 
 // ── Booking Form ──
-function BookingForm({booking,onSave,onCancel}){
+function BookingForm({booking,onSave,onCancel,existingBookings=[]}){
   const empty={name:"",phone:"",checkin:"",checkout:"",guests:2,extraGuests:0,status:"confirmed",notes:"",paid:0};
   const [f,setF]=useState(booking||empty);
   const [err,setErr]=useState({});
   const set=(k,v)=>setF(p=>({...p,[k]:v}));
-  const {total,nights,breakdown,guestExtra}=useMemo(()=>{
+  const discount=parseInt(f.discount)||0;
+  const {total:baseTotal,nights,breakdown,guestExtra,packageDeal,sundayExtra}=useMemo(()=>{
     if(f.checkin&&f.checkout&&f.checkin<f.checkout)return calcTotal(f.checkin,f.checkout,parseInt(f.extraGuests)||0);
-    return{total:0,nights:0,breakdown:[],guestExtra:0};
+    return{total:0,nights:0,breakdown:[],guestExtra:0,packageDeal:false,sundayExtra:0};
   },[f.checkin,f.checkout,f.extraGuests]);
-  function validate(){const e={};if(!f.name.trim())e.name="חובה";if(!f.checkin)e.checkin="חובה";if(!f.checkout)e.checkout="חובה";if(f.checkin&&f.checkout&&f.checkin>=f.checkout)e.checkout="יציאה אחרי כניסה";setErr(e);return!Object.keys(e).length;}
-  function save(){if(!validate())return;onSave({...f,total,nights,guestExtra,id:f.id||nid++});}
+  const total=Math.max(0,baseTotal-(parseInt(f.discount)||0));
+  function validate(){
+    const e={};
+    if(!f.name.trim())e.name="חובה";
+    if(!f.checkin)e.checkin="חובה";
+    if(!f.checkout)e.checkout="חובה";
+    if(f.checkin&&f.checkout&&f.checkin>=f.checkout)e.checkout="יציאה אחרי כניסה";
+    // בדיקת חפיפה עם הזמנות קיימות
+    if(f.checkin&&f.checkout&&f.checkin<f.checkout){
+      const conflict=existingBookings.find(b=>{
+        if(b.id===f.id) return false; // אותה הזמנה בעריכה
+        if(b.status==="cancelled") return false;
+        return f.checkin<b.checkout && f.checkout>b.checkin;
+      });
+      if(conflict) e.checkin=`תאריכים תפוסים! (${conflict.name})`;
+    }
+    setErr(e);return!Object.keys(e).length;
+  }
+  function save(){if(!validate())return;onSave({...f,total,nights,guestExtra,discount:discount||0,id:f.id||nid++});}
   const balance=Math.max(0,total-(parseInt(f.paid)||0));
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -94,9 +547,17 @@ function BookingForm({booking,onSave,onCancel}){
               <div><Lbl>שם מלא{err.name&&<span style={{color:"#e53935"}}> — {err.name}</span>}</Lbl><input style={iS(err.name)} value={f.name} onChange={e=>set("name",e.target.value)}/></div>
               <div><Lbl>טלפון</Lbl><input style={iS()} value={f.phone} onChange={e=>set("phone",e.target.value)}/></div>
             </div>
+            <div style={{marginBottom:12}}>
+              <Lbl>מייל (לשליחת הודעות)</Lbl><input style={iS()} type="email" value={f.email||""} onChange={e=>set("email",e.target.value)} placeholder="example@gmail.com" dir="ltr"/>
+            </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
-              <div><Lbl>אורחים בסיס (עד 2)</Lbl><input style={iS()} type="number" min={1} max={2} value={f.guests} onChange={e=>set("guests",parseInt(e.target.value)||1)}/></div>
-              <div><Lbl>נוספים (₪300/אדם)</Lbl><input style={iS()} type="number" min={0} max={4} value={f.extraGuests} onChange={e=>set("extraGuests",parseInt(e.target.value)||0)}/></div>
+              <div><Lbl>אורחים בסיס (עד 2)</Lbl><input style={iS()} type="number" min={1} max={2} value={f.guests} onFocus={e=>e.target.select()} onChange={e=>set("guests",parseInt(e.target.value)||1)}/></div>
+              <div><Lbl>נוספים (₪300/אדם)</Lbl><input style={iS()} type="number" min={0} max={4} value={f.extraGuests} onFocus={e=>e.target.select()} onChange={e=>set("extraGuests",parseInt(e.target.value)||0)}/></div>
+              <div><Lbl>תינוקות (ללא תשלום)</Lbl><input style={iS()} type="number" min={0} max={3} value={f.babies||0} onFocus={e=>e.target.select()} onChange={e=>set("babies",parseInt(e.target.value)||0)}/></div>
+            </div>
+            <div style={{marginBottom:12}}>
+              <Lbl>הנחה (₪) — השאר 0 אם אין הנחה</Lbl>
+              <input style={{...iS(),borderColor:"#c8e6c9"}} type="number" min={0} value={f.discount||0} onFocus={e=>e.target.select()} onChange={e=>set("discount",parseInt(e.target.value)||0)}/>
               <div><Lbl>סטטוס</Lbl>
                 <select style={iS()} value={f.status} onChange={e=>set("status",e.target.value)}>
                   <option value="confirmed">מאושר</option><option value="pending">ממתין</option><option value="cancelled">מבוטל</option>
@@ -123,7 +584,10 @@ function BookingForm({booking,onSave,onCancel}){
                   </span>
                 ))}
               </div>
-              {guestExtra>0&&<div style={{fontSize:12,color:"#7a6040",marginBottom:6}}>תוספת {f.extraGuests} אורחים נוספים: {fm(guestExtra)}</div>}
+              {packageDeal&&<div style={{fontSize:12,color:"#2e7d32",marginBottom:4,fontWeight:700}}>✅ חבילת חמישי+שישי+שבת: ₪1,700</div>}
+              {sundayExtra>0&&<div style={{fontSize:12,color:"#7a6040",marginBottom:4}}>תוספת יציאה ראשון: {fm(sundayExtra)}</div>}
+              {guestExtra>0&&<div style={{fontSize:12,color:"#7a6040",marginBottom:4}}>תוספת {f.extraGuests} אורחים נוספים: {fm(guestExtra)}</div>}
+              {discount>0&&<div style={{fontSize:12,color:"#c62828",marginBottom:4}}>הנחה: -{fm(discount)}</div>}
               <div style={{display:"flex",justifyContent:"space-between",borderTop:"1px solid #e2d5bc",paddingTop:8}}>
                 <span style={{color:"#5a4030",fontSize:13}}>סה"כ לתשלום</span>
                 <span style={{fontWeight:900,color:"#1a1a2e",fontSize:20}}>{fm(total)}</span>
@@ -132,7 +596,7 @@ function BookingForm({booking,onSave,onCancel}){
           )}
           <Sec title="תשלום">
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              <div><Lbl>שולם (₪)</Lbl><input style={iS()} type="number" min={0} value={f.paid} onChange={e=>set("paid",parseInt(e.target.value)||0)}/></div>
+              <div><Lbl>שולם (₪)</Lbl><input style={iS()} type="number" min={0} value={f.paid} onFocus={e=>e.target.select()} onChange={e=>set("paid",parseInt(e.target.value)||0)}/></div>
               <div><Lbl>יתרה לתשלום</Lbl><input readOnly style={{...iS(),background:"#f8f4ec",color:balance>0?"#c62828":"#2e7d32",fontWeight:700}} value={balance}/></div>
             </div>
           </Sec>
@@ -157,8 +621,19 @@ function CalendarView({bookings,onEdit}){
   const firstDay=new Date(yr,mo,1).getDay(),dim=new Date(yr,mo+1,0).getDate();
   const occ={};
   bookings.filter(b=>b.status!=="cancelled").forEach(b=>{
-    const cur=new Date(b.checkin),end=new Date(b.checkout);
-    while(cur<end){const ds=cur.toISOString().split("T")[0];(occ[ds]=occ[ds]||[]).push(b);cur.setDate(cur.getDate()+1);}
+    const checkin=parseDate(b.checkin);
+    const checkout=parseDate(b.checkout);
+    if(!checkin||!checkout)return;
+    const cur=new Date(checkin+"T12:00:00");
+    const end=new Date(checkout+"T12:00:00");
+    const checkoutDay=end.getDay();
+    // אם יום היציאה הוא שבת (6) — סמן גם אותו תפוס
+    if(checkoutDay!==6) end.setDate(end.getDate()-1);
+    while(cur<=end){
+      const ds=cur.getFullYear()+"-"+String(cur.getMonth()+1).padStart(2,"0")+"-"+String(cur.getDate()).padStart(2,"0");
+      (occ[ds]=occ[ds]||[]).push(b);
+      cur.setDate(cur.getDate()+1);
+    }
   });
   const cells=[];for(let i=0;i<firstDay;i++)cells.push(null);for(let d=1;d<=dim;d++)cells.push(d);
   return(
@@ -204,33 +679,102 @@ function CalendarView({bookings,onEdit}){
 
 // ── Main App ──
 function App(){
-  const [bookings,setBookings]=useState(loadBookings);
+  const [auth,setAuth]=useState(()=>sessionStorage.getItem("shirat_auth")==="1");
+  const [bookings,setBookings]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [syncing,setSyncing]=useState(false);
+  const [lastSync,setLastSync]=useState(null);
   const [view,setView]=useState("list");
   const [showForm,setShowForm]=useState(false);
   const [editB,setEditB]=useState(null);
   const [search,setSearch]=useState("");
   const [fStatus,setFStatus]=useState("all");
   const [delC,setDelC]=useState(null);
+  const [hamburgerOpen,setHamburgerOpen]=useState(false);
+  const [mobileActionMenu,setMobileActionMenu]=useState(null);
   const [showPrices,setShowPrices]=useState(false);
+  const [showPriceEditor,setShowPriceEditor]=useState(false);
+  const [priceTab,setPriceTab]=useState("view"); // view | edit
+  const [prices,setPrices]=useState(()=>{
+    try{const s=localStorage.getItem("shirat_prices");return s?JSON.parse(s):DEFAULT_PRICES;}catch{return DEFAULT_PRICES;}
+  });
+  const [showInquiry,setShowInquiry]=useState(false);
+  const [inquiryTemplate,setInquiryTemplate]=useState(()=>{
+    try{const s=localStorage.getItem("shirat_inquiry");return s||DEFAULT_INQUIRY_TEMPLATE;}catch{return DEFAULT_INQUIRY_TEMPLATE;}
+  });
+  const [inquiryEmail,setInquiryEmail]=useState("");
+  const [showEmailEditor,setShowEmailEditor]=useState(false);
+  const [emailEditorType,setEmailEditorType]=useState("confirm"); // confirm | review
+  const [confirmTemplate,setConfirmTemplate]=useState(()=>{
+    try{const s=localStorage.getItem("shirat_confirm_template");return s||"";}catch{return "";}
+  });
+  const [reviewTemplate,setReviewTemplate]=useState(()=>{
+    try{const s=localStorage.getItem("shirat_review_template");return s||"";}catch{return "";}
+  });
 
-  useEffect(()=>saveBookings(bookings),[bookings]);
+  // טעינה ראשונית — תמיד מגוגל שיטס (המקור האמיתי)
+  useEffect(()=>{
+    // הצג נתונים מקומיים מיידית בזמן הטעינה
+    try{
+      const local=localStorage.getItem("shirat_bookings");
+      if(local){
+        const parsed=JSON.parse(local);
+        if(Array.isArray(parsed)&&parsed.length>0){
+          setBookings(parsed);
+          setLoading(false);
+        }
+      }
+    }catch(e){}
+    // תמיד טען מגוגל שיטס לקבל את הנתונים העדכניים
+    loadFromSheets().then(data=>{
+      if(data.length>0){
+        setBookings(data);
+        try{localStorage.setItem("shirat_bookings",JSON.stringify(data));}catch(e){}
+      }
+      setLoading(false);
+      setLastSync(new Date());
+    });
+  },[]);
+
+  // שמירה לגוגל שיטס בכל שינוי
+  async function syncSave(newBookings){
+    setSyncing(true);
+    await saveToSheets(newBookings);
+    setSyncing(false);
+    setLastSync(new Date());
+  }
 
   const filtered=bookings.filter(b=>{
     return(b.name.includes(search)||b.phone.includes(search))&&(fStatus==="all"||b.status===fStatus);
   });
 
   function save(b){
-    if(b.id&&bookings.find(x=>x.id===b.id))setBookings(p=>p.map(x=>x.id===b.id?b:x));
-    else setBookings(p=>[...p,b]);
+    let updated;
+    if(b.id&&bookings.find(x=>x.id===b.id)) updated=bookings.map(x=>x.id===b.id?b:x);
+    else updated=[...bookings,b];
+    setBookings(updated);
+    syncSave(updated);
     setShowForm(false);setEditB(null);
   }
   function openEdit(b){setEditB(b);setShowForm(true);}
-  function deleteB(id){setBookings(p=>p.filter(b=>b.id!==id));setDelC(null);}
+  function deleteB(id){const updated=bookings.filter(b=>b.id!==id);setBookings(updated);syncSave(updated);setDelC(null);}
 
   const confirmed=bookings.filter(b=>b.status==="confirmed");
   const totalRev=confirmed.reduce((s,b)=>s+(b.total||0),0);
   const totalPaid=confirmed.reduce((s,b)=>s+(b.paid||0),0);
   const totalNights=confirmed.reduce((s,b)=>s+(b.nights||0),0);
+
+  if(!auth) return <LoginScreen onLogin={()=>{sessionStorage.setItem("shirat_auth","1");setAuth(true);}}/>;
+
+  if(loading) return(
+    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"linear-gradient(160deg,#faf7f2,#f0ece3)",direction:"rtl"}}>
+      <img src="https://shirat-hatziporim.github.io/shirat-hatziporim/logo.jpeg" style={{width:100,height:100,borderRadius:"50%",objectFit:"cover",background:"#fff",padding:6,boxShadow:"0 4px 20px rgba(0,0,0,0.1)",marginBottom:16}}/>
+      <div style={{fontSize:20,fontWeight:800,color:"#1a1a2e",marginBottom:8,fontFamily:"'Heebo',sans-serif"}}>שירת הציפורים</div>
+      <div style={{fontSize:14,color:"#8a7e6e",fontFamily:"'Heebo',sans-serif",marginBottom:24}}>טוען הזמנות מ־Google Sheets...</div>
+      <div style={{width:40,height:40,border:"4px solid #e0d8cc",borderTop:"4px solid #1a1a2e",borderRadius:"50%",animation:"spin 0.8s linear infinite"}}/>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
 
   return(
     <div style={{minHeight:"100vh",direction:"rtl"}}>
@@ -238,15 +782,51 @@ function App(){
       <div style={{background:"#1a1a2e",padding:"0 20px",position:"sticky",top:0,zIndex:50}}>
         <div style={{maxWidth:1100,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center",height:56}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <span style={{color:"#fff",fontSize:16,fontWeight:800}}>🐦 שירת הציפורים</span>
+            <img src="https://shirat-hatziporim.github.io/shirat-hatziporim/logo.jpeg" style={{height:36,width:36,borderRadius:"50%",objectFit:"cover",background:"#fff",padding:2}}/><span style={{color:"#fff",fontSize:16,fontWeight:800,marginRight:8}}>שירת הציפורים</span>
             <span style={{color:"#5a5878",fontSize:12,borderRight:"1px solid #3a3a5e",paddingRight:10}}>ניהול הזמנות</span>
+            {syncing
+              ? <span style={{fontSize:11,color:"#f4c26a",fontFamily:"'Heebo',sans-serif"}}>⏳ שומר...</span>
+              : lastSync && <span style={{fontSize:11,color:"#4a6a4a",fontFamily:"'Heebo',sans-serif"}}>✅ מסונכרן</span>
+            }
           </div>
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>setShowPrices(p=>!p)} style={{background:"#252545",color:"#f4c26a",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📋 מחירון</button>
-            <button onClick={()=>{setEditB(null);setShowForm(true);}} style={{background:"#f4c26a",color:"#1a1a2e",border:"none",borderRadius:10,padding:"7px 14px",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>+ הזמנה חדשה</button>
+          <div className="desktop-btns" style={{display:"flex",gap:8}}>
+            
+            <button onClick={()=>{setPriceTab('view');setShowPriceEditor(true);}} style={{background:"#252545",color:"#f4c26a",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}><span class="btn-text">📋 <span class="btn-text">מחירון</span></span><span style={{display:"none"}} className="btn-icon">📋</span></button>
+            <button onClick={()=>setShowInquiry(true)} style={{background:"#252545",color:"#a5d6a7",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📨 <span class="btn-text">מייל מתעניינים</span></button>
+            <button onClick={()=>{setEmailEditorType("confirm");setShowEmailEditor(true);}} style={{background:"#252545",color:"#ce93d8",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📝 <span class="btn-text">עריכת מיילים</span></button>
           </div>
+          <button onClick={()=>{setEditB(null);setShowForm(true);}} style={{background:"#f4c26a",color:"#1a1a2e",border:"none",borderRadius:10,padding:"7px 12px",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"'Heebo',sans-serif",whiteSpace:"nowrap"}}>+ הזמנה</button>
+          {/* המבורגר - נייד בלבד */}
+          <button className="hamburger-btn" onClick={()=>setHamburgerOpen(true)}
+            style={{border:"none",background:"none",color:"#fff",fontSize:24,cursor:"pointer",display:"none",padding:"4px 8px"}}>
+            ☰
+          </button>
         </div>
       </div>
+
+      {/* תפריט המבורגר */}
+      {hamburgerOpen&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:300,display:"flex",justifyContent:"flex-start"}}
+          onClick={()=>setHamburgerOpen(false)}>
+          <div onClick={e=>e.stopPropagation()}
+            style={{background:"#1a1a2e",width:"75vw",maxWidth:280,height:"100%",padding:"24px 16px",direction:"rtl",display:"flex",flexDirection:"column",gap:12,overflowY:"auto"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <span style={{color:"#fff",fontSize:16,fontWeight:800,fontFamily:"'Heebo',sans-serif"}}>תפריט</span>
+              <button onClick={()=>setHamburgerOpen(false)} style={{border:"none",background:"none",color:"#aaa",fontSize:22,cursor:"pointer"}}>✕</button>
+            </div>
+            {[
+              {icon:"📋",label:"מחירון",action:()=>{setPriceTab("view");setShowPriceEditor(true);}},
+              {icon:"📨",label:"מייל מתעניינים",action:()=>setShowInquiry(true)},
+              {icon:"📝",label:"עריכת מיילים",action:()=>{setEmailEditorType("confirm");setShowEmailEditor(true);}},
+            ].map(({icon,label,action})=>(
+              <button key={label} onClick={()=>{action();setHamburgerOpen(false);}}
+                style={{background:"#252545",color:"#f4c26a",border:"1px solid #3a3a6e",borderRadius:10,padding:"12px 16px",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer",textAlign:"right",display:"flex",alignItems:"center",gap:10}}>
+                <span>{icon}</span><span>{label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Price popup */}
       {showPrices&&(
@@ -257,11 +837,12 @@ function App(){
               <button onClick={()=>setShowPrices(false)} style={{border:"none",background:"none",fontSize:20,cursor:"pointer",color:"#aaa"}}>✕</button>
             </div>
             {[
-              {l:'אמצע שבוע (חוץ קיץ)',p:"₪990"},
-              {l:'סופ"ש / חג (חוץ קיץ)',p:"₪1,600"},
-              {l:"אמצע שבוע — קיץ",p:"₪790"},
-              {l:'סופ"ש — קיץ',p:"₪1,200"},
-              {l:"אורח נוסף (מעל 2)",p:"₪300 / אדם"},
+              {l:"אמצע שבוע (א-ה)",p:fm(getActivePrices().weekday)},
+              {l:'שישי–שבת / חג',p:fm(getActivePrices().weekend)},
+              {l:"חבילה חמישי+שישי+שבת",p:fm(getActivePrices().packageDeal)},
+              {l:"תוספת יציאה ראשון",p:fm(getActivePrices().sundayExtra)},
+              {l:"אורח נוסף (מעל 2)",p:`${fm(getActivePrices().extraGuest)} / אדם`},
+              {l:"תינוק",p:"ללא תשלום"},
             ].map(r=>(
               <div key={r.l} style={{display:"flex",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid #f0eee8"}}>
                 <span style={{color:"#5a4e40",fontSize:14}}>{r.l}</span>
@@ -286,11 +867,11 @@ function App(){
             {l:"הכנסות צפויות",v:fm(totalRev),icon:"💰",s:"מאושרות"},
             {l:"יתרה לגביה",v:fm(totalRev-totalPaid),icon:"📊",s:`שולם: ${fm(totalPaid)}`},
           ].map((s,i)=>(
-            <div key={i} style={{background:"#fff",borderRadius:16,padding:"14px 16px",boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}>
-              <div style={{fontSize:20}}>{s.icon}</div>
-              <div style={{fontSize:18,fontWeight:800,color:"#1a1a2e",marginTop:3}}>{s.v}</div>
-              <div style={{fontSize:12,color:"#6a5e50",marginTop:2}}>{s.l}</div>
-              <div style={{fontSize:11,color:"#a09080",marginTop:1}}>{s.s}</div>
+            <div key={i} style={{background:"#fff",borderRadius:10,padding:"8px 10px",boxShadow:"0 2px 8px rgba(0,0,0,.06)"}}>
+              <div style={{fontSize:14}}>{s.icon}</div>
+              <div style={{fontSize:14,fontWeight:800,color:"#1a1a2e",marginTop:1}}>{s.v}</div>
+              <div style={{fontSize:10,color:"#6a5e50",marginTop:1}}>{s.l}</div>
+              <div style={{fontSize:9,color:"#a09080"}}>{s.s}</div>
             </div>
           ))}
         </div>
@@ -331,12 +912,15 @@ function App(){
                         <tr key={b.id} style={{borderBottom:"1px solid #f4f0ea",transition:"background .1s"}}
                           onMouseEnter={e=>e.currentTarget.style.background="#fdfaf6"}
                           onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                          <td style={{padding:"11px 12px",fontWeight:700,color:"#1a1a2e"}}>{b.name}</td>
+                          <td style={{padding:"11px 12px"}}>
+                            <div style={{fontWeight:700,color:"#1a1a2e"}}>{b.name}</div>
+                            {b.notes&&<div style={{fontSize:11,color:"#a09080",marginTop:2}}>{b.notes}</div>}
+                          </td>
                           <td style={{padding:"11px 12px",color:"#6a5e50",direction:"ltr"}}>{b.phone}</td>
                           <td style={{padding:"11px 12px",color:"#6a5e50",whiteSpace:"nowrap"}}>{fd(b.checkin)}</td>
                           <td style={{padding:"11px 12px",color:"#6a5e50",whiteSpace:"nowrap"}}>{fd(b.checkout)}</td>
                           <td style={{padding:"11px 12px",color:"#6a5e50",textAlign:"center"}}>{b.nights||calcNights(b.checkin,b.checkout)}</td>
-                          <td style={{padding:"11px 12px",color:"#6a5e50",textAlign:"center"}}>{(b.guests||2)+(b.extraGuests||0)}</td>
+                          <td style={{padding:"11px 12px",color:"#6a5e50",textAlign:"center"}}>{(b.guests||2)+(b.extraGuests||0)}{b.babies>0?` + ${b.babies}👶`:""}</td>
                           <td style={{padding:"11px 12px"}}>
                             <span style={{background:sc.bg,color:sc.text,borderRadius:8,padding:"3px 9px",fontSize:11,fontWeight:700,display:"inline-flex",alignItems:"center",gap:4}}>
                               <span style={{width:6,height:6,borderRadius:"50%",background:sc.dot,display:"inline-block"}}/>
@@ -347,8 +931,12 @@ function App(){
                           <td style={{padding:"11px 12px",color:"#2e7d32",fontWeight:600}}>{fm(b.paid||0)}</td>
                           <td style={{padding:"11px 12px",color:bal>0?"#c62828":"#2e7d32",fontWeight:600}}>{fm(bal)}</td>
                           <td style={{padding:"11px 12px"}}>
-                            <div style={{display:"flex",gap:5}}>
+                            <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
                               <button onClick={()=>openEdit(b)} style={{border:"none",background:"#f0eee8",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="עריכה">✏️</button>
+                              <button onClick={()=>sendWhatsApp(b)} style={{border:"none",background:"#e7f7e7",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="שלח WhatsApp">💬</button>
+
+                              <button onClick={()=>sendConfirmEmail(b)} style={{border:"none",background:"#e3f2fd",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="מייל אישור הזמנה">📧</button>
+                              <button onClick={()=>sendReviewEmail(b)} style={{border:"none",background:"#f3e5f5",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="מייל בקשת ביקורת">⭐</button>
                               <button onClick={()=>setDelC(b.id)} style={{border:"none",background:"#fce4ec",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="מחיקה">🗑️</button>
                             </div>
                           </td>
@@ -425,7 +1013,174 @@ function App(){
         )}
       </div>
 
-      {showForm&&<BookingForm booking={editB} onSave={save} onCancel={()=>{setShowForm(false);setEditB(null);}}/>}
+      {showForm&&<BookingForm booking={editB} onSave={save} onCancel={()=>{setShowForm(false);setEditB(null);}} existingBookings={bookings}/>}
+
+      {/* מודל מחירון */}
+      {showPriceEditor&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <div style={{background:"#fff",borderRadius:20,width:"min(480px,96vw)",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.22)",direction:"rtl",padding:"24px 28px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+              <h2 style={{margin:0,fontSize:19,fontFamily:"'Heebo',sans-serif",color:"#1a1a2e",fontWeight:800}}>📋 מחירון</h2>
+              <button onClick={()=>setShowPriceEditor(false)} style={{border:"none",background:"none",fontSize:22,cursor:"pointer",color:"#aaa"}}>✕</button>
+            </div>
+            <div style={{display:"flex",gap:8,marginBottom:16}}>
+              <button onClick={()=>setPriceTab("view")} style={{padding:"7px 16px",borderRadius:10,border:"none",cursor:"pointer",background:priceTab==="view"?"#1a1a2e":"#f0eee8",color:priceTab==="view"?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>צפייה</button>
+              <button onClick={()=>setPriceTab("edit")} style={{padding:"7px 16px",borderRadius:10,border:"none",cursor:"pointer",background:priceTab==="edit"?"#1a1a2e":"#f0eee8",color:priceTab==="edit"?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>עריכה</button>
+            </div>
+            {priceTab==="view"&&(
+              <div>
+                {[
+                  {l:"אמצע שבוע (א-ה)",p:fm(getActivePrices().weekday)},
+                  {l:'שישי–שבת / חג',p:fm(getActivePrices().weekend)},
+                  {l:"חבילה חמישי+שישי+שבת",p:fm(getActivePrices().packageDeal)},
+                  {l:"תוספת יציאה ראשון",p:fm(getActivePrices().sundayExtra)},
+                  {l:"אורח נוסף (מעל 2)",p:`${fm(getActivePrices().extraGuest)} / אדם`},
+                  {l:"תינוק",p:"ללא תשלום"},
+                ].map(r=>(
+                  <div key={r.l} style={{display:"flex",justifyContent:"space-between",padding:"10px 0",borderBottom:"1px solid #f0eee8",fontFamily:"'Heebo',sans-serif"}}>
+                    <span style={{color:"#5a4e40",fontSize:14}}>{r.l}</span>
+                    <span style={{fontWeight:800,color:"#1a1a2e",fontSize:14}}>{r.p}</span>
+                  </div>
+                ))}
+                <div style={{marginTop:12,paddingTop:12,borderTop:"1px solid #e0d8cc"}}>
+                  <div style={{fontSize:13,color:"#7a6a58",fontFamily:"'Heebo',sans-serif"}}>⏰ כניסה: 13:00 · יציאה: 11:00</div>
+                  <div style={{fontSize:13,color:"#7a6a58",fontFamily:"'Heebo',sans-serif",marginTop:3}}>📞 050-410-3353 יעקב</div>
+                  <div style={{fontSize:13,color:"#7a6a58",fontFamily:"'Heebo',sans-serif",marginTop:3}}>📍 נחל קדם 93, מיצד (אספר)</div>
+                </div>
+              </div>
+            )}
+            {priceTab==="edit"&&(
+              <div>
+            {[
+              {key:"weekday",label:"אמצע שבוע (א-ה)"},
+              {key:"weekend",label:"סוף שבוע / חג (שישי-שבת)"},
+              {key:"packageDeal",label:"חבילת חמישי+שישי+שבת"},
+              {key:"sundayExtra",label:"תוספת יציאה ראשון"},
+              {key:"extraGuest",label:"תוספת אורח נוסף"},
+            ].map(({key,label})=>(
+              <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #f0eee8"}}>
+                <span style={{fontFamily:"'Heebo',sans-serif",color:"#3d2c1e",fontSize:14}}>{label}</span>
+                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                  <span style={{color:"#a09080",fontSize:13}}>₪</span>
+                  <input type="number" value={prices[key]} onFocus={e=>e.target.select()}
+                    onChange={e=>setPrices(p=>({...p,[key]:parseInt(e.target.value)||0}))}
+                    style={{width:90,padding:"6px 10px",borderRadius:8,border:"1.5px solid #e0d8cc",fontSize:14,fontFamily:"'Heebo',sans-serif",textAlign:"center"}}/>
+                </div>
+              </div>
+            ))}
+              <div style={{display:"flex",gap:10,marginTop:20}}>
+                <button onClick={()=>{
+                  localStorage.setItem("shirat_prices",JSON.stringify(prices));
+                  setShowPriceEditor(false);
+                  alert("המחירון עודכן בהצלחה!");
+                }} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#1a1a2e",color:"#fff",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>שמירה</button>
+                <button onClick={()=>setPrices(DEFAULT_PRICES)} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#f0eee8",color:"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>איפוס</button>
+                <button onClick={()=>setShowPriceEditor(false)} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#f0eee8",color:"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>ביטול</button>
+              </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* מודל עריכת תבניות מייל */}
+      {showEmailEditor&&(()=>{
+        const isConfirm=emailEditorType==="confirm";
+        const template=isConfirm?confirmTemplate:reviewTemplate;
+        const setTemplate=isConfirm?setConfirmTemplate:setReviewTemplate;
+        const storageKey=isConfirm?"shirat_confirm_template":"shirat_review_template";
+        const defaultText=isConfirm?`שלום וברכה {שם},
+
+שמחים לאשר את הזמנתכם בצימר שירת הציפורים!
+
+פרטי ההזמנה:
+• סוג אירוח: {סוג}
+• תאריכים: {כניסה} עד {יציאה} ({לילות} לילות)
+• עלות: {סכום}
+
+נא להעביר מקדמה בסך 500 ₪...
+
+ביט / פייבוקס: 0504103353
+
+מחכים לבואכם!
+צימר "שירת הציפורים"`:
+          `שלום וברכה {שם},
+
+רצינו להודות לכם מקרב לב...
+
+מצורפים קישורים:
+https://mamimush.co.il/rooms/...
+
+בברכה,
+יעקב`;
+        return(
+          <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <div style={{background:"#fff",borderRadius:20,width:"min(580px,96vw)",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.22)",direction:"rtl",padding:"24px 28px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+                <h2 style={{margin:0,fontSize:19,fontFamily:"'Heebo',sans-serif",color:"#1a1a2e",fontWeight:800}}>📝 עריכת תבנית מייל</h2>
+                <button onClick={()=>setShowEmailEditor(false)} style={{border:"none",background:"none",fontSize:22,cursor:"pointer",color:"#aaa"}}>✕</button>
+              </div>
+              <div style={{display:"flex",gap:8,marginBottom:16}}>
+                <button onClick={()=>setEmailEditorType("confirm")} style={{padding:"7px 16px",borderRadius:10,border:"none",cursor:"pointer",background:isConfirm?"#1a1a2e":"#f0eee8",color:isConfirm?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>📧 אישור הזמנה</button>
+                <button onClick={()=>setEmailEditorType("review")} style={{padding:"7px 16px",borderRadius:10,border:"none",cursor:"pointer",background:!isConfirm?"#1a1a2e":"#f0eee8",color:!isConfirm?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>⭐ בקשת ביקורת</button>
+              </div>
+              {isConfirm&&<div style={{background:"#f0f4ff",borderRadius:8,padding:"8px 12px",marginBottom:12,fontSize:12,color:"#3a4a8a",fontFamily:"'Heebo',sans-serif"}}>
+                ניתן להשתמש במשתנים: <b>{"{שם}"}</b> שם לקוח, <b>{"{סוג}"}</b> סוג אירוח, <b>{"{כניסה}"}</b> <b>{"{יציאה}"}</b> תאריכים, <b>{"{לילות}"}</b> מספר לילות, <b>{"{סכום}"}</b> מחיר
+              </div>}
+              {!isConfirm&&<div style={{background:"#f0f4ff",borderRadius:8,padding:"8px 12px",marginBottom:12,fontSize:12,color:"#3a4a8a",fontFamily:"'Heebo',sans-serif"}}>
+                ניתן להשתמש במשתנה: <b>{"{שם}"}</b> שם לקוח
+              </div>}
+              <textarea value={template||defaultText} onChange={e=>setTemplate(e.target.value)}
+                style={{width:"100%",boxSizing:"border-box",padding:"10px 12px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:13,fontFamily:"'Heebo',sans-serif",minHeight:300,resize:"vertical",direction:"rtl"}}/>
+              <div style={{display:"flex",gap:10,marginTop:16,flexWrap:"wrap"}}>
+                <button onClick={()=>{
+                  localStorage.setItem(storageKey,template||defaultText);
+                  alert("התבנית נשמרה!");
+                }} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#1a1a2e",color:"#fff",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>שמירה</button>
+                <button onClick={()=>setTemplate("")} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#f0eee8",color:"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>איפוס לברירת מחדל</button>
+                <button onClick={()=>setShowEmailEditor(false)} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#f0eee8",color:"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>סגור</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* מודל מייל מתעניינים */}
+      {showInquiry&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <div style={{background:"#fff",borderRadius:20,width:"min(560px,96vw)",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.22)",direction:"rtl",padding:"24px 28px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <h2 style={{margin:0,fontSize:19,fontFamily:"'Heebo',sans-serif",color:"#1a1a2e",fontWeight:800}}>📨 מייל למתעניינים</h2>
+              <button onClick={()=>setShowInquiry(false)} style={{border:"none",background:"none",fontSize:22,cursor:"pointer",color:"#aaa"}}>✕</button>
+            </div>
+            <div style={{marginBottom:14}}>
+              <label style={{display:"block",fontSize:12,color:"#7a6a58",marginBottom:4,fontWeight:600,fontFamily:"'Heebo',sans-serif"}}>מייל המתעניין</label>
+              <input type="email" value={inquiryEmail} onChange={e=>setInquiryEmail(e.target.value)}
+                placeholder="example@gmail.com" dir="ltr"
+                style={{width:"100%",boxSizing:"border-box",padding:"9px 12px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:14,fontFamily:"'Heebo',sans-serif"}}/>
+            </div>
+            <div style={{marginBottom:14}}>
+              <label style={{display:"block",fontSize:12,color:"#7a6a58",marginBottom:4,fontWeight:600,fontFamily:"'Heebo',sans-serif"}}>תבנית המייל (ניתן לערוך)</label>
+              <textarea value={inquiryTemplate} onChange={e=>setInquiryTemplate(e.target.value)}
+                style={{width:"100%",boxSizing:"border-box",padding:"10px 12px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:13,fontFamily:"'Heebo',sans-serif",minHeight:280,resize:"vertical",direction:"rtl"}}/>
+            </div>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+              <button onClick={()=>{
+                if(!inquiryEmail){alert("הזן כתובת מייל");return;}
+                const sub=encodeURIComponent('מידע על צימר שירת הציפורים');
+                const body=encodeURIComponent(inquiryTemplate);
+                window.open(`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(inquiryEmail)}&su=${sub}&body=${body}`,"_blank");
+              }} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#1a1a2e",color:"#fff",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>שלח מייל</button>
+              <button onClick={()=>{
+                localStorage.setItem("shirat_inquiry",inquiryTemplate);
+                alert("התבנית נשמרה!");
+              }} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#e8f5e9",color:"#2e7d32",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>שמור תבנית</button>
+              <button onClick={()=>setInquiryTemplate(DEFAULT_INQUIRY_TEMPLATE)} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#f0eee8",color:"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>איפוס</button>
+              <button onClick={()=>setShowInquiry(false)} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#f0eee8",color:"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>סגור</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {delC&&(
         <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.5)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center"}}>
