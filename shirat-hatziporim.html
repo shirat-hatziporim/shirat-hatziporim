@@ -763,7 +763,7 @@ function App(){
     <div style={{minHeight:"100vh",direction:"rtl"}}>
       {/* Header */}
       <div style={{background:"#1a1a2e",padding:"0 20px",position:"sticky",top:0,zIndex:50}}>
-        <div style={{maxWidth:1100,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center",minHeight:56,flexWrap:"wrap",gap:8,padding:"6px 0"}}>
+        <div style={{maxWidth:1100,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center",height:56}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             <img src="https://shirat-hatziporim.github.io/shirat-hatziporim/logo.jpeg" style={{height:36,width:36,borderRadius:"50%",objectFit:"cover",background:"#fff",padding:2}}/><span style={{color:"#fff",fontSize:16,fontWeight:800,marginRight:8}}>שירת הציפורים</span>
             <span style={{color:"#5a5878",fontSize:12,borderRight:"1px solid #3a3a5e",paddingRight:10}}>ניהול הזמנות</span>
@@ -774,10 +774,10 @@ function App(){
           </div>
           <div style={{display:"flex",gap:8}}>
             <button onClick={()=>loadFromSheets().then(d=>{setBookings(d);setLastSync(new Date());})} style={{background:"#252545",color:"#a0c0ff",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}} title="רענן מגוגל שיטס">🔄</button>
-            <button onClick={()=>setShowPrices(p=>!p)} style={{background:"#252545",color:"#f4c26a",border:"1px solid #3a3a6e",borderRadius:8,padding:"5px 10px",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📋 מחירון</button>
-            <button onClick={()=>setShowPriceEditor(true)} style={{background:"#252545",color:"#90caf9",border:"1px solid #3a3a6e",borderRadius:8,padding:"5px 10px",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>✏️ מחירון</button>
-            <button onClick={()=>setShowInquiry(true)} style={{background:"#252545",color:"#a5d6a7",border:"1px solid #3a3a6e",borderRadius:8,padding:"5px 10px",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📨 מתעניינים</button>
-            <button onClick={()=>{setEmailEditorType("confirm");setShowEmailEditor(true);}} style={{background:"#252545",color:"#ce93d8",border:"1px solid #3a3a6e",borderRadius:8,padding:"5px 10px",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📝 מיילים</button>
+            <button onClick={()=>setShowPrices(p=>!p)} style={{background:"#252545",color:"#f4c26a",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📋 מחירון</button>
+            <button onClick={()=>setShowPriceEditor(true)} style={{background:"#252545",color:"#90caf9",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>✏️ עריכת מחירון</button>
+            <button onClick={()=>setShowInquiry(true)} style={{background:"#252545",color:"#a5d6a7",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📨 מייל מתעניינים</button>
+            <button onClick={()=>{setEmailEditorType("confirm");setShowEmailEditor(true);}} style={{background:"#252545",color:"#ce93d8",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📝 עריכת מיילים</button>
             <button onClick={()=>{setEditB(null);setShowForm(true);}} style={{background:"#f4c26a",color:"#1a1a2e",border:"none",borderRadius:10,padding:"7px 14px",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>+ הזמנה חדשה</button>
           </div>
         </div>
@@ -815,18 +815,18 @@ function App(){
 
       <div style={{maxWidth:1100,margin:"0 auto",padding:"20px 12px"}}>
         {/* Stats */}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,marginBottom:16}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
           {[
             {l:"מאושרות",v:confirmed.length,icon:"📋",s:`${bookings.filter(b=>b.status==="pending").length} ממתינות`},
             {l:"לילות מוזמנים",v:totalNights,icon:"🌙",s:'סה"כ'},
             {l:"הכנסות צפויות",v:fm(totalRev),icon:"💰",s:"מאושרות"},
             {l:"יתרה לגביה",v:fm(totalRev-totalPaid),icon:"📊",s:`שולם: ${fm(totalPaid)}`},
           ].map((s,i)=>(
-            <div key={i} style={{background:"#fff",borderRadius:16,padding:"14px 16px",boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}>
-              <div style={{fontSize:20}}>{s.icon}</div>
-              <div style={{fontSize:18,fontWeight:800,color:"#1a1a2e",marginTop:3}}>{s.v}</div>
-              <div style={{fontSize:12,color:"#6a5e50",marginTop:2}}>{s.l}</div>
-              <div style={{fontSize:11,color:"#a09080",marginTop:1}}>{s.s}</div>
+            <div key={i} style={{background:"#fff",borderRadius:10,padding:"8px 10px",boxShadow:"0 2px 8px rgba(0,0,0,.06)"}}>
+              <div style={{fontSize:14}}>{s.icon}</div>
+              <div style={{fontSize:14,fontWeight:800,color:"#1a1a2e",marginTop:1}}>{s.v}</div>
+              <div style={{fontSize:10,color:"#6a5e50",marginTop:1}}>{s.l}</div>
+              <div style={{fontSize:9,color:"#a09080"}}>{s.s}</div>
             </div>
           ))}
         </div>
