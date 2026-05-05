@@ -11,6 +11,8 @@
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
+.desktop-actions{display:table-cell !important;}
+@media(max-width:700px){.desktop-actions{display:none !important;}}
 body{font-family:'Heebo',sans-serif;background:linear-gradient(160deg,#faf7f2,#f0ece3);min-height:100vh;direction:rtl;}
 input,select,textarea{font-family:'Heebo',sans-serif;}
 ::-webkit-scrollbar{width:6px;height:6px;}
@@ -676,6 +678,7 @@ function App(){
   const [search,setSearch]=useState("");
   const [fStatus,setFStatus]=useState("all");
   const [delC,setDelC]=useState(null);
+  const [mobileMenu,setMobileMenu]=useState(null); // booking object for mobile action menu
   const [showPrices,setShowPrices]=useState(false);
   const [showPriceEditor,setShowPriceEditor]=useState(false);
   const [priceTab,setPriceTab]=useState("view"); // view | edit
@@ -864,9 +867,10 @@ function App(){
                     {filtered.sort((a,b)=>a.checkin.localeCompare(b.checkin)).map(b=>{
                       const sc=SC[b.status],bal=Math.max(0,(b.total||0)-(b.paid||0));
                       return(
-                        <tr key={b.id} style={{borderBottom:"1px solid #f4f0ea",transition:"background .1s"}}
+                        <tr key={b.id} style={{borderBottom:"1px solid #f4f0ea",transition:"background .1s",cursor:"pointer"}}
                           onMouseEnter={e=>e.currentTarget.style.background="#fdfaf6"}
-                          onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                          onMouseLeave={e=>e.currentTarget.style.background="transparent"}
+                          onClick={()=>{if(window.innerWidth<700)setMobileMenu(b);}}>
                           <td style={{padding:"11px 12px"}}>
                             <div style={{fontWeight:700,color:"#1a1a2e"}}>{b.name}</div>
                             {b.notes&&<div style={{fontSize:11,color:"#a09080",marginTop:2}}>{b.notes}</div>}
@@ -885,14 +889,14 @@ function App(){
                           <td style={{padding:"11px 12px",fontWeight:700,color:"#1a1a2e"}}>{fm(b.total||0)}</td>
                           <td style={{padding:"11px 12px",color:"#2e7d32",fontWeight:600}}>{fm(b.paid||0)}</td>
                           <td style={{padding:"11px 12px",color:bal>0?"#c62828":"#2e7d32",fontWeight:600}}>{fm(bal)}</td>
-                          <td style={{padding:"11px 12px"}}>
+                          <td style={{padding:"11px 12px",display:"none"}} className="desktop-actions">
                             <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-                              <button onClick={()=>openEdit(b)} style={{border:"none",background:"#f0eee8",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="עריכה">✏️</button>
-                              <button onClick={()=>sendWhatsApp(b)} style={{border:"none",background:"#e7f7e7",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="שלח WhatsApp">💬</button>
+                              <button onClick={e=>{e.stopPropagation();openEdit(b);}} style={{border:"none",background:"#f0eee8",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="עריכה">✏️</button>
+                              <button onClick={e=>{e.stopPropagation();sendWhatsApp(b);}} style={{border:"none",background:"#e7f7e7",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="שלח WhatsApp">💬</button>
 
-                              <button onClick={()=>sendConfirmEmail(b)} style={{border:"none",background:"#e3f2fd",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="מייל אישור הזמנה">📧</button>
-                              <button onClick={()=>sendReviewEmail(b)} style={{border:"none",background:"#f3e5f5",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="מייל בקשת ביקורת">⭐</button>
-                              <button onClick={()=>setDelC(b.id)} style={{border:"none",background:"#fce4ec",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="מחיקה">🗑️</button>
+                              <button onClick={e=>{e.stopPropagation();sendConfirmEmail(b);}} style={{border:"none",background:"#e3f2fd",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="מייל אישור הזמנה">📧</button>
+                              <button onClick={e=>{e.stopPropagation();sendReviewEmail(b);}} style={{border:"none",background:"#f3e5f5",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="מייל בקשת ביקורת">⭐</button>
+                              <button onClick={e=>{e.stopPropagation();setDelC(b.id);}} style={{border:"none",background:"#fce4ec",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="מחיקה">🗑️</button>
                             </div>
                           </td>
                         </tr>
@@ -1132,6 +1136,35 @@ https://mamimush.co.il/rooms/...
               }} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#e8f5e9",color:"#2e7d32",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>שמור תבנית</button>
               <button onClick={()=>setInquiryTemplate(DEFAULT_INQUIRY_TEMPLATE)} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#f0eee8",color:"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>איפוס</button>
               <button onClick={()=>setShowInquiry(false)} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#f0eee8",color:"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>סגור</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+            {/* Mobile action menu */}
+      {mobileMenu&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.5)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"}}
+          onClick={()=>setMobileMenu(null)}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"20px 20px 0 0",width:"100%",maxWidth:500,padding:"20px 20px 32px",direction:"rtl"}}>
+            <div style={{textAlign:"center",marginBottom:16}}>
+              <div style={{width:40,height:4,background:"#e0d8cc",borderRadius:2,margin:"0 auto 12px"}}/>
+              <div style={{fontFamily:"'Heebo',sans-serif",fontWeight:800,color:"#1a1a2e",fontSize:16}}>{mobileMenu.name}</div>
+              <div style={{fontFamily:"'Heebo',sans-serif",color:"#8a7e6e",fontSize:13}}>{fd(mobileMenu.checkin)} — {fd(mobileMenu.checkout)}</div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              {[
+                {icon:"✏️",label:"עריכה",color:"#f0eee8",tc:"#1a1a2e",action:()=>{openEdit(mobileMenu);setMobileMenu(null);}},
+                {icon:"💬",label:"WhatsApp",color:"#e7f7e7",tc:"#2e7d32",action:()=>{sendWhatsApp(mobileMenu);setMobileMenu(null);}},
+                {icon:"📧",label:"אישור הזמנה",color:"#e3f2fd",tc:"#1565c0",action:()=>{sendConfirmEmail(mobileMenu);setMobileMenu(null);}},
+                {icon:"⭐",label:"בקשת ביקורת",color:"#f3e5f5",tc:"#7b1fa2",action:()=>{sendReviewEmail(mobileMenu);setMobileMenu(null);}},
+                {icon:"🗑️",label:"מחיקה",color:"#fce4ec",tc:"#c62828",action:()=>{setDelC(mobileMenu.id);setMobileMenu(null);}},
+              ].map(({icon,label,color,tc,action})=>(
+                <button key={label} onClick={action}
+                  style={{background:color,color:tc,border:"none",borderRadius:12,padding:"14px 10px",cursor:"pointer",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
+                  <span style={{fontSize:24}}>{icon}</span>
+                  <span>{label}</span>
+                </button>
+              ))}
             </div>
           </div>
         </div>
