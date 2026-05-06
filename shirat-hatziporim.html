@@ -583,7 +583,7 @@ function Lbl({children}){return <label style={{display:"block",fontSize:12,color
 function Sec({title,children}){return<div style={{marginBottom:18}}><div style={{fontSize:11,fontWeight:700,color:"#a0896e",letterSpacing:1,marginBottom:8}}>{title}</div>{children}</div>;}
 
 // ── Booking Form ──
-function BookingForm({booking,onSave,onCancel,existingBookings=[]}){
+function BookingForm({booking,onSave,onCancel,existingBookings=[],blockedDates=[]}){
   const empty={name:"",phone:"",checkin:"",checkout:"",guests:2,extraGuests:0,status:"confirmed",notes:"",paid:0};
   const [f,setF]=useState(booking||empty);
   const [err,setErr]=useState({});
@@ -603,11 +603,22 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[]}){
     // בדיקת חפיפה עם הזמנות קיימות
     if(f.checkin&&f.checkout&&f.checkin<f.checkout){
       const conflict=existingBookings.find(b=>{
-        if(b.id===f.id) return false; // אותה הזמנה בעריכה
+        if(b.id===f.id) return false;
         if(b.status==="cancelled") return false;
         return f.checkin<b.checkout && f.checkout>b.checkin;
       });
       if(conflict) e.checkin=`תאריכים תפוסים! (${conflict.name})`;
+      // בדיקת חפיפה עם תאריכים חסומים
+      if(!e.checkin){
+        const cur=new Date(f.checkin);
+        const end=new Date(f.checkout);
+        while(cur<end){
+          const ds=cur.toISOString().split("T")[0];
+          const blocked=blockedDates.find(b=>b.date===ds);
+          if(blocked){e.checkin=`תאריך ${fd(ds)} חסום${blocked.note?` (${blocked.note})`:""}`;break;}
+          cur.setDate(cur.getDate()+1);
+        }
+      }
     }
     setErr(e);return!Object.keys(e).length;
   }
@@ -840,6 +851,9 @@ function App(){
   const [showInquiry,setShowInquiry]=useState(false);
   const [calSearch,setCalSearch]=useState("");
   const [guestSearch,setGuestSearch]=useState("");
+  const [guestPopup,setGuestPopup]=useState(null);
+  const [broadcastOpen,setBroadcastOpen]=useState(false);
+  const [broadcastMsg,setBroadcastMsg]=useState("");
   const [inquiryTemplate,setInquiryTemplate]=useState(()=>{
     try{const s=localStorage.getItem("shirat_inquiry");return s||DEFAULT_INQUIRY_TEMPLATE;}catch{return DEFAULT_INQUIRY_TEMPLATE;}
   });
@@ -1390,38 +1404,50 @@ function App(){
           const guestMap={};
           bookings.filter(b=>b.status!=="cancelled").forEach(b=>{
             const key=b.phone||b.name;
-            if(!guestMap[key]) guestMap[key]={name:b.name,phone:b.phone,visits:[],rating:b.rating||0};
+            if(!guestMap[key]){
+              guestMap[key]={name:b.name,phone:b.phone,email:b.email||"",visits:[],rating:b.rating||0};
+            }
             guestMap[key].visits.push(b);
             if(b.rating) guestMap[key].rating=b.rating;
+            if(b.email) guestMap[key].email=b.email;
           });
           const guests=Object.values(guestMap).sort((a,b)=>b.visits.length-a.visits.length);
-          const filtered=guests.filter(g=>g.name.includes(guestSearch)||g.phone.includes(guestSearch));
+          const filteredG=guests.filter(g=>g.name.includes(guestSearch)||(g.phone&&g.phone.includes(guestSearch)));
           return(
             <div>
-              <div style={{marginBottom:14}}>
+              {/* כותרת + כפתור שידור */}
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:8}}>
                 <input value={guestSearch} onChange={e=>setGuestSearch(e.target.value)} placeholder="🔍 חיפוש אורח..."
-                  style={{padding:"8px 14px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:14,fontFamily:"'Heebo',sans-serif",width:"100%",maxWidth:300,background:"#fff",direction:"rtl",boxSizing:"border-box"}}/>
+                  style={{padding:"8px 14px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:14,fontFamily:"'Heebo',sans-serif",width:"100%",maxWidth:260,background:"#fff",direction:"rtl",boxSizing:"border-box"}}/>
+                <div style={{display:"flex",gap:8"}}>
+                  <button onClick={()=>setBroadcastOpen(true)}
+                    style={{...bS("#1a1a2e","#f4c26a"),fontSize:13,padding:"8px 14px"}}>📢 שידור לכל האורחים</button>
+                </div>
               </div>
-              <div style={{display:"grid",gap:12}}>
-                {!filtered.length&&<p style={{color:"#a09080",fontFamily:"'Heebo',sans-serif",fontSize:14}}>אין אורחים</p>}
-                {filtered.map((g,i)=>{
+
+              <div style={{display:"grid",gap:10}}>
+                {!filteredG.length&&<p style={{color:"#a09080",fontFamily:"'Heebo',sans-serif",fontSize:14}}>אין אורחים</p>}
+                {filteredG.map((g,i)=>{
                   const totalSpent=g.visits.reduce((s,b)=>s+(b.total||0),0);
-                  const lastVisit=g.visits.sort((a,b)=>b.checkin.localeCompare(a.checkin))[0];
+                  const sorted=g.visits.slice().sort((a,b)=>b.checkin.localeCompare(a.checkin));
+                  const lastVisit=sorted[0];
                   return(
-                    <div key={i} style={{background:"#fff",borderRadius:16,padding:"16px 20px",boxShadow:"0 2px 12px rgba(0,0,0,.07)",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
+                    <div key={i} onClick={()=>setGuestPopup(g)}
+                      style={{background:"#fff",borderRadius:14,padding:"14px 18px",boxShadow:"0 2px 10px rgba(0,0,0,.06)",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8,cursor:"pointer"}}
+                      onMouseEnter={e=>e.currentTarget.style.background="#fdfaf6"}
+                      onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
                       <div>
-                        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
                           <span style={{fontWeight:800,color:"#1a1a2e",fontFamily:"'Heebo',sans-serif",fontSize:15}}>{g.name}</span>
                           {g.visits.length>1&&<span style={{background:"#f4c26a",color:"#1a1a2e",borderRadius:6,padding:"1px 8px",fontSize:11,fontWeight:700}}>חוזר ×{g.visits.length}</span>}
                         </div>
-                        <div style={{fontSize:12,color:"#8a7e6e",fontFamily:"'Heebo',sans-serif"}}>{g.phone}</div>
+                        <div style={{fontSize:12,color:"#8a7e6e",fontFamily:"'Heebo',sans-serif"}}>{g.phone}{g.email?` · ${g.email}`:""}</div>
                         <div style={{fontSize:12,color:"#8a7e6e",fontFamily:"'Heebo',sans-serif",marginTop:2}}>ביקור אחרון: {fd(lastVisit.checkin)}</div>
-                        {g.rating>0&&<div style={{fontSize:13,marginTop:4}}>{Array(g.rating).fill("⭐").join("")}</div>}
+                        {g.rating>0&&<div style={{fontSize:12,marginTop:3}}>{Array(g.rating).fill("⭐").join("")}</div>}
                       </div>
                       <div style={{textAlign:"left"}}>
-                        <div style={{fontWeight:800,color:"#1a1a2e",fontSize:16,fontFamily:"'Heebo',sans-serif"}}>₪{totalSpent.toLocaleString()}</div>
+                        <div style={{fontWeight:800,color:"#1a1a2e",fontSize:15,fontFamily:"'Heebo',sans-serif"}}>₪{totalSpent.toLocaleString()}</div>
                         <div style={{fontSize:11,color:"#8a7e6e",fontFamily:"'Heebo',sans-serif"}}>{g.visits.length} ביקורים</div>
-                        <button onClick={()=>openEdit(lastVisit)} style={{marginTop:6,...bS("#f0eee8","#1a1a2e"),fontSize:12,padding:"5px 12px"}}>עריכה</button>
                       </div>
                     </div>
                   );
@@ -1432,7 +1458,115 @@ function App(){
         })()}
       </div>
 
-      {showForm&&<BookingForm booking={editB} onSave={save} onCancel={()=>{setShowForm(false);setEditB(null);}} existingBookings={bookings}/>}
+      {showForm&&<BookingForm booking={editB} onSave={save} onCancel={()=>{setShowForm(false);setEditB(null);}} existingBookings={bookings} blockedDates={blockedDates}/>}
+
+      {/* פופאפ פרטי אורח */}
+      {guestPopup&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}}
+          onClick={()=>setGuestPopup(null)}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:20,width:"min(520px,96vw)",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.22)",direction:"rtl",padding:"24px 28px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+              <div>
+                <h2 style={{margin:0,fontSize:19,fontFamily:"'Heebo',sans-serif",color:"#1a1a2e",fontWeight:800}}>{guestPopup.name}</h2>
+                <div style={{fontSize:13,color:"#8a7e6e",fontFamily:"'Heebo',sans-serif",marginTop:2}}>{guestPopup.phone}{guestPopup.email?` · ${guestPopup.email}`:""}</div>
+                {guestPopup.rating>0&&<div style={{fontSize:14,marginTop:3}}>{Array(guestPopup.rating).fill("⭐").join("")}</div>}
+              </div>
+              <button onClick={()=>setGuestPopup(null)} style={{border:"none",background:"none",fontSize:22,cursor:"pointer",color:"#aaa"}}>✕</button>
+            </div>
+
+            {/* כפתורי תקשורת */}
+            <div style={{display:"flex",gap:8,marginBottom:18,flexWrap:"wrap"}}>
+              <button onClick={()=>{
+                const phone="972"+(guestPopup.phone||"").replace(/\D/g,"").replace(/^0/,"");
+                window.open(`https://api.whatsapp.com/send?phone=${phone}`,"_blank");
+              }} style={{...bS("#e7f7e7","#2e7d32"),fontSize:13,padding:"7px 14px"}}>💬 WhatsApp</button>
+              {guestPopup.email&&<button onClick={()=>{
+                window.open(`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(guestPopup.email)}`,"_blank");
+              }} style={{...bS("#e3f2fd","#1565c0"),fontSize:13,padding:"7px 14px"}}>📧 מייל</button>}
+            </div>
+
+            {/* היסטוריית ביקורים */}
+            <div style={{fontSize:12,fontWeight:700,color:"#a0896e",letterSpacing:1,marginBottom:10,fontFamily:"'Heebo',sans-serif"}}>היסטוריית ביקורים ({guestPopup.visits.length})</div>
+            {guestPopup.visits.slice().sort((a,b)=>b.checkin.localeCompare(a.checkin)).map((v,i)=>{
+              const bal=Math.max(0,(v.total||0)-(v.paid||0));
+              return(
+                <div key={i} style={{background:"#f8f4ec",borderRadius:12,padding:"12px 16px",marginBottom:8}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:4}}>
+                    <div>
+                      <div style={{fontWeight:700,color:"#1a1a2e",fontFamily:"'Heebo',sans-serif",fontSize:14}}>{fd(v.checkin)} — {fd(v.checkout)}</div>
+                      <div style={{fontSize:12,color:"#8a7e6e",fontFamily:"'Heebo',sans-serif",marginTop:2}}>{v.nights||calcNights(v.checkin,v.checkout)} לילות · {(v.guests||2)+(v.extraGuests||0)} אורחים</div>
+                      {v.notes&&<div style={{fontSize:12,color:"#7a6a58",marginTop:3,fontFamily:"'Heebo',sans-serif"}}>📝 {v.notes}</div>}
+                      {v.rating>0&&<div style={{fontSize:12,marginTop:3}}>{Array(v.rating).fill("⭐").join("")}</div>}
+                    </div>
+                    <div style={{textAlign:"left"}}>
+                      <div style={{fontWeight:800,color:"#1a1a2e",fontFamily:"'Heebo',sans-serif"}}>₪{(v.total||0).toLocaleString()}</div>
+                      <div style={{fontSize:11,color:bal>0?"#c62828":"#2e7d32",fontFamily:"'Heebo',sans-serif"}}>{bal>0?`יתרה: ₪${bal.toLocaleString()}`:"✅ שולם"}</div>
+                      <span style={{fontSize:10,background:SC[v.status]?.bg,color:SC[v.status]?.text,borderRadius:5,padding:"2px 7px",fontWeight:700,fontFamily:"'Heebo',sans-serif"}}>{STATUS[v.status]}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* פופאפ שידור לכל האורחים */}
+      {broadcastOpen&&(()=>{
+        const guestMap={};
+        bookings.filter(b=>b.status!=="cancelled").forEach(b=>{
+          const key=b.phone||b.name;
+          if(!guestMap[key]) guestMap[key]={name:b.name,phone:b.phone,email:b.email||""};
+          if(b.email) guestMap[key].email=b.email;
+        });
+        const all=Object.values(guestMap);
+        const withPhone=all.filter(g=>g.phone);
+        const withEmail=all.filter(g=>g.email);
+        return(
+          <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center"}}
+            onClick={()=>setBroadcastOpen(false)}>
+            <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:20,width:"min(480px,96vw)",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.22)",direction:"rtl",padding:"24px 28px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+                <h2 style={{margin:0,fontSize:18,fontFamily:"'Heebo',sans-serif",color:"#1a1a2e",fontWeight:800}}>📢 שידור לכל האורחים</h2>
+                <button onClick={()=>setBroadcastOpen(false)} style={{border:"none",background:"none",fontSize:22,cursor:"pointer",color:"#aaa"}}>✕</button>
+              </div>
+              <p style={{fontSize:13,color:"#8a7e6e",fontFamily:"'Heebo',sans-serif",marginBottom:14}}>
+                {withPhone.length} אורחים עם טלפון · {withEmail.length} אורחים עם מייל
+              </p>
+              <label style={{display:"block",fontSize:12,color:"#7a6a58",marginBottom:5,fontWeight:600,fontFamily:"'Heebo',sans-serif"}}>תוכן ההודעה</label>
+              <textarea value={broadcastMsg} onChange={e=>setBroadcastMsg(e.target.value)}
+                placeholder="לדוגמה: שלום! יש לנו מבצע מיוחד לחודש יוני..."
+                style={{width:"100%",minHeight:100,padding:"10px 12px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:14,fontFamily:"'Heebo',sans-serif",direction:"rtl",resize:"vertical",boxSizing:"border-box",outline:"none",marginBottom:14}}/>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                <button onClick={()=>{
+                  if(!broadcastMsg.trim()){alert("נא להזין תוכן הודעה");return;}
+                  withPhone.forEach((g,i)=>{
+                    setTimeout(()=>{
+                      const phone="972"+(g.phone||"").replace(/\D/g,"").replace(/^0/,"");
+                      const msg=encodeURIComponent(broadcastMsg.replace("{שם}",g.name));
+                      window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${msg}`,"_blank");
+                    },i*800);
+                  });
+                }} style={{...bS("#25d366","#fff"),fontSize:13,flex:1}}>
+                  💬 WhatsApp ({withPhone.length})
+                </button>
+                {withEmail.length>0&&<button onClick={()=>{
+                  if(!broadcastMsg.trim()){alert("נא להזין תוכן הודעה");return;}
+                  const emails=withEmail.map(g=>g.email).join(",");
+                  const subject=encodeURIComponent("שירת הציפורים — עדכון מיוחד");
+                  const body=encodeURIComponent(broadcastMsg);
+                  window.open(`https://mail.google.com/mail/?view=cm&bcc=${encodeURIComponent(emails)}&su=${subject}&body=${body}`,"_blank");
+                }} style={{...bS("#1565c0","#fff"),fontSize:13,flex:1}}>
+                  📧 מייל ({withEmail.length})
+                </button>
+              </div>
+              <div style={{marginTop:10,fontSize:11,color:"#a09080",fontFamily:"'Heebo',sans-serif"}}>
+                💡 ניתן להשתמש ב-{"{שם}"} בהודעת WhatsApp לשם אישי לכל אורח
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* מודל מחירון */}
       {showPriceEditor&&(
