@@ -909,7 +909,7 @@ function App(){
     try{localStorage.setItem("shirat_manual_guests",JSON.stringify(mg));}catch(e){}
   }
 
-
+  const filtered=bookings.filter(b=>{
     return((b.name||"").includes(search)||(b.phone||"").includes(search))&&(fStatus==="all"||b.status===fStatus);
   });
 
