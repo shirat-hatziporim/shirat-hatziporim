@@ -852,6 +852,10 @@ function App(){
   const [calSearch,setCalSearch]=useState("");
   const [guestSearch,setGuestSearch]=useState("");
   const [guestPopup,setGuestPopup]=useState(null);
+  const [guestEditPopup,setGuestEditPopup]=useState(null); // {name,phone,email,rating,notes}
+  const [manualGuests,setManualGuests]=useState(()=>{try{const s=localStorage.getItem("shirat_manual_guests");return s?JSON.parse(s):[];}catch{return[];}});
+  const [showAddGuest,setShowAddGuest]=useState(false);
+  const [newGuest,setNewGuest]=useState({name:"",phone:"",email:"",rating:0,notes:""});
   const [broadcastOpen,setBroadcastOpen]=useState(false);
   const [broadcastMsg,setBroadcastMsg]=useState("");
   const [inquiryTemplate,setInquiryTemplate]=useState(()=>{
@@ -900,7 +904,12 @@ function App(){
     setLastSync(new Date());
   }
 
-  const filtered=bookings.filter(b=>{
+  function saveManualGuests(mg){
+    setManualGuests(mg);
+    try{localStorage.setItem("shirat_manual_guests",JSON.stringify(mg));}catch(e){}
+  }
+
+
     return(b.name.includes(search)||b.phone.includes(search))&&(fStatus==="all"||b.status===fStatus);
   });
 
@@ -1401,30 +1410,43 @@ function App(){
 
         {/* ── Guests ── */}
         {view==="guests"&&(()=>{
+          // בנה מפת אורחים מהזמנות
           const guestMap={};
           bookings.filter(b=>b.status!=="cancelled").forEach(b=>{
             const key=b.phone||b.name;
             if(!guestMap[key]){
-              guestMap[key]={name:b.name,phone:b.phone,email:b.email||"",visits:[],rating:b.rating||0};
+              guestMap[key]={name:b.name,phone:b.phone,email:b.email||"",visits:[],rating:b.rating||0,notes:"",_manual:false};
             }
             guestMap[key].visits.push(b);
             if(b.rating) guestMap[key].rating=b.rating;
             if(b.email) guestMap[key].email=b.email;
           });
+          // הוסף אורחים ידניים
+          manualGuests.forEach(mg=>{
+            const key=mg.phone||mg.name;
+            if(!guestMap[key]){
+              guestMap[key]={...mg,visits:[],_manual:true};
+            } else {
+              // עדכן פרטים מהאורח הידני אם קיים
+              if(mg.rating) guestMap[key].rating=mg.rating;
+              if(mg.notes) guestMap[key].notes=mg.notes;
+              if(mg.email) guestMap[key].email=mg.email;
+            }
+          });
           const guests=Object.values(guestMap).sort((a,b)=>b.visits.length-a.visits.length);
           const filteredG=guests.filter(g=>g.name.includes(guestSearch)||(g.phone&&g.phone.includes(guestSearch)));
           return(
             <div>
-              {/* כותרת + כפתור שידור */}
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:8}}>
                 <input value={guestSearch} onChange={e=>setGuestSearch(e.target.value)} placeholder="🔍 חיפוש אורח..."
-                  style={{padding:"8px 14px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:14,fontFamily:"'Heebo',sans-serif",width:"100%",maxWidth:260,background:"#fff",direction:"rtl",boxSizing:"border-box"}}/>
+                  style={{padding:"8px 14px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:14,fontFamily:"'Heebo',sans-serif",width:"100%",maxWidth:220,background:"#fff",direction:"rtl",boxSizing:"border-box"}}/>
                 <div style={{display:"flex",gap:8}}>
+                  <button onClick={()=>{setNewGuest({name:"",phone:"",email:"",rating:0,notes:""});setShowAddGuest(true);}}
+                    style={{...bS("#e8f5e9","#2e7d32"),fontSize:13,padding:"8px 14px"}}>+ הוסף אורח</button>
                   <button onClick={()=>setBroadcastOpen(true)}
-                    style={{...bS("#1a1a2e","#f4c26a"),fontSize:13,padding:"8px 14px"}}>📢 שידור לכל האורחים</button>
+                    style={{...bS("#1a1a2e","#f4c26a"),fontSize:13,padding:"8px 14px"}}>📢 שידור</button>
                 </div>
               </div>
-
               <div style={{display:"grid",gap:10}}>
                 {!filteredG.length&&<p style={{color:"#a09080",fontFamily:"'Heebo',sans-serif",fontSize:14}}>אין אורחים</p>}
                 {filteredG.map((g,i)=>{
@@ -1432,22 +1454,23 @@ function App(){
                   const sorted=g.visits.slice().sort((a,b)=>b.checkin.localeCompare(a.checkin));
                   const lastVisit=sorted[0];
                   return(
-                    <div key={i} onClick={()=>setGuestPopup(g)}
-                      style={{background:"#fff",borderRadius:14,padding:"14px 18px",boxShadow:"0 2px 10px rgba(0,0,0,.06)",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8,cursor:"pointer"}}
-                      onMouseEnter={e=>e.currentTarget.style.background="#fdfaf6"}
-                      onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
-                      <div>
+                    <div key={i} style={{background:"#fff",borderRadius:14,padding:"14px 18px",boxShadow:"0 2px 10px rgba(0,0,0,.06)",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+                      <div style={{cursor:"pointer",flex:1}} onClick={()=>setGuestPopup(g)}>
                         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
                           <span style={{fontWeight:800,color:"#1a1a2e",fontFamily:"'Heebo',sans-serif",fontSize:15}}>{g.name}</span>
                           {g.visits.length>1&&<span style={{background:"#f4c26a",color:"#1a1a2e",borderRadius:6,padding:"1px 8px",fontSize:11,fontWeight:700}}>חוזר ×{g.visits.length}</span>}
+                          {g._manual&&<span style={{background:"#e8f5e9",color:"#2e7d32",borderRadius:6,padding:"1px 8px",fontSize:11,fontWeight:700}}>ידני</span>}
                         </div>
                         <div style={{fontSize:12,color:"#8a7e6e",fontFamily:"'Heebo',sans-serif"}}>{g.phone}{g.email?` · ${g.email}`:""}</div>
-                        <div style={{fontSize:12,color:"#8a7e6e",fontFamily:"'Heebo',sans-serif",marginTop:2}}>ביקור אחרון: {fd(lastVisit.checkin)}</div>
+                        {lastVisit&&<div style={{fontSize:12,color:"#8a7e6e",fontFamily:"'Heebo',sans-serif",marginTop:2}}>ביקור אחרון: {fd(lastVisit.checkin)}</div>}
                         {g.rating>0&&<div style={{fontSize:12,marginTop:3}}>{Array(g.rating).fill("⭐").join("")}</div>}
+                        {g.notes&&<div style={{fontSize:11,color:"#7a6a58",marginTop:2,fontFamily:"'Heebo',sans-serif"}}>📝 {g.notes}</div>}
                       </div>
-                      <div style={{textAlign:"left"}}>
-                        <div style={{fontWeight:800,color:"#1a1a2e",fontSize:15,fontFamily:"'Heebo',sans-serif"}}>₪{totalSpent.toLocaleString()}</div>
+                      <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
+                        {totalSpent>0&&<div style={{fontWeight:800,color:"#1a1a2e",fontSize:15,fontFamily:"'Heebo',sans-serif"}}>₪{totalSpent.toLocaleString()}</div>}
                         <div style={{fontSize:11,color:"#8a7e6e",fontFamily:"'Heebo',sans-serif"}}>{g.visits.length} ביקורים</div>
+                        <button onClick={()=>setGuestEditPopup({...g,_origKey:g.phone||g.name})}
+                          style={{...bS("#f0eee8","#1a1a2e"),fontSize:12,padding:"5px 12px"}}>✏️ עריכה</button>
                       </div>
                     </div>
                   );
@@ -1459,6 +1482,100 @@ function App(){
       </div>
 
       {showForm&&<BookingForm booking={editB} onSave={save} onCancel={()=>{setShowForm(false);setEditB(null);}} existingBookings={bookings} blockedDates={blockedDates}/>}
+
+      {/* פופאפ עריכת אורח */}
+      {guestEditPopup&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center"}}
+          onClick={()=>setGuestEditPopup(null)}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:20,width:"min(420px,96vw)",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.22)",direction:"rtl",padding:"24px 28px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+              <h2 style={{margin:0,fontSize:18,fontFamily:"'Heebo',sans-serif",color:"#1a1a2e",fontWeight:800}}>✏️ עריכת אורח</h2>
+              <button onClick={()=>setGuestEditPopup(null)} style={{border:"none",background:"none",fontSize:22,cursor:"pointer",color:"#aaa"}}>✕</button>
+            </div>
+            {[{k:"name",l:"שם מלא"},{k:"phone",l:"טלפון"},{k:"email",l:"מייל"}].map(({k,l})=>(
+              <div key={k} style={{marginBottom:12}}>
+                <label style={{display:"block",fontSize:12,color:"#7a6a58",marginBottom:4,fontWeight:600,fontFamily:"'Heebo',sans-serif"}}>{l}</label>
+                <input value={guestEditPopup[k]||""} onChange={e=>setGuestEditPopup(p=>({...p,[k]:e.target.value}))}
+                  style={{width:"100%",padding:"9px 12px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:14,fontFamily:"'Heebo',sans-serif",direction:k==="email"?"ltr":"rtl",boxSizing:"border-box",outline:"none"}}/>
+              </div>
+            ))}
+            <div style={{marginBottom:12}}>
+              <label style={{display:"block",fontSize:12,color:"#7a6a58",marginBottom:6,fontWeight:600,fontFamily:"'Heebo',sans-serif"}}>דירוג ⭐</label>
+              <div style={{display:"flex",gap:6}}>
+                {[1,2,3,4,5].map(s=>(
+                  <button key={s} type="button" onClick={()=>setGuestEditPopup(p=>({...p,rating:p.rating===s?0:s}))}
+                    style={{fontSize:24,background:"none",border:"none",cursor:"pointer",opacity:guestEditPopup.rating>=s?1:0.25,padding:0}}>⭐</button>
+                ))}
+              </div>
+            </div>
+            <div style={{marginBottom:16}}>
+              <label style={{display:"block",fontSize:12,color:"#7a6a58",marginBottom:4,fontWeight:600,fontFamily:"'Heebo',sans-serif"}}>הערות</label>
+              <textarea value={guestEditPopup.notes||""} onChange={e=>setGuestEditPopup(p=>({...p,notes:e.target.value}))}
+                style={{width:"100%",padding:"9px 12px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:14,fontFamily:"'Heebo',sans-serif",direction:"rtl",boxSizing:"border-box",outline:"none",resize:"vertical",minHeight:60}}/>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>{
+                // עדכן אורח ידני קיים או הוסף חדש
+                const key=guestEditPopup.phone||guestEditPopup.name;
+                const exists=manualGuests.findIndex(mg=>(mg.phone||mg.name)===(guestEditPopup._origKey||key));
+                let updated;
+                if(exists>=0){
+                  updated=manualGuests.map((mg,i)=>i===exists?{...guestEditPopup}:mg);
+                } else {
+                  updated=[...manualGuests,{...guestEditPopup}];
+                }
+                saveManualGuests(updated);
+                setGuestEditPopup(null);
+              }} style={{flex:1,padding:"10px",borderRadius:10,border:"none",background:"#1a1a2e",color:"#fff",fontFamily:"'Heebo',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>שמירה</button>
+              <button onClick={()=>setGuestEditPopup(null)} style={{flex:1,padding:"10px",borderRadius:10,border:"none",background:"#f0eee8",color:"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>ביטול</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* פופאפ הוספת אורח ידני */}
+      {showAddGuest&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center"}}
+          onClick={()=>setShowAddGuest(false)}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:20,width:"min(420px,96vw)",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.22)",direction:"rtl",padding:"24px 28px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+              <h2 style={{margin:0,fontSize:18,fontFamily:"'Heebo',sans-serif",color:"#1a1a2e",fontWeight:800}}>+ הוספת אורח</h2>
+              <button onClick={()=>setShowAddGuest(false)} style={{border:"none",background:"none",fontSize:22,cursor:"pointer",color:"#aaa"}}>✕</button>
+            </div>
+            {[{k:"name",l:"שם מלא *"},{k:"phone",l:"טלפון"},{k:"email",l:"מייל"}].map(({k,l})=>(
+              <div key={k} style={{marginBottom:12}}>
+                <label style={{display:"block",fontSize:12,color:"#7a6a58",marginBottom:4,fontWeight:600,fontFamily:"'Heebo',sans-serif"}}>{l}</label>
+                <input value={newGuest[k]||""} onChange={e=>setNewGuest(p=>({...p,[k]:e.target.value}))}
+                  style={{width:"100%",padding:"9px 12px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:14,fontFamily:"'Heebo',sans-serif",direction:k==="email"?"ltr":"rtl",boxSizing:"border-box",outline:"none"}}/>
+              </div>
+            ))}
+            <div style={{marginBottom:12}}>
+              <label style={{display:"block",fontSize:12,color:"#7a6a58",marginBottom:6,fontWeight:600,fontFamily:"'Heebo',sans-serif"}}>דירוג ⭐</label>
+              <div style={{display:"flex",gap:6}}>
+                {[1,2,3,4,5].map(s=>(
+                  <button key={s} type="button" onClick={()=>setNewGuest(p=>({...p,rating:p.rating===s?0:s}))}
+                    style={{fontSize:24,background:"none",border:"none",cursor:"pointer",opacity:newGuest.rating>=s?1:0.25,padding:0}}>⭐</button>
+                ))}
+              </div>
+            </div>
+            <div style={{marginBottom:16}}>
+              <label style={{display:"block",fontSize:12,color:"#7a6a58",marginBottom:4,fontWeight:600,fontFamily:"'Heebo',sans-serif"}}>הערות</label>
+              <textarea value={newGuest.notes||""} onChange={e=>setNewGuest(p=>({...p,notes:e.target.value}))}
+                style={{width:"100%",padding:"9px 12px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:14,fontFamily:"'Heebo',sans-serif",direction:"rtl",boxSizing:"border-box",outline:"none",resize:"vertical",minHeight:60}}/>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>{
+                if(!newGuest.name.trim()){alert("נא להזין שם");return;}
+                const updated=[...manualGuests,{...newGuest}];
+                saveManualGuests(updated);
+                setShowAddGuest(false);
+                setNewGuest({name:"",phone:"",email:"",rating:0,notes:""});
+              }} style={{flex:1,padding:"10px",borderRadius:10,border:"none",background:"#1a1a2e",color:"#fff",fontFamily:"'Heebo',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>הוספה</button>
+              <button onClick={()=>setShowAddGuest(false)} style={{flex:1,padding:"10px",borderRadius:10,border:"none",background:"#f0eee8",color:"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>ביטול</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* פופאפ פרטי אורח */}
       {guestPopup&&(
