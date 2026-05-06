@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
@@ -1582,6 +1581,11 @@ function App(){
                         <div style={{fontSize:11,color:"#8a7e6e",fontFamily:"'Heebo',sans-serif"}}>{g.visits.length} ביקורים</div>
                         <button onClick={()=>setGuestEditPopup({...g,_origKey:g.phone||g.name})}
                           style={{...bS("#f0eee8","#1a1a2e"),fontSize:12,padding:"5px 12px"}}>✏️ עריכה</button>
+                        {g._manual&&<button onClick={()=>{
+                          if(!window.confirm(`למחוק את ${g.name}?`)) return;
+                          const updated=manualGuests.filter(mg=>(mg.phone||mg.name)!==(g.phone||g.name));
+                          saveManualGuests(updated);
+                        }} style={{...bS("#fce4ec","#c62828"),fontSize:12,padding:"5px 12px"}}>🗑️</button>}
                       </div>
                     </div>
                   );
@@ -1692,7 +1696,6 @@ function App(){
             </div>
             <div style={{display:"flex",gap:8}}>
               <button onClick={()=>{
-                // עדכן אורח ידני קיים או הוסף חדש
                 const key=guestEditPopup.phone||guestEditPopup.name;
                 const exists=manualGuests.findIndex(mg=>(mg.phone||mg.name)===(guestEditPopup._origKey||key));
                 let updated;
@@ -1706,6 +1709,14 @@ function App(){
               }} style={{flex:1,padding:"10px",borderRadius:10,border:"none",background:"#1a1a2e",color:"#fff",fontFamily:"'Heebo',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>שמירה</button>
               <button onClick={()=>setGuestEditPopup(null)} style={{flex:1,padding:"10px",borderRadius:10,border:"none",background:"#f0eee8",color:"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>ביטול</button>
             </div>
+            {guestEditPopup._manual&&(
+              <button onClick={()=>{
+                if(!window.confirm(`למחוק את ${guestEditPopup.name}?`)) return;
+                const updated=manualGuests.filter(mg=>(mg.phone||mg.name)!==(guestEditPopup._origKey||guestEditPopup.phone||guestEditPopup.name));
+                saveManualGuests(updated);
+                setGuestEditPopup(null);
+              }} style={{width:"100%",marginTop:10,padding:"9px",borderRadius:10,border:"none",background:"#fce4ec",color:"#c62828",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13,cursor:"pointer"}}>🗑️ מחיקת אורח</button>
+            )}
           </div>
         </div>
       )}
