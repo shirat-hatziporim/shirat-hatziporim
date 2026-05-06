@@ -296,6 +296,40 @@ async function loadFromSheets(){
   }
 }
 
+async function loadBlocked(){
+  try{
+    const data=await jsonp(SCRIPT_URL+"?action=getBlocked");
+    if(Array.isArray(data)) return data;
+    return [];
+  }catch(e){
+    try{const s=localStorage.getItem("shirat_blocked");return s?JSON.parse(s):[];}catch{return[];}
+  }
+}
+
+async function saveBlocked(blocked){
+  try{
+    localStorage.setItem("shirat_blocked",JSON.stringify(blocked));
+    await jsonp(`${SCRIPT_URL}?action=saveBlocked&blocked=${encodeURIComponent(JSON.stringify(blocked))}`);
+  }catch(e){console.error("שגיאה בשמירת חסימות:",e);}
+}
+
+async function loadExpenses(){
+  try{
+    const data=await jsonp(SCRIPT_URL+"?action=getExpenses");
+    if(Array.isArray(data)) return data.map(e=>({...e,amount:Number(e.amount||0)}));
+    return [];
+  }catch(e){
+    try{const s=localStorage.getItem("shirat_expenses");return s?JSON.parse(s):[];}catch{return[];}
+  }
+}
+
+async function saveExpenses(expenses){
+  try{
+    localStorage.setItem("shirat_expenses",JSON.stringify(expenses));
+    await jsonp(`${SCRIPT_URL}?action=saveExpenses&expenses=${encodeURIComponent(JSON.stringify(expenses))}`);
+  }catch(e){console.error("שגיאה בשמירת הוצאות:",e);}
+}
+
 async function saveToSheets(bookings){
   // שמירה מקומית תמיד
   try{localStorage.setItem("shirat_bookings",JSON.stringify(bookings));}catch(e){}
@@ -766,10 +800,18 @@ function App(){
       }
     }catch(e){}
     // תמיד טען מגוגל שיטס לקבל את הנתונים העדכניים
-    loadFromSheets().then(data=>{
+    Promise.all([loadFromSheets(),loadBlocked(),loadExpenses()]).then(([data,blocked,expenses])=>{
       if(data.length>0){
         setBookings(data);
         try{localStorage.setItem("shirat_bookings",JSON.stringify(data));}catch(e){}
+      }
+      if(blocked.length>0){
+        setBlockedDates(blocked);
+        try{localStorage.setItem("shirat_blocked",JSON.stringify(blocked));}catch(e){}
+      }
+      if(expenses.length>0){
+        setExpenses(expenses);
+        try{localStorage.setItem("shirat_expenses",JSON.stringify(expenses));}catch(e){}
       }
       setLoading(false);
       setLastSync(new Date());
@@ -1299,7 +1341,7 @@ https://mamimush.co.il/rooms/...
               <button onClick={()=>{
                 if(!newExpenseDesc||!newExpenseAmount)return;
                 const ne=[...expenses,{date:newExpenseDate,desc:newExpenseDesc,amount:Number(newExpenseAmount)}];
-                setExpenses(ne);localStorage.setItem("shirat_expenses",JSON.stringify(ne));
+                setExpenses(ne);saveExpenses(ne);
                 setNewExpenseDesc("");setNewExpenseAmount("");
               }} style={{padding:"8px 16px",borderRadius:10,border:"none",background:"#1a1a2e",color:"#fff",fontFamily:"'Heebo',sans-serif",fontWeight:700,cursor:"pointer"}}>הוסף</button>
             </div>
@@ -1316,7 +1358,7 @@ https://mamimush.co.il/rooms/...
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:10}}>
                   <span style={{fontWeight:700,color:"#c62828",fontFamily:"'Heebo',sans-serif"}}>{fm(e.amount)}</span>
-                  <button onClick={()=>{const ne=expenses.filter((_,j)=>j!==i);setExpenses(ne);localStorage.setItem("shirat_expenses",JSON.stringify(ne));}}
+                  <button onClick={()=>{const ne=expenses.filter((_,j)=>j!==i);setExpenses(ne);saveExpenses(ne);}}
                     style={{border:"none",background:"#fce4ec",borderRadius:7,padding:"4px 8px",cursor:"pointer",color:"#c62828"}}>🗑️</button>
                 </div>
               </div>
@@ -1396,7 +1438,7 @@ https://mamimush.co.il/rooms/...
               <button onClick={()=>{
                 if(!newBlockDate)return;
                 const nb=[...blockedDates,{date:newBlockDate,note:newBlockNote}];
-                setBlockedDates(nb);localStorage.setItem("shirat_blocked",JSON.stringify(nb));
+                setBlockedDates(nb);saveBlocked(nb);
                 setNewBlockDate("");setNewBlockNote("");
               }} style={{padding:"8px 16px",borderRadius:10,border:"none",background:"#1a1a2e",color:"#fff",fontFamily:"'Heebo',sans-serif",fontWeight:700,cursor:"pointer"}}>הוסף</button>
             </div>
@@ -1407,7 +1449,7 @@ https://mamimush.co.il/rooms/...
                   <div style={{fontWeight:700,color:"#1a1a2e",fontFamily:"'Heebo',sans-serif"}}>{fd(bd.date)}</div>
                   {bd.note&&<div style={{fontSize:12,color:"#8a7e6e",fontFamily:"'Heebo',sans-serif"}}>{bd.note}</div>}
                 </div>
-                <button onClick={()=>{const nb=blockedDates.filter((_,j)=>j!==i);setBlockedDates(nb);localStorage.setItem("shirat_blocked",JSON.stringify(nb));}}
+                <button onClick={()=>{const nb=blockedDates.filter((_,j)=>j!==i);setBlockedDates(nb);saveBlocked(nb);}}
                   style={{border:"none",background:"#fce4ec",borderRadius:7,padding:"5px 10px",cursor:"pointer",color:"#c62828",fontFamily:"'Heebo',sans-serif",fontWeight:700}}>הסר</button>
               </div>
             ))}
