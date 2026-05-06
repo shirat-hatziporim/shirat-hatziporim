@@ -731,7 +731,6 @@ function App(){
   const [showPrices,setShowPrices]=useState(false);
   const [showPriceEditor,setShowPriceEditor]=useState(false);
   const [priceTab,setPriceTab]=useState("view");
-  const [priceTab,setPriceTab]=useState("view"); // view | edit
   const [prices,setPrices]=useState(()=>{
     try{const s=localStorage.getItem("shirat_prices");return s?JSON.parse(s):DEFAULT_PRICES;}catch{return DEFAULT_PRICES;}
   });
