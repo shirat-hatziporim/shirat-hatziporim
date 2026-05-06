@@ -1697,14 +1697,28 @@ function App(){
             <div style={{display:"flex",gap:8}}>
               <button onClick={()=>{
                 const key=guestEditPopup.phone||guestEditPopup.name;
-                const exists=manualGuests.findIndex(mg=>(mg.phone||mg.name)===(guestEditPopup._origKey||key));
-                let updated;
-                if(exists>=0){
-                  updated=manualGuests.map((mg,i)=>i===exists?{...guestEditPopup}:mg);
+                const origKey=guestEditPopup._origKey||key;
+                if(guestEditPopup._manual){
+                  // אורח ידני — שמור ב-manualGuests
+                  const exists=manualGuests.findIndex(mg=>(mg.phone||mg.name)===origKey);
+                  let updated;
+                  if(exists>=0){
+                    updated=manualGuests.map((mg,i)=>i===exists?{...guestEditPopup}:mg);
+                  } else {
+                    updated=[...manualGuests,{...guestEditPopup}];
+                  }
+                  saveManualGuests(updated);
                 } else {
-                  updated=[...manualGuests,{...guestEditPopup}];
+                  // אורח מהזמנות — עדכן דירוג והערות בהזמנה האחרונה שלו
+                  const updated=bookings.map(b=>{
+                    if((b.phone||b.name)===origKey){
+                      return{...b,rating:guestEditPopup.rating||b.rating,notes:guestEditPopup.notes||b.notes};
+                    }
+                    return b;
+                  });
+                  setBookings(updated);
+                  syncSave(updated);
                 }
-                saveManualGuests(updated);
                 setGuestEditPopup(null);
               }} style={{flex:1,padding:"10px",borderRadius:10,border:"none",background:"#1a1a2e",color:"#fff",fontFamily:"'Heebo',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>שמירה</button>
               <button onClick={()=>setGuestEditPopup(null)} style={{flex:1,padding:"10px",borderRadius:10,border:"none",background:"#f0eee8",color:"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>ביטול</button>
