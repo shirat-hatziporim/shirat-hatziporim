@@ -618,6 +618,13 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[]}){
               <div><Lbl>נוספים (₪300/אדם)</Lbl><input style={iS()} type="number" min={0} max={4} value={f.extraGuests} onFocus={e=>e.target.select()} onChange={e=>set("extraGuests",parseInt(e.target.value)||0)}/></div>
               <div><Lbl>תינוקות (ללא תשלום)</Lbl><input style={iS()} type="number" min={0} max={3} value={f.babies||0} onFocus={e=>e.target.select()} onChange={e=>set("babies",parseInt(e.target.value)||0)}/></div>
             </div>
+            <div style={{marginTop:8,marginBottom:4}}>
+              <label style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",userSelect:"none"}}>
+                <input type="checkbox" checked={!!f.babyCrib} onChange={e=>set("babyCrib",e.target.checked)}
+                  style={{width:18,height:18,cursor:"pointer",accentColor:"#1a1a2e"}}/>
+                <span style={{fontFamily:"'Heebo',sans-serif",fontSize:14,color:"#1a1a2e",fontWeight:600}}>🛏️ נדרשת מיטת תינוק</span>
+              </label>
+            </div>
             <div style={{marginBottom:12}}>
               <Lbl>הנחה (₪) — השאר 0 אם אין הנחה</Lbl>
               <input style={{...iS(),borderColor:"#c8e6c9"}} type="number" min={0} value={f.discount||0} onFocus={e=>e.target.select()} onChange={e=>set("discount",parseInt(e.target.value)||0)}/>
@@ -666,6 +673,13 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[]}){
           <Sec title="הערות">
             <textarea style={{...iS(),resize:"vertical",minHeight:55,width:"100%"}} value={f.notes} onChange={e=>set("notes",e.target.value)} placeholder="הערות..."/>
           </Sec>
+          <div style={{marginBottom:16}}>
+            <label style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",userSelect:"none"}}>
+              <input type="checkbox" checked={!!f.receiptIssued} onChange={e=>set("receiptIssued",e.target.checked)}
+                style={{width:18,height:18,cursor:"pointer",accentColor:"#1a1a2e"}}/>
+              <span style={{fontFamily:"'Heebo',sans-serif",fontSize:14,color:"#1a1a2e",fontWeight:600}}>🧾 הונפקה קבלה</span>
+            </label>
+          </div>
           <div style={{display:"flex",gap:10}}>
             <button onClick={save} style={bS("#1a1a2e","#fff")}>שמירה</button>
             <button onClick={onCancel} style={bS("#f0eee8","#555")}>ביטול</button>
@@ -720,7 +734,7 @@ function CalendarView({bookings,onEdit,blockedDates=[],onToggleBlock}){
           const booked=occ[ds],isToday=ds===today.toISOString().split("T")[0],p=getDailyPrice(ds);
           return(
             <div key={ds} onClick={()=>{
-                if(booked&&booked[0]._blocked){onToggleBlock&&onToggleBlock(ds,'remove');}
+                if(booked&&booked[0]._blocked){onToggleBlock&&onToggleBlock(ds,'confirm');}
                 else if(booked){onEdit(booked[0]);}
                 else{onToggleBlock&&onToggleBlock(ds,'add');}
               }} title={booked?(booked[0]._blocked?"🔓 לחץ לשחרור החסימה":"✏️ לחץ לעריכת ההזמנה"):"🔒 לחץ לחסימת התאריך"}
@@ -766,6 +780,7 @@ function App(){
   const [newBlockDate,setNewBlockDate]=useState("");
   const [newBlockNote,setNewBlockNote]=useState("");
   const [blockPopup,setBlockPopup]=useState(null); // {date, note}
+  const [unblockConfirm,setUnblockConfirm]=useState(null); // date string
 
   const [hamburgerOpen,setHamburgerOpen]=useState(false);
   const [mobileActionMenu,setMobileActionMenu]=useState(null);
@@ -1008,7 +1023,11 @@ function App(){
                           onClick={()=>{if(window.innerWidth<700)setMobileActionMenu(b);}}>
                           <td style={{padding:"11px 12px"}}>
                             <div style={{fontWeight:700,color:"#1a1a2e"}}>{b.name}</div>
-                            {b.notes&&<div style={{fontSize:11,color:"#a09080",marginTop:2}}>{b.notes}</div>}
+                            <div style={{display:"flex",gap:4,marginTop:2,flexWrap:"wrap"}}>
+                              {b.notes&&<div style={{fontSize:11,color:"#a09080"}}>{b.notes}</div>}
+                              {b.babyCrib&&<span style={{fontSize:11,background:"#e3f2fd",color:"#1565c0",borderRadius:5,padding:"1px 6px",fontWeight:700}}>🛏️ מיטת תינוק</span>}
+                              {b.receiptIssued&&<span style={{fontSize:11,background:"#e8f5e9",color:"#2e7d32",borderRadius:5,padding:"1px 6px",fontWeight:700}}>🧾 קבלה</span>}
+                            </div>
                           </td>
                           <td style={{padding:"11px 12px",color:"#6a5e50",direction:"ltr"}}>{b.phone}</td>
                           <td style={{padding:"11px 12px",color:"#6a5e50",whiteSpace:"nowrap"}}>{fd(b.checkin)}</td>
@@ -1048,7 +1067,9 @@ function App(){
         {view==="calendar"&&<CalendarView bookings={bookings} onEdit={openEdit} blockedDates={blockedDates} onToggleBlock={(ds,action)=>{
               if(action==="add"){
                 setBlockPopup({date:ds,note:""});
-              } else {
+              } else if(action==="confirm"){
+                setUnblockConfirm(ds);
+              } else if(action==="remove"){
                 const nb=blockedDates.filter(b=>b.date!==ds);
                 setBlockedDates(nb);
                 saveBlocked(nb);
@@ -1084,6 +1105,25 @@ function App(){
                   setBlockedDates(nb);saveBlocked(nb);setBlockPopup(null);
                 }} style={{flex:1,padding:"10px",borderRadius:10,border:"none",background:"#1a1a2e",color:"#fff",fontFamily:"'Heebo',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>חסום</button>
                 <button onClick={()=>setBlockPopup(null)} style={{flex:1,padding:"10px",borderRadius:10,border:"none",background:"#f0eee8",color:"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>ביטול</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* פופאפ אישור ביטול חסימה */}
+        {unblockConfirm&&(
+          <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center"}}
+            onClick={()=>setUnblockConfirm(null)}>
+            <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:20,padding:"26px 28px",width:"min(320px,92vw)",boxShadow:"0 24px 80px rgba(0,0,0,.22)",direction:"rtl",textAlign:"center"}}>
+              <div style={{fontSize:32,marginBottom:8}}>🔓</div>
+              <h3 style={{margin:"0 0 6px",fontFamily:"'Heebo',sans-serif",color:"#1a1a2e",fontSize:17}}>שחרור חסימה</h3>
+              <p style={{margin:"0 0 20px",fontFamily:"'Heebo',sans-serif",color:"#8a7e6e",fontSize:13}}>לשחרר את החסימה של {fd(unblockConfirm)}?</p>
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={()=>{
+                  const nb=blockedDates.filter(b=>b.date!==unblockConfirm);
+                  setBlockedDates(nb);saveBlocked(nb);setUnblockConfirm(null);
+                }} style={{flex:1,padding:"10px",borderRadius:10,border:"none",background:"#c62828",color:"#fff",fontFamily:"'Heebo',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>שחרר</button>
+                <button onClick={()=>setUnblockConfirm(null)} style={{flex:1,padding:"10px",borderRadius:10,border:"none",background:"#f0eee8",color:"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>ביטול</button>
               </div>
             </div>
           </div>
@@ -1530,4 +1570,3 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 </body>
 </html>
- 
