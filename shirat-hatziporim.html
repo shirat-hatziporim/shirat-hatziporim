@@ -867,6 +867,13 @@ function App(){
               ? <span style={{fontSize:11,color:"#f4c26a",fontFamily:"'Heebo',sans-serif"}}>⏳ שומר...</span>
               : lastSync && <span style={{fontSize:11,color:"#4a6a4a",fontFamily:"'Heebo',sans-serif"}}>✅ מסונכרן</span>
             }
+            <button onClick={()=>{
+              setLoading(true);
+              Promise.all([loadFromSheets(),loadBlocked(),loadExpenses()]).then(([data,blocked,expenses])=>{
+                setBookings(data);setBlockedDates(blocked);setExpenses(expenses);
+                setLoading(false);setLastSync(new Date());
+              });
+            }} style={{border:"none",background:"none",color:"#6a6090",fontSize:14,cursor:"pointer",padding:"2px 6px"}} title="רענן נתונים">🔄</button>
           </div>
           <div className="desktop-btns" style={{display:"flex",gap:8}}>
             <button onClick={()=>setShowBlockedManager(true)} style={{background:"#252545",color:"#ff8a65",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>🔒 חסימות</button>
