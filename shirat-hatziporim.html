@@ -533,7 +533,7 @@ function sendReviewEmail(b){
 function sendReviewWhatsApp(b){
   if(!b.phone){alert("לא הוזן טלפון ללקוח זה");return;}
   const phone="972"+((b.phone||"").replace(/\D/g,"").replace(/^0/,""));
-  const custom=localStorage.getItem("shirat_review_template")||"";
+  const custom=localStorage.getItem("shirat_review_wa_template")||"";
   const text=custom?custom.replace("{שם}",b.name):`שלום ${b.name} 😊
 
 רצינו להודות לכם על שבחרתם להתארח בשירת הציפורים!
@@ -932,6 +932,9 @@ function App(){
   const [reviewTemplate,setReviewTemplate]=useState(()=>{
     try{const s=localStorage.getItem("shirat_review_template");return s||"";}catch{return "";}
   });
+  const [reviewWATemplate,setReviewWATemplate]=useState(()=>{
+    try{const s=localStorage.getItem("shirat_review_wa_template");return s||"";}catch{return "";}
+  });
 
   // טעינה ראשונית — תמיד מגוגל שיטס (המקור האמיתי)
   useEffect(()=>{
@@ -1028,7 +1031,7 @@ function App(){
             <button onClick={()=>setShowBlockedManager(true)} style={{background:"#252545",color:"#ff8a65",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>🔒 חסימות</button>
             <button onClick={()=>setShowExpenses(true)} style={{background:"#252545",color:"#a5d6a7",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>💸 הוצאות</button>
             <button onClick={()=>{setPriceTab('view');setShowPriceEditor(true);}} style={{background:"#252545",color:"#f4c26a",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}><span class="btn-text">📋 <span class="btn-text">מחירון</span></span><span style={{display:"none"}} className="btn-icon">📋</span></button>
-            <button onClick={()=>setShowInquiry(true)} style={{background:"#252545",color:"#a5d6a7",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📨 <span class="btn-text">מייל מתעניינים</span></button>
+            <button onClick={()=>setShowInquiry(true)} style={{background:"#252545",color:"#a5d6a7",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📨 <span class="btn-text">פנייה למתעניינים</span></button>
             <button onClick={()=>{setEmailEditorType("confirm");setShowEmailEditor(true);}} style={{background:"#252545",color:"#ce93d8",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📝 <span class="btn-text">עריכת מיילים</span></button>
           </div>
           <button onClick={()=>{setEditB(null);setShowForm(true);}} style={{background:"#f4c26a",color:"#1a1a2e",border:"none",borderRadius:10,padding:"7px 12px",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"'Heebo',sans-serif",whiteSpace:"nowrap"}}>+ הזמנה</button>
@@ -1052,7 +1055,7 @@ function App(){
             </div>
             {[
               {icon:"📋",label:"מחירון",action:()=>{setPriceTab("view");setShowPriceEditor(true);}},
-              {icon:"📨",label:"מייל מתעניינים",action:()=>setShowInquiry(true)},
+              {icon:"📨",label:"פנייה למתעניינים",action:()=>setShowInquiry(true)},
               {icon:"📝",label:"עריכת מיילים",action:()=>{setEmailEditorType("confirm");setShowEmailEditor(true);}},
             ].map(({icon,label,action})=>(
               <button key={label} onClick={()=>{action();setHamburgerOpen(false);}}
@@ -1884,10 +1887,12 @@ function App(){
       {/* מודל עריכת תבניות מייל */}
       {showEmailEditor&&(()=>{
         const isConfirm=emailEditorType==="confirm";
-        const template=isConfirm?confirmTemplate:reviewTemplate;
-        const setTemplate=isConfirm?setConfirmTemplate:setReviewTemplate;
-        const storageKey=isConfirm?"shirat_confirm_template":"shirat_review_template";
-        const defaultText=isConfirm?`שלום וברכה {שם},
+        const isReviewEmail=emailEditorType==="review";
+        const isReviewWA=emailEditorType==="reviewWA";
+        const template=isConfirm?confirmTemplate:isReviewEmail?reviewTemplate:reviewWATemplate;
+        const setTemplate=isConfirm?setConfirmTemplate:isReviewEmail?setReviewTemplate:setReviewWATemplate;
+        const storageKey=isConfirm?"shirat_confirm_template":isReviewEmail?"shirat_review_template":"shirat_review_wa_template";
+        const defaultConfirm=`שלום וברכה {שם},
 
 שמחים לאשר את הזמנתכם בצימר שירת הציפורים!
 
@@ -1901,32 +1906,53 @@ function App(){
 ביט / פייבוקס: 0504103353
 
 מחכים לבואכם!
-צימר "שירת הציפורים"`:
-          `שלום וברכה {שם},
+צימר "שירת הציפורים"`;
+        const defaultReviewEmail=`שלום וברכה {שם},
 
-רצינו להודות לכם מקרב לב...
+רצינו להודות לכם מקרב לב על שבחרתם להתארח אצלנו בצימר "שירת הציפורים".
+שמחנו מאוד לארח אתכם, ומקווים שנהנתם מהשהות.
 
-מצורפים קישורים:
-https://mamimush.co.il/rooms/...
+נשמח אם תוכלו להשאיר המלצה:
+
+מאמי מוש: https://mamimush.co.il/rooms/%D7%A6%D7%99%D7%9E%D7%A8%D7%99%D7%9D-308/
+דירה לשבת: https://dira4shabat.co.il/listing/%D7%A6%D7%99%D7%9E%D7%A8-%D7%A9%D7%99%D7%A8%D7%AA-%D7%94%D7%A6%D7%99%D7%A4%D7%95%D7%A8%D7%99%D7%9D-%D7%9E%D7%99%D7%A6%D7%93/
 
 בברכה,
-יעקב`;
+יעקב
+צימר שירת הציפורים`;
+        const defaultReviewWA=`שלום {שם} 😊
+
+רצינו להודות לכם על שבחרתם להתארח בשירת הציפורים!
+שמחנו מאוד לארח אתכם 🐦
+
+נשמח אם תוכלו להקדיש רגע ולהשאיר המלצה:
+
+מאמי מוש:
+https://mamimush.co.il/rooms/%D7%A6%D7%99%D7%9E%D7%A8%D7%99%D7%9D-308/
+
+דירה לשבת:
+https://dira4shabat.co.il/listing/%D7%A6%D7%99%D7%9E%D7%A8-%D7%A9%D7%99%D7%A8%D7%AA-%D7%94%D7%A6%D7%99%D7%A4%D7%95%D7%A8%D7%99%D7%9D-%D7%9E%D7%99%D7%A6%D7%93/
+
+תודה רבה! 🙏
+יעקב — שירת הציפורים`;
+        const defaultText=isConfirm?defaultConfirm:isReviewEmail?defaultReviewEmail:defaultReviewWA;
         return(
           <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}}>
             <div style={{background:"#fff",borderRadius:20,width:"min(580px,96vw)",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.22)",direction:"rtl",padding:"24px 28px"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-                <h2 style={{margin:0,fontSize:19,fontFamily:"'Heebo',sans-serif",color:"#1a1a2e",fontWeight:800}}>📝 עריכת תבנית מייל</h2>
+                <h2 style={{margin:0,fontSize:19,fontFamily:"'Heebo',sans-serif",color:"#1a1a2e",fontWeight:800}}>📝 עריכת תבניות</h2>
                 <button onClick={()=>setShowEmailEditor(false)} style={{border:"none",background:"none",fontSize:22,cursor:"pointer",color:"#aaa"}}>✕</button>
               </div>
-              <div style={{display:"flex",gap:8,marginBottom:16}}>
-                <button onClick={()=>setEmailEditorType("confirm")} style={{padding:"7px 16px",borderRadius:10,border:"none",cursor:"pointer",background:isConfirm?"#1a1a2e":"#f0eee8",color:isConfirm?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>📧 אישור הזמנה</button>
-                <button onClick={()=>setEmailEditorType("review")} style={{padding:"7px 16px",borderRadius:10,border:"none",cursor:"pointer",background:!isConfirm?"#1a1a2e":"#f0eee8",color:!isConfirm?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>⭐ בקשת ביקורת</button>
+              <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
+                <button onClick={()=>setEmailEditorType("confirm")} style={{padding:"7px 14px",borderRadius:10,border:"none",cursor:"pointer",background:isConfirm?"#1a1a2e":"#f0eee8",color:isConfirm?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>📧 אישור הזמנה</button>
+                <button onClick={()=>setEmailEditorType("review")} style={{padding:"7px 14px",borderRadius:10,border:"none",cursor:"pointer",background:isReviewEmail?"#1a1a2e":"#f0eee8",color:isReviewEmail?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>⭐ ביקורת — מייל</button>
+                <button onClick={()=>setEmailEditorType("reviewWA")} style={{padding:"7px 14px",borderRadius:10,border:"none",cursor:"pointer",background:isReviewWA?"#25d366":"#f0eee8",color:isReviewWA?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>⭐ ביקורת — WhatsApp</button>
               </div>
               {isConfirm&&<div style={{background:"#f0f4ff",borderRadius:8,padding:"8px 12px",marginBottom:12,fontSize:12,color:"#3a4a8a",fontFamily:"'Heebo',sans-serif"}}>
-                ניתן להשתמש במשתנים: <b>{"{שם}"}</b> שם לקוח, <b>{"{סוג}"}</b> סוג אירוח, <b>{"{כניסה}"}</b> <b>{"{יציאה}"}</b> תאריכים, <b>{"{לילות}"}</b> מספר לילות, <b>{"{סכום}"}</b> מחיר
+                משתנים: <b>{"{שם}"}</b> שם לקוח, <b>{"{סוג}"}</b> סוג אירוח, <b>{"{כניסה}"}</b> <b>{"{יציאה}"}</b> תאריכים, <b>{"{לילות}"}</b> לילות, <b>{"{סכום}"}</b> מחיר
               </div>}
-              {!isConfirm&&<div style={{background:"#f0f4ff",borderRadius:8,padding:"8px 12px",marginBottom:12,fontSize:12,color:"#3a4a8a",fontFamily:"'Heebo',sans-serif"}}>
-                ניתן להשתמש במשתנה: <b>{"{שם}"}</b> שם לקוח
+              {(isReviewEmail||isReviewWA)&&<div style={{background:"#f0f4ff",borderRadius:8,padding:"8px 12px",marginBottom:12,fontSize:12,color:"#3a4a8a",fontFamily:"'Heebo',sans-serif"}}>
+                משתנה: <b>{"{שם}"}</b> שם לקוח
               </div>}
               <textarea value={template||defaultText} onChange={e=>setTemplate(e.target.value)}
                 style={{width:"100%",boxSizing:"border-box",padding:"10px 12px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:13,fontFamily:"'Heebo',sans-serif",minHeight:300,resize:"vertical",direction:"rtl"}}/>
@@ -1935,7 +1961,7 @@ https://mamimush.co.il/rooms/...
                   localStorage.setItem(storageKey,template||defaultText);
                   alert("התבנית נשמרה!");
                 }} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#1a1a2e",color:"#fff",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>שמירה</button>
-                <button onClick={()=>setTemplate("")} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#f0eee8",color:"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>איפוס לברירת מחדל</button>
+                <button onClick={()=>setTemplate("")} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#f0eee8",color:"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>איפוס</button>
                 <button onClick={()=>setShowEmailEditor(false)} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#f0eee8",color:"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>סגור</button>
               </div>
             </div>
@@ -1943,7 +1969,7 @@ https://mamimush.co.il/rooms/...
         );
       })()}
 
-      {/* מודל מייל מתעניינים */}
+      {/* מודל פנייה למתעניינים */}
       {showInquiry&&(
         <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}}>
           <div style={{background:"#fff",borderRadius:20,width:"min(560px,96vw)",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.22)",direction:"rtl",padding:"24px 28px"}}>
@@ -2059,7 +2085,7 @@ https://mamimush.co.il/rooms/...
 
               {icon:"🔒",label:"חסימת תאריכים",action:()=>setShowBlockedManager(true)},
               {icon:"💸",label:"מעקב הוצאות",action:()=>setShowExpenses(true)},
-              {icon:"📨",label:"מייל מתעניינים",action:()=>setShowInquiry(true)},
+              {icon:"📨",label:"פנייה למתעניינים",action:()=>setShowInquiry(true)},
               {icon:"📝",label:"עריכת מיילים",action:()=>{setEmailEditorType("confirm");setShowEmailEditor(true);}},
             ].map(({icon,label,action})=>(
               <button key={label} onClick={()=>{action();setHamburgerOpen(false);}}
