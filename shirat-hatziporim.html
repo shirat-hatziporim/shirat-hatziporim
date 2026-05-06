@@ -299,7 +299,10 @@ async function loadFromSheets(){
 async function loadBlocked(){
   try{
     const data=await jsonp(SCRIPT_URL+"?action=getBlocked");
-    if(Array.isArray(data)) return data;
+    if(Array.isArray(data)) return data.map(b=>({
+      ...b,
+      date:typeof b.date==="string"&&b.date.includes("T")?b.date.split("T")[0]:String(b.date||"")
+    })).filter(b=>b.date);
     return [];
   }catch(e){
     try{const s=localStorage.getItem("shirat_blocked");return s?JSON.parse(s):[];}catch{return[];}
@@ -681,7 +684,7 @@ function CalendarView({bookings,onEdit,blockedDates=[]}){
   const firstDay=new Date(yr,mo,1).getDay(),dim=new Date(yr,mo+1,0).getDate();
   const occ={};
   blockedDates.forEach(bd=>{
-    const ds=parseDate(bd.date)||bd.date;
+    const ds=bd.date&&bd.date.includes("T")?bd.date.split("T")[0]:(bd.date||"");
     if(ds)(occ[ds]=occ[ds]||[]).push({name:`🔒 ${bd.note||"חסום"}`,_blocked:true});
   });
   bookings.filter(b=>b.status!=="cancelled").forEach(b=>{
