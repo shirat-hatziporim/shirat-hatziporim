@@ -378,13 +378,13 @@ function buildMsg(b){
 }
 
 function sendWhatsApp(b){
-  const phone="972"+b.phone.replace(/\D/g,"").replace(/^0/,"");
+  const phone="972"+((b.phone||"").replace(/\D/g,"").replace(/^0/,""));
   const msg=encodeURIComponent(buildMsg(b));
   window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${msg}`,"_blank");
 }
 
 function sendReminderWhatsApp(b){
-  const phone="972"+b.phone.replace(/\D/g,"").replace(/^0/,"");
+  const phone="972"+((b.phone||"").replace(/\D/g,"").replace(/^0/,""));
   const balance=Math.max(0,(b.total||0)-(b.paid||0));
   const msg=encodeURIComponent(
 `שלום ${b.name} 😊
@@ -910,7 +910,7 @@ function App(){
   }
 
 
-    return(b.name.includes(search)||b.phone.includes(search))&&(fStatus==="all"||b.status===fStatus);
+    return((b.name||"").includes(search)||(b.phone||"").includes(search))&&(fStatus==="all"||b.status===fStatus);
   });
 
   function save(b){
@@ -1138,7 +1138,7 @@ function App(){
                 style={{padding:"8px 14px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:14,fontFamily:"'Heebo',sans-serif",width:"100%",maxWidth:300,background:"#fff",direction:"rtl",boxSizing:"border-box"}}/>
               {calSearch&&(
                 <div style={{marginTop:8,background:"#fff",borderRadius:12,boxShadow:"0 4px 16px rgba(0,0,0,.1)",overflow:"hidden"}}>
-                  {bookings.filter(b=>b.name.includes(calSearch)||b.phone.includes(calSearch)).slice(0,5).map(b=>(
+                  {bookings.filter(b=>(b.name||"").includes(calSearch)||(b.phone||"").includes(calSearch)).slice(0,5).map(b=>(
                     <div key={b.id} onClick={()=>{openEdit(b);setCalSearch("");}}
                       style={{padding:"10px 14px",cursor:"pointer",borderBottom:"1px solid #f0eee8",fontFamily:"'Heebo',sans-serif",display:"flex",justifyContent:"space-between",alignItems:"center"}}
                       onMouseEnter={e=>e.currentTarget.style.background="#f8f4ec"}
@@ -1147,7 +1147,7 @@ function App(){
                       <span style={{fontSize:12,color:"#8a7e6e"}}>{fd(b.checkin)} — {fd(b.checkout)}</span>
                     </div>
                   ))}
-                  {!bookings.filter(b=>b.name.includes(calSearch)||b.phone.includes(calSearch)).length&&
+                  {!bookings.filter(b=>(b.name||"").includes(calSearch)||(b.phone||"").includes(calSearch)).length&&
                     <div style={{padding:"10px 14px",color:"#a09080",fontFamily:"'Heebo',sans-serif",fontSize:13}}>לא נמצאו תוצאות</div>}
                 </div>
               )}
@@ -1434,7 +1434,7 @@ function App(){
             }
           });
           const guests=Object.values(guestMap).sort((a,b)=>b.visits.length-a.visits.length);
-          const filteredG=guests.filter(g=>g.name.includes(guestSearch)||(g.phone&&g.phone.includes(guestSearch)));
+          const filteredG=guests.filter(g=>(g.name||"").includes(guestSearch)||(g.phone||"").includes(guestSearch));
           return(
             <div>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:8}}>
