@@ -402,6 +402,27 @@ ${balance>0?`\n💳 יתרה לתשלום בהגעה: ${fm(balance)}`:""}
   window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${msg}`,"_blank");
 }
 
+function sendReminderEmail(b){
+  if(!b.email){alert("לא הוזן מייל ללקוח זה");return;}
+  const balance=Math.max(0,(b.total||0)-(b.paid||0));
+  const subject=encodeURIComponent(`מחר מגיעים! תזכורת — שירת הציפורים 🐦`);
+  const body=encodeURIComponent(
+`שלום ${b.name},
+
+תזכורת — מחר אתם מגיעים לשירת הציפורים! 🐦
+
+📅 כניסה: ${fd(b.checkin)} בשעה 13:00
+📅 יציאה: ${fd(b.checkout)} בשעה 11:00
+📍 כתובת: נחל קדם 93, מיצד (אספר)
+🗺️ Waze: https://waze.com/ul?q=מיצד+נחל+קדם+93
+${balance>0?`\n💳 יתרה לתשלום בהגעה: ${fm(balance)}`:"✅ שולם במלואו"}
+
+מחכים לכם!
+יעקב 📞 050-410-3353
+שירת הציפורים`);
+  window.open(`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(b.email)}&su=${subject}&body=${body}`,"_blank");
+}
+
 // ── מיילים ──
 const MY_EMAIL="shirathatziporim@gmail.com";
 
@@ -858,6 +879,8 @@ function App(){
   const [newGuest,setNewGuest]=useState({name:"",phone:"",email:"",rating:0,notes:""});
   const [broadcastOpen,setBroadcastOpen]=useState(false);
   const [broadcastMsg,setBroadcastMsg]=useState("");
+  const [reminderPopup,setReminderPopup]=useState(null);
+  const [confirmPopup,setConfirmPopup]=useState(null);
   const [inquiryTemplate,setInquiryTemplate]=useState(()=>{
     try{const s=localStorage.getItem("shirat_inquiry");return s||DEFAULT_INQUIRY_TEMPLATE;}catch{return DEFAULT_INQUIRY_TEMPLATE;}
   });
@@ -1112,10 +1135,8 @@ function App(){
                           <td className="desktop-actions" style={{padding:"11px 12px"}}>
                             <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
                               <button onClick={e=>{e.stopPropagation();openEdit(b);}} style={{border:"none",background:"#f0eee8",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="עריכה">✏️</button>
-                              <button onClick={()=>sendWhatsApp(b)} style={{border:"none",background:"#e7f7e7",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="שלח WhatsApp אישור">💬</button>
-                              <button onClick={()=>sendReminderWhatsApp(b)} style={{border:"none",background:"#fff8e1",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="תזכורת WhatsApp (יום לפני)">⏰</button>
-
-                              <button onClick={()=>sendConfirmEmail(b)} style={{border:"none",background:"#e3f2fd",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="מייל אישור הזמנה">📧</button>
+                              <button onClick={()=>setConfirmPopup(b)} style={{border:"none",background:"#e7f7e7",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="אישור הזמנה">✉️</button>
+                              <button onClick={()=>setReminderPopup(b)} style={{border:"none",background:"#fff8e1",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="תזכורת יום לפני">⏰</button>
                               <button onClick={()=>sendReviewEmail(b)} style={{border:"none",background:"#f3e5f5",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="מייל בקשת ביקורת">⭐</button>
                               <button onClick={()=>setDelC(b.id)} style={{border:"none",background:"#fce4ec",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="מחיקה">🗑️</button>
                             </div>
@@ -1480,6 +1501,50 @@ function App(){
           );
         })()}
       </div>
+
+      {/* פופאפ אישור הזמנה */}
+      {confirmPopup&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center"}}
+          onClick={()=>setConfirmPopup(null)}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:20,padding:"26px 28px",width:"min(320px,92vw)",boxShadow:"0 24px 80px rgba(0,0,0,.22)",direction:"rtl",textAlign:"center"}}>
+            <div style={{fontSize:32,marginBottom:8}}>✉️</div>
+            <h3 style={{margin:"0 0 4px",fontFamily:"'Heebo',sans-serif",color:"#1a1a2e",fontSize:17}}>אישור הזמנה</h3>
+            <p style={{margin:"0 0 20px",fontFamily:"'Heebo',sans-serif",color:"#8a7e6e",fontSize:13}}>{confirmPopup.name} · {fd(confirmPopup.checkin)}</p>
+            <div style={{display:"flex",gap:8,flexDirection:"column"}}>
+              <button onClick={()=>{sendWhatsApp(confirmPopup);setConfirmPopup(null);}}
+                style={{...bS("#25d366","#fff"),width:"100%",fontSize:14}}>💬 WhatsApp</button>
+              <button onClick={()=>{sendConfirmEmail(confirmPopup);setConfirmPopup(null);}}
+                style={{...bS("#1565c0","#fff"),width:"100%",fontSize:14}}>📧 מייל</button>
+              <button onClick={()=>{sendWhatsApp(confirmPopup);sendConfirmEmail(confirmPopup);setConfirmPopup(null);}}
+                style={{...bS("#f0eee8","#1a1a2e"),width:"100%",fontSize:14}}>💬 + 📧 שניהם</button>
+              <button onClick={()=>setConfirmPopup(null)}
+                style={{...bS("#fce4ec","#c62828"),width:"100%",fontSize:13}}>ביטול</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* פופאפ תזכורת */}
+      {reminderPopup&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center"}}
+          onClick={()=>setReminderPopup(null)}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:20,padding:"26px 28px",width:"min(320px,92vw)",boxShadow:"0 24px 80px rgba(0,0,0,.22)",direction:"rtl",textAlign:"center"}}>
+            <div style={{fontSize:32,marginBottom:8}}>⏰</div>
+            <h3 style={{margin:"0 0 4px",fontFamily:"'Heebo',sans-serif",color:"#1a1a2e",fontSize:17}}>תזכורת יום לפני</h3>
+            <p style={{margin:"0 0 20px",fontFamily:"'Heebo',sans-serif",color:"#8a7e6e",fontSize:13}}>{reminderPopup.name} · {fd(reminderPopup.checkin)}</p>
+            <div style={{display:"flex",gap:8,flexDirection:"column"}}>
+              <button onClick={()=>{sendReminderWhatsApp(reminderPopup);setReminderPopup(null);}}
+                style={{...bS("#25d366","#fff"),width:"100%",fontSize:14}}>💬 WhatsApp</button>
+              <button onClick={()=>{sendReminderEmail(reminderPopup);setReminderPopup(null);}}
+                style={{...bS("#1565c0","#fff"),width:"100%",fontSize:14}}>📧 מייל</button>
+              <button onClick={()=>{sendReminderWhatsApp(reminderPopup);sendReminderEmail(reminderPopup);setReminderPopup(null);}}
+                style={{...bS("#f0eee8","#1a1a2e"),width:"100%",fontSize:14}}>💬 + 📧 שניהם</button>
+              <button onClick={()=>setReminderPopup(null)}
+                style={{...bS("#fce4ec","#c62828"),width:"100%",fontSize:13}}>ביטול</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showForm&&<BookingForm booking={editB} onSave={save} onCancel={()=>{setShowForm(false);setEditB(null);}} existingBookings={bookings} blockedDates={blockedDates}/>}
 
@@ -1942,9 +2007,8 @@ https://mamimush.co.il/rooms/...
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
               {[
                 {icon:"✏️",label:"עריכה",color:"#f0eee8",tc:"#1a1a2e",action:()=>{openEdit(mobileActionMenu);setMobileActionMenu(null);}},
-                {icon:"💬",label:"WhatsApp",color:"#e7f7e7",tc:"#2e7d32",action:()=>{sendWhatsApp(mobileActionMenu);setMobileActionMenu(null);}},
-                {icon:"⏰",label:"תזכורת",color:"#fff8e1",tc:"#f57f17",action:()=>{sendReminderWhatsApp(mobileActionMenu);setMobileActionMenu(null);}},
-                {icon:"📧",label:"אישור הזמנה",color:"#e3f2fd",tc:"#1565c0",action:()=>{sendConfirmEmail(mobileActionMenu);setMobileActionMenu(null);}},
+                {icon:"✉️",label:"אישור הזמנה",color:"#e7f7e7",tc:"#2e7d32",action:()=>{setConfirmPopup(mobileActionMenu);setMobileActionMenu(null);}},
+                {icon:"⏰",label:"תזכורת",color:"#fff8e1",tc:"#f57f17",action:()=>{setReminderPopup(mobileActionMenu);setMobileActionMenu(null);}},
                 {icon:"⭐",label:"בקשת ביקורת",color:"#f3e5f5",tc:"#7b1fa2",action:()=>{sendReviewEmail(mobileActionMenu);setMobileActionMenu(null);}},
                 {icon:"🗑️",label:"מחיקה",color:"#fce4ec",tc:"#c62828",action:()=>{setDelC(mobileActionMenu.id);setMobileActionMenu(null);}},
               ].map(({icon,label,color,tc,action})=>(
