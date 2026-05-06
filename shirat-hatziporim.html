@@ -640,7 +640,7 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[]}){
 }
 
 // ── Calendar ──
-function CalendarView({bookings,onEdit}){
+function CalendarView({bookings,onEdit,blockedDates=[]}){
   const today=new Date();
   const [vd,setVd]=useState(new Date(today.getFullYear(),today.getMonth(),1));
   const yr=vd.getFullYear(),mo=vd.getMonth();
@@ -749,23 +749,6 @@ function App(){
     try{const s=localStorage.getItem("shirat_review_template");return s||"";}catch{return "";}
   });
 
-  // בדיקת תזכורות ביום פתיחה
-  useEffect(()=>{
-    if(!bookings.length)return;
-    const {todayArrivals,tomorrowArrivals}=checkReminders(bookings);
-    if(todayArrivals.length){
-      const names=todayArrivals.map(b=>b.name).join(", ");
-      if(window.confirm(`🏡 היום מגיעים: ${names}
-לשלוח WhatsApp?`)){
-        todayArrivals.forEach(b=>sendWhatsApp(b));
-      }
-    }
-    if(tomorrowArrivals.length){
-      const names=tomorrowArrivals.map(b=>b.name).join(", ");
-      alert(`⏰ תזכורת: מחר מגיעים ${names}`);
-    }
-  },[bookings.length>0]);
-
   // טעינה ראשונית — תמיד מגוגל שיטס (המקור האמיתי)
   useEffect(()=>{
     // הצג נתונים מקומיים מיידית בזמן הטעינה
@@ -845,7 +828,8 @@ function App(){
             }
           </div>
           <div className="desktop-btns" style={{display:"flex",gap:8}}>
-            
+            <button onClick={()=>setShowBlockedManager(true)} style={{background:"#252545",color:"#ff8a65",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>🔒 חסימות</button>
+            <button onClick={()=>setShowExpenses(true)} style={{background:"#252545",color:"#a5d6a7",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>💸 הוצאות</button>
             <button onClick={()=>{setPriceTab('view');setShowPriceEditor(true);}} style={{background:"#252545",color:"#f4c26a",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}><span class="btn-text">📋 <span class="btn-text">מחירון</span></span><span style={{display:"none"}} className="btn-icon">📋</span></button>
             <button onClick={()=>setShowInquiry(true)} style={{background:"#252545",color:"#a5d6a7",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📨 <span class="btn-text">מייל מתעניינים</span></button>
             <button onClick={()=>{setEmailEditorType("confirm");setShowEmailEditor(true);}} style={{background:"#252545",color:"#ce93d8",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📝 <span class="btn-text">עריכת מיילים</span></button>
@@ -1007,7 +991,7 @@ function App(){
         )}
 
         {/* ── Calendar ── */}
-        {view==="calendar"&&<CalendarView bookings={bookings} onEdit={openEdit}/>}
+        {view==="calendar"&&<CalendarView bookings={bookings} onEdit={openEdit} blockedDates={blockedDates}/>}
 
         {/* ── Reports ── */}
         {view==="reports"&&(
