@@ -401,8 +401,10 @@ function sendWhatsApp(b){
 function sendReminderWhatsApp(b){
   const phone="972"+((b.phone||"").replace(/\D/g,"").replace(/^0/,""));
   const balance=Math.max(0,(b.total||0)-(b.paid||0));
-  const msg=encodeURIComponent(
-`שלום ${b.name} 😊
+  const custom=localStorage.getItem("shirat_reminder_template")||"";
+  const text=custom
+    ?custom.replace("{שם}",b.name).replace("{כניסה}",fd(b.checkin)).replace("{יציאה}",fd(b.checkout))
+    :`שלום ${b.name} 😊
 
 תזכורת — *מחר* אתם מגיעים לשירת הציפורים! 🐦
 
@@ -413,16 +415,18 @@ function sendReminderWhatsApp(b){
 ${balance>0?`\n💳 יתרה לתשלום בהגעה: ${fm(balance)}`:""}
 
 מחכים לכם! 😊
-יעקב 📞 050-410-3353`);
-  window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${msg}`,"_blank");
+יעקב 📞 050-410-3353`;
+  window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(text)}`,"_blank");
 }
 
 function sendReminderEmail(b){
   if(!b.email){alert("לא הוזן מייל ללקוח זה");return;}
   const balance=Math.max(0,(b.total||0)-(b.paid||0));
+  const custom=localStorage.getItem("shirat_reminder_template")||"";
   const subject=encodeURIComponent(`מחר מגיעים! תזכורת — שירת הציפורים 🐦`);
-  const body=encodeURIComponent(
-`שלום ${b.name},
+  const bodyText=custom
+    ?custom.replace("{שם}",b.name).replace("{כניסה}",fd(b.checkin)).replace("{יציאה}",fd(b.checkout))
+    :`שלום ${b.name},
 
 תזכורת — מחר אתם מגיעים לשירת הציפורים! 🐦
 
@@ -434,8 +438,8 @@ ${balance>0?`\n💳 יתרה לתשלום בהגעה: ${fm(balance)}`:"✅ שו�
 
 מחכים לכם!
 יעקב 📞 050-410-3353
-שירת הציפורים`);
-  window.open(`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(b.email)}&su=${subject}&body=${body}`,"_blank");
+שירת הציפורים`;
+  window.open(`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(b.email)}&su=${subject}&body=${encodeURIComponent(bodyText)}`,"_blank");
 }
 
 // ── מיילים ──
@@ -533,7 +537,7 @@ function sendReviewEmail(b){
 function sendReviewWhatsApp(b){
   if(!b.phone){alert("לא הוזן טלפון ללקוח זה");return;}
   const phone="972"+((b.phone||"").replace(/\D/g,"").replace(/^0/,""));
-  const custom=localStorage.getItem("shirat_review_wa_template")||"";
+  const custom=localStorage.getItem("shirat_review_template")||"";
   const text=custom?custom.replace("{שם}",b.name):`שלום ${b.name} 😊
 
 רצינו להודות לכם על שבחרתם להתארח בשירת הציפורים!
@@ -932,8 +936,8 @@ function App(){
   const [reviewTemplate,setReviewTemplate]=useState(()=>{
     try{const s=localStorage.getItem("shirat_review_template");return s||"";}catch{return "";}
   });
-  const [reviewWATemplate,setReviewWATemplate]=useState(()=>{
-    try{const s=localStorage.getItem("shirat_review_wa_template");return s||"";}catch{return "";}
+  const [reminderTemplate,setReminderTemplate]=useState(()=>{
+    try{const s=localStorage.getItem("shirat_reminder_template");return s||"";}catch{return "";}
   });
 
   // טעינה ראשונית — תמיד מגוגל שיטס (המקור האמיתי)
@@ -1032,7 +1036,7 @@ function App(){
             <button onClick={()=>setShowExpenses(true)} style={{background:"#252545",color:"#a5d6a7",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>💸 הוצאות</button>
             <button onClick={()=>{setPriceTab('view');setShowPriceEditor(true);}} style={{background:"#252545",color:"#f4c26a",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}><span class="btn-text">📋 <span class="btn-text">מחירון</span></span><span style={{display:"none"}} className="btn-icon">📋</span></button>
             <button onClick={()=>setShowInquiry(true)} style={{background:"#252545",color:"#a5d6a7",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📨 <span class="btn-text">פנייה למתעניינים</span></button>
-            <button onClick={()=>{setEmailEditorType("confirm");setShowEmailEditor(true);}} style={{background:"#252545",color:"#ce93d8",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📝 <span class="btn-text">עריכת מיילים</span></button>
+            <button onClick={()=>{setEmailEditorType("confirm");setShowEmailEditor(true);}} style={{background:"#252545",color:"#ce93d8",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📝 <span class="btn-text">עריכת תבניות</span></button>
           </div>
           <button onClick={()=>{setEditB(null);setShowForm(true);}} style={{background:"#f4c26a",color:"#1a1a2e",border:"none",borderRadius:10,padding:"7px 12px",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"'Heebo',sans-serif",whiteSpace:"nowrap"}}>+ הזמנה</button>
           {/* המבורגר - נייד בלבד */}
@@ -1056,7 +1060,7 @@ function App(){
             {[
               {icon:"📋",label:"מחירון",action:()=>{setPriceTab("view");setShowPriceEditor(true);}},
               {icon:"📨",label:"פנייה למתעניינים",action:()=>setShowInquiry(true)},
-              {icon:"📝",label:"עריכת מיילים",action:()=>{setEmailEditorType("confirm");setShowEmailEditor(true);}},
+              {icon:"📝",label:"עריכת תבניות",action:()=>{setEmailEditorType("confirm");setShowEmailEditor(true);}},
             ].map(({icon,label,action})=>(
               <button key={label} onClick={()=>{action();setHamburgerOpen(false);}}
                 style={{background:"#252545",color:"#f4c26a",border:"1px solid #3a3a6e",borderRadius:10,padding:"12px 16px",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer",textAlign:"right",display:"flex",alignItems:"center",gap:10}}>
@@ -1884,14 +1888,14 @@ function App(){
         </div>
       )}
 
-      {/* מודל עריכת תבניות מייל */}
+      {/* מודל עריכת תבניות */}
       {showEmailEditor&&(()=>{
         const isConfirm=emailEditorType==="confirm";
-        const isReviewEmail=emailEditorType==="review";
-        const isReviewWA=emailEditorType==="reviewWA";
-        const template=isConfirm?confirmTemplate:isReviewEmail?reviewTemplate:reviewWATemplate;
-        const setTemplate=isConfirm?setConfirmTemplate:isReviewEmail?setReviewTemplate:setReviewWATemplate;
-        const storageKey=isConfirm?"shirat_confirm_template":isReviewEmail?"shirat_review_template":"shirat_review_wa_template";
+        const isReview=emailEditorType==="review";
+        const isReminder=emailEditorType==="reminder";
+        const template=isConfirm?confirmTemplate:isReview?reviewTemplate:reminderTemplate;
+        const setTemplate=isConfirm?setConfirmTemplate:isReview?setReviewTemplate:setReminderTemplate;
+        const storageKey=isConfirm?"shirat_confirm_template":isReview?"shirat_review_template":"shirat_reminder_template";
         const defaultConfirm=`שלום וברכה {שם},
 
 שמחים לאשר את הזמנתכם בצימר שירת הציפורים!
@@ -1907,20 +1911,7 @@ function App(){
 
 מחכים לבואכם!
 צימר "שירת הציפורים"`;
-        const defaultReviewEmail=`שלום וברכה {שם},
-
-רצינו להודות לכם מקרב לב על שבחרתם להתארח אצלנו בצימר "שירת הציפורים".
-שמחנו מאוד לארח אתכם, ומקווים שנהנתם מהשהות.
-
-נשמח אם תוכלו להשאיר המלצה:
-
-מאמי מוש: https://mamimush.co.il/rooms/%D7%A6%D7%99%D7%9E%D7%A8%D7%99%D7%9D-308/
-דירה לשבת: https://dira4shabat.co.il/listing/%D7%A6%D7%99%D7%9E%D7%A8-%D7%A9%D7%99%D7%A8%D7%AA-%D7%94%D7%A6%D7%99%D7%A4%D7%95%D7%A8%D7%99%D7%9D-%D7%9E%D7%99%D7%A6%D7%93/
-
-בברכה,
-יעקב
-צימר שירת הציפורים`;
-        const defaultReviewWA=`שלום {שם} 😊
+        const defaultReview=`שלום {שם} 😊
 
 רצינו להודות לכם על שבחרתם להתארח בשירת הציפורים!
 שמחנו מאוד לארח אתכם 🐦
@@ -1935,7 +1926,18 @@ https://dira4shabat.co.il/listing/%D7%A6%D7%99%D7%9E%D7%A8-%D7%A9%D7%99%D7%A8%D7
 
 תודה רבה! 🙏
 יעקב — שירת הציפורים`;
-        const defaultText=isConfirm?defaultConfirm:isReviewEmail?defaultReviewEmail:defaultReviewWA;
+        const defaultReminder=`שלום {שם} 😊
+
+תזכורת — מחר אתם מגיעים לשירת הציפורים! 🐦
+
+📅 כניסה: {כניסה} בשעה 13:00
+📅 יציאה: {יציאה} בשעה 11:00
+📍 כתובת: נחל קדם 93, מיצד
+🗺️ https://waze.com/ul?q=מיצד+נחל+קדם+93
+
+מחכים לכם! 😊
+יעקב 📞 050-410-3353`;
+        const defaultText=isConfirm?defaultConfirm:isReview?defaultReview:defaultReminder;
         return(
           <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}}>
             <div style={{background:"#fff",borderRadius:20,width:"min(580px,96vw)",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.22)",direction:"rtl",padding:"24px 28px"}}>
@@ -1945,14 +1947,17 @@ https://dira4shabat.co.il/listing/%D7%A6%D7%99%D7%9E%D7%A8-%D7%A9%D7%99%D7%A8%D7
               </div>
               <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
                 <button onClick={()=>setEmailEditorType("confirm")} style={{padding:"7px 14px",borderRadius:10,border:"none",cursor:"pointer",background:isConfirm?"#1a1a2e":"#f0eee8",color:isConfirm?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>📧 אישור הזמנה</button>
-                <button onClick={()=>setEmailEditorType("review")} style={{padding:"7px 14px",borderRadius:10,border:"none",cursor:"pointer",background:isReviewEmail?"#1a1a2e":"#f0eee8",color:isReviewEmail?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>⭐ ביקורת — מייל</button>
-                <button onClick={()=>setEmailEditorType("reviewWA")} style={{padding:"7px 14px",borderRadius:10,border:"none",cursor:"pointer",background:isReviewWA?"#25d366":"#f0eee8",color:isReviewWA?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>⭐ ביקורת — WhatsApp</button>
+                <button onClick={()=>setEmailEditorType("review")} style={{padding:"7px 14px",borderRadius:10,border:"none",cursor:"pointer",background:isReview?"#1a1a2e":"#f0eee8",color:isReview?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>⭐ בקשת ביקורת</button>
+                <button onClick={()=>setEmailEditorType("reminder")} style={{padding:"7px 14px",borderRadius:10,border:"none",cursor:"pointer",background:isReminder?"#f57f17":"#f0eee8",color:isReminder?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>⏰ תזכורת יום לפני</button>
               </div>
               {isConfirm&&<div style={{background:"#f0f4ff",borderRadius:8,padding:"8px 12px",marginBottom:12,fontSize:12,color:"#3a4a8a",fontFamily:"'Heebo',sans-serif"}}>
                 משתנים: <b>{"{שם}"}</b> שם לקוח, <b>{"{סוג}"}</b> סוג אירוח, <b>{"{כניסה}"}</b> <b>{"{יציאה}"}</b> תאריכים, <b>{"{לילות}"}</b> לילות, <b>{"{סכום}"}</b> מחיר
               </div>}
-              {(isReviewEmail||isReviewWA)&&<div style={{background:"#f0f4ff",borderRadius:8,padding:"8px 12px",marginBottom:12,fontSize:12,color:"#3a4a8a",fontFamily:"'Heebo',sans-serif"}}>
-                משתנה: <b>{"{שם}"}</b> שם לקוח
+              {isReview&&<div style={{background:"#f0f4ff",borderRadius:8,padding:"8px 12px",marginBottom:12,fontSize:12,color:"#3a4a8a",fontFamily:"'Heebo',sans-serif"}}>
+                תבנית משותפת למייל ו-WhatsApp · משתנה: <b>{"{שם}"}</b> שם לקוח
+              </div>}
+              {isReminder&&<div style={{background:"#fff8e1",borderRadius:8,padding:"8px 12px",marginBottom:12,fontSize:12,color:"#7a5000",fontFamily:"'Heebo',sans-serif"}}>
+                תבנית משותפת למייל ו-WhatsApp · משתנים: <b>{"{שם}"}</b> שם לקוח, <b>{"{כניסה}"}</b> <b>{"{יציאה}"}</b> תאריכים
               </div>}
               <textarea value={template||defaultText} onChange={e=>setTemplate(e.target.value)}
                 style={{width:"100%",boxSizing:"border-box",padding:"10px 12px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:13,fontFamily:"'Heebo',sans-serif",minHeight:300,resize:"vertical",direction:"rtl"}}/>
@@ -2086,7 +2091,7 @@ https://dira4shabat.co.il/listing/%D7%A6%D7%99%D7%9E%D7%A8-%D7%A9%D7%99%D7%A8%D7
               {icon:"🔒",label:"חסימת תאריכים",action:()=>setShowBlockedManager(true)},
               {icon:"💸",label:"מעקב הוצאות",action:()=>setShowExpenses(true)},
               {icon:"📨",label:"פנייה למתעניינים",action:()=>setShowInquiry(true)},
-              {icon:"📝",label:"עריכת מיילים",action:()=>{setEmailEditorType("confirm");setShowEmailEditor(true);}},
+              {icon:"📝",label:"עריכת תבניות",action:()=>{setEmailEditorType("confirm");setShowEmailEditor(true);}},
             ].map(({icon,label,action})=>(
               <button key={label} onClick={()=>{action();setHamburgerOpen(false);}}
                 style={{background:"#252545",color:"#f4c26a",border:"1px solid #3a3a6e",borderRadius:10,padding:"12px 16px",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer",textAlign:"right",display:"flex",alignItems:"center",gap:10}}>
