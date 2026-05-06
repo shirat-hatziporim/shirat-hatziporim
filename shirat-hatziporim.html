@@ -1434,7 +1434,8 @@ https://mamimush.co.il/rooms/...
               <button onClick={()=>{
                 if(!newBlockDate)return;
                 const nb=[...blockedDates,{date:newBlockDate,note:newBlockNote}];
-                setBlockedDates(nb);saveBlocked(nb);
+                setBlockedDates(nb);
+                saveBlocked(nb).then(()=>loadBlocked().then(d=>{if(d.length>0)setBlockedDates(d);}));
                 setNewBlockDate("");setNewBlockNote("");
               }} style={{padding:"8px 16px",borderRadius:10,border:"none",background:"#1a1a2e",color:"#fff",fontFamily:"'Heebo',sans-serif",fontWeight:700,cursor:"pointer"}}>הוסף</button>
             </div>
@@ -1445,7 +1446,7 @@ https://mamimush.co.il/rooms/...
                   <div style={{fontWeight:700,color:"#1a1a2e",fontFamily:"'Heebo',sans-serif"}}>{fd(bd.date)}</div>
                   {bd.note&&<div style={{fontSize:12,color:"#8a7e6e",fontFamily:"'Heebo',sans-serif"}}>{bd.note}</div>}
                 </div>
-                <button onClick={()=>{const nb=blockedDates.filter((_,j)=>j!==i);setBlockedDates(nb);saveBlocked(nb);}}
+                <button onClick={()=>{const nb=blockedDates.filter((_,j)=>j!==i);setBlockedDates(nb);saveBlocked(nb).then(()=>loadBlocked().then(d=>setBlockedDates(d)));}}
                   style={{border:"none",background:"#fce4ec",borderRadius:7,padding:"5px 10px",cursor:"pointer",color:"#c62828",fontFamily:"'Heebo',sans-serif",fontWeight:700}}>הסר</button>
               </div>
             ))}
