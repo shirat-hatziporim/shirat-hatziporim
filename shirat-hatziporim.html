@@ -387,6 +387,7 @@ async function saveTemplateToSheets(key,value){
 }
 
 
+async function saveToSheets(bookings){
   // שמירה מקומית תמיד
   try{localStorage.setItem("shirat_bookings",JSON.stringify(bookings));}catch(e){}
   // שמירה לגוגל שיטס — שליחה בחלקים אם צריך
