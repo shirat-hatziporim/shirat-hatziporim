@@ -1046,10 +1046,12 @@ function App(){
         {view==="calendar"&&<CalendarView bookings={bookings} onEdit={openEdit} blockedDates={blockedDates} onToggleBlock={(ds,action)=>{
               if(action==="add"){
                 const nb=[...blockedDates,{date:ds,note:""}];
-                setBlockedDates(nb);saveBlocked(nb).then(()=>loadBlocked().then(d=>{if(d.length>0)setBlockedDates(d);}));
+                setBlockedDates(nb);
+                saveBlocked(nb);
               } else {
                 const nb=blockedDates.filter(b=>b.date!==ds);
-                setBlockedDates(nb);saveBlocked(nb).then(()=>loadBlocked().then(d=>setBlockedDates(d)));
+                setBlockedDates(nb);
+                saveBlocked(nb);
               }
             }}/>}
 
