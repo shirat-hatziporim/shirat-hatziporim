@@ -646,7 +646,7 @@ function CalendarView({bookings,onEdit}){
   const yr=vd.getFullYear(),mo=vd.getMonth();
   const firstDay=new Date(yr,mo,1).getDay(),dim=new Date(yr,mo+1,0).getDate();
   const occ={};
-  blockedDates.forEach(bd=>{(occ[bd.date]=occ[bd.date]||[]).push({name:`🔒 ${bd.note||"חסום"}`,_blocked:true});});
+
   bookings.filter(b=>b.status!=="cancelled").forEach(b=>{
     const checkin=parseDate(b.checkin);
     const checkout=parseDate(b.checkout);
@@ -717,12 +717,13 @@ function App(){
   const [search,setSearch]=useState("");
   const [fStatus,setFStatus]=useState("all");
   const [delC,setDelC]=useState(null);
-  const [hamburgerOpen,setHamburgerOpen]=useState(false);
-  const [mobileActionMenu,setMobileActionMenu]=useState(null);
   const [blockedDates,setBlockedDates]=useState(()=>{try{const s=localStorage.getItem("shirat_blocked");return s?JSON.parse(s):[];}catch{return[];}});
   const [showBlockedManager,setShowBlockedManager]=useState(false);
   const [newBlockDate,setNewBlockDate]=useState("");
   const [newBlockNote,setNewBlockNote]=useState("");
+  const [hamburgerOpen,setHamburgerOpen]=useState(false);
+  const [mobileActionMenu,setMobileActionMenu]=useState(null);
+
   const [expenses,setExpenses]=useState(()=>{try{const s=localStorage.getItem("shirat_expenses");return s?JSON.parse(s):[];}catch{return[];}});
   const [showExpenses,setShowExpenses]=useState(false);
   const [newExpenseDesc,setNewExpenseDesc]=useState("");
@@ -802,21 +803,13 @@ function App(){
   });
 
   function save(b){
-    const isNew=!(b.id&&bookings.find(x=>x.id===b.id));
     let updated;
-    if(!isNew) updated=bookings.map(x=>x.id===b.id?b:x);
+    if(b.id&&bookings.find(x=>x.id===b.id)) updated=bookings.map(x=>x.id===b.id?b:x);
     else updated=[...bookings,b];
     setBookings(updated);
     syncSave(updated);
     setShowForm(false);setEditB(null);
-    // WhatsApp אוטומטי להזמנה חדשה מאושרת
-    if(isNew&&b.status==="confirmed"&&b.phone){
-      setTimeout(()=>{
-        if(window.confirm(`לשלוח הודעת אישור ב-WhatsApp ל${b.name}?`)){
-          sendWhatsApp(b);
-        }
-      },300);
-    }
+
   }
   function openEdit(b){setEditB(b);setShowForm(true);}
   function deleteB(id){const updated=bookings.filter(b=>b.id!==id);setBookings(updated);syncSave(updated);setDelC(null);}
@@ -972,8 +965,8 @@ function App(){
                       const sc=SC[b.status],bal=Math.max(0,(b.total||0)-(b.paid||0));
                       return(
                         <tr key={b.id} style={{borderBottom:"1px solid #f4f0ea",transition:"background .1s",cursor:"pointer",background:b.checkin===new Date().toISOString().split("T")[0]?"#e3f2fd":"transparent"}}
-                          onMouseEnter={e=>e.currentTarget.style.background="#fdfaf6"}
-                          onMouseLeave={e=>e.currentTarget.style.background="transparent"}
+                          onMouseEnter={e=>e.currentTarget.style.background=b.checkin===new Date().toISOString().split("T")[0]?"#bbdefb":"#fdfaf6"}
+                          onMouseLeave={e=>e.currentTarget.style.background=b.checkin===new Date().toISOString().split("T")[0]?"#e3f2fd":"transparent"}
                           onClick={()=>{if(window.innerWidth<700)setMobileActionMenu(b);}}>
                           <td style={{padding:"11px 12px"}}>
                             <div style={{fontWeight:700,color:"#1a1a2e"}}>{b.name}</div>
@@ -1297,42 +1290,7 @@ https://mamimush.co.il/rooms/...
         </div>
       )}
 
-            {/* 🔒 מנהל חסימות */}
-      {showBlockedManager&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}}>
-          <div style={{background:"#fff",borderRadius:20,width:"min(480px,96vw)",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.22)",direction:"rtl",padding:"24px 28px"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-              <h2 style={{margin:0,fontSize:19,fontFamily:"'Heebo',sans-serif",color:"#1a1a2e",fontWeight:800}}>🔒 חסימת תאריכים</h2>
-              <button onClick={()=>setShowBlockedManager(false)} style={{border:"none",background:"none",fontSize:22,cursor:"pointer",color:"#aaa"}}>✕</button>
-            </div>
-            <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
-              <input type="date" value={newBlockDate} onChange={e=>setNewBlockDate(e.target.value)}
-                style={{padding:"8px 12px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:14,flex:1}}/>
-              <input value={newBlockNote} onChange={e=>setNewBlockNote(e.target.value)}
-                placeholder="סיבה" style={{padding:"8px 12px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:14,flex:2,fontFamily:"'Heebo',sans-serif"}}/>
-              <button onClick={()=>{
-                if(!newBlockDate)return;
-                const nb=[...blockedDates,{date:newBlockDate,note:newBlockNote}];
-                setBlockedDates(nb);localStorage.setItem("shirat_blocked",JSON.stringify(nb));
-                setNewBlockDate("");setNewBlockNote("");
-              }} style={{padding:"8px 16px",borderRadius:10,border:"none",background:"#1a1a2e",color:"#fff",fontFamily:"'Heebo',sans-serif",fontWeight:700,cursor:"pointer"}}>הוסף</button>
-            </div>
-            {blockedDates.length===0&&<p style={{color:"#a09080",fontFamily:"'Heebo',sans-serif",fontSize:14}}>אין תאריכים חסומים</p>}
-            {[...blockedDates].sort((a,b)=>a.date.localeCompare(b.date)).map((bd,i)=>(
-              <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #f0eee8"}}>
-                <div>
-                  <div style={{fontWeight:700,color:"#1a1a2e",fontFamily:"'Heebo',sans-serif"}}>{fd(bd.date)}</div>
-                  {bd.note&&<div style={{fontSize:12,color:"#8a7e6e",fontFamily:"'Heebo',sans-serif"}}>{bd.note}</div>}
-                </div>
-                <button onClick={()=>{const nb=blockedDates.filter((_,j)=>j!==i);setBlockedDates(nb);localStorage.setItem("shirat_blocked",JSON.stringify(nb));}}
-                  style={{border:"none",background:"#fce4ec",borderRadius:7,padding:"5px 10px",cursor:"pointer",color:"#c62828",fontFamily:"'Heebo',sans-serif",fontWeight:700}}>הסר</button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 💸 מעקב הוצאות */}
+            {/* 💸 מעקב הוצאות */}
       {showExpenses&&(
         <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}}>
           <div style={{background:"#fff",borderRadius:20,width:"min(520px,96vw)",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.22)",direction:"rtl",padding:"24px 28px"}}>
@@ -1392,6 +1350,7 @@ https://mamimush.co.il/rooms/...
             </div>
             {[
               {icon:"📋",label:"מחירון",action:()=>{setPriceTab("view");setShowPriceEditor(true);}},
+
               {icon:"🔒",label:"חסימת תאריכים",action:()=>setShowBlockedManager(true)},
               {icon:"💸",label:"מעקב הוצאות",action:()=>setShowExpenses(true)},
               {icon:"📨",label:"מייל מתעניינים",action:()=>setShowInquiry(true)},
@@ -1430,6 +1389,41 @@ https://mamimush.co.il/rooms/...
                 </button>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+            {/* 🔒 מנהל חסימות */}
+      {showBlockedManager&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <div style={{background:"#fff",borderRadius:20,width:"min(480px,96vw)",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.22)",direction:"rtl",padding:"24px 28px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <h2 style={{margin:0,fontSize:19,fontFamily:"'Heebo',sans-serif",color:"#1a1a2e",fontWeight:800}}>🔒 חסימת תאריכים</h2>
+              <button onClick={()=>setShowBlockedManager(false)} style={{border:"none",background:"none",fontSize:22,cursor:"pointer",color:"#aaa"}}>✕</button>
+            </div>
+            <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
+              <input type="date" value={newBlockDate} onChange={e=>setNewBlockDate(e.target.value)}
+                style={{padding:"8px 12px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:14,flex:1}}/>
+              <input value={newBlockNote} onChange={e=>setNewBlockNote(e.target.value)}
+                placeholder="סיבה" style={{padding:"8px 12px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:14,flex:2,fontFamily:"'Heebo',sans-serif"}}/>
+              <button onClick={()=>{
+                if(!newBlockDate)return;
+                const nb=[...blockedDates,{date:newBlockDate,note:newBlockNote}];
+                setBlockedDates(nb);localStorage.setItem("shirat_blocked",JSON.stringify(nb));
+                setNewBlockDate("");setNewBlockNote("");
+              }} style={{padding:"8px 16px",borderRadius:10,border:"none",background:"#1a1a2e",color:"#fff",fontFamily:"'Heebo',sans-serif",fontWeight:700,cursor:"pointer"}}>הוסף</button>
+            </div>
+            {blockedDates.length===0&&<p style={{color:"#a09080",fontFamily:"'Heebo',sans-serif",fontSize:14}}>אין תאריכים חסומים</p>}
+            {[...blockedDates].sort((a,b)=>a.date.localeCompare(b.date)).map((bd,i)=>(
+              <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #f0eee8"}}>
+                <div>
+                  <div style={{fontWeight:700,color:"#1a1a2e",fontFamily:"'Heebo',sans-serif"}}>{fd(bd.date)}</div>
+                  {bd.note&&<div style={{fontSize:12,color:"#8a7e6e",fontFamily:"'Heebo',sans-serif"}}>{bd.note}</div>}
+                </div>
+                <button onClick={()=>{const nb=blockedDates.filter((_,j)=>j!==i);setBlockedDates(nb);localStorage.setItem("shirat_blocked",JSON.stringify(nb));}}
+                  style={{border:"none",background:"#fce4ec",borderRadius:7,padding:"5px 10px",cursor:"pointer",color:"#c62828",fontFamily:"'Heebo',sans-serif",fontWeight:700}}>הסר</button>
+              </div>
+            ))}
           </div>
         </div>
       )}
