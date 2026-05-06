@@ -278,8 +278,12 @@ function jsonp(url){
 }
 
 function mapBooking(b){
+  let phone=String(b.phone||"");
+  // אם הטלפון הוא מספר ומתחיל ב-5 — הוסף 0
+  if(phone&&!phone.startsWith("0")&&!phone.startsWith("+")&&phone.length===9) phone="0"+phone;
   return{
     ...b,
+    phone,
     id:Number(b.id)||Math.random(),
     paid:Number(b.paid)||0,
     total:Number(b.total)||0,
