@@ -791,33 +791,26 @@ function App(){
 
   // טעינה ראשונית — תמיד מגוגל שיטס (המקור האמיתי)
   useEffect(()=>{
-    // הצג נתונים מקומיים מיידית בזמן הטעינה
-    try{
-      const local=localStorage.getItem("shirat_bookings");
-      if(local){
-        const parsed=JSON.parse(local);
-        if(Array.isArray(parsed)&&parsed.length>0){
-          setBookings(parsed);
-          setLoading(false);
-        }
-      }
-    }catch(e){}
-    // תמיד טען מגוגל שיטס לקבל את הנתונים העדכניים
+    // טען תמיד מגוגל שיטס
     Promise.all([loadFromSheets(),loadBlocked(),loadExpenses()]).then(([data,blocked,expenses])=>{
-      if(data.length>0){
-        setBookings(data);
-        try{localStorage.setItem("shirat_bookings",JSON.stringify(data));}catch(e){}
-      }
-      if(blocked.length>0){
-        setBlockedDates(blocked);
-        try{localStorage.setItem("shirat_blocked",JSON.stringify(blocked));}catch(e){}
-      }
-      if(expenses.length>0){
-        setExpenses(expenses);
-        try{localStorage.setItem("shirat_expenses",JSON.stringify(expenses));}catch(e){}
-      }
+      setBookings(data);
+      setBlockedDates(blocked);
+      setExpenses(expenses);
+      try{localStorage.setItem("shirat_bookings",JSON.stringify(data));}catch(e){}
+      try{localStorage.setItem("shirat_blocked",JSON.stringify(blocked));}catch(e){}
+      try{localStorage.setItem("shirat_expenses",JSON.stringify(expenses));}catch(e){}
       setLoading(false);
       setLastSync(new Date());
+    }).catch(()=>{
+      try{
+        const b=localStorage.getItem("shirat_bookings");
+        const bl=localStorage.getItem("shirat_blocked");
+        const ex=localStorage.getItem("shirat_expenses");
+        if(b)setBookings(JSON.parse(b));
+        if(bl)setBlockedDates(JSON.parse(bl));
+        if(ex)setExpenses(JSON.parse(ex));
+      }catch(e){}
+      setLoading(false);
     });
   },[]);
 
