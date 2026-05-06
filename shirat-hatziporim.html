@@ -1523,6 +1523,7 @@ function App(){
         const withPhone=all.filter(g=>g.phone);
         const withEmail=all.filter(g=>g.email);
         return(
+          <>
           <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center"}}
             onClick={()=>setBroadcastOpen(false)}>
             <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:20,width:"min(480px,96vw)",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.22)",direction:"rtl",padding:"24px 28px"}}>
@@ -1558,13 +1559,14 @@ function App(){
                   window.open(`https://mail.google.com/mail/?view=cm&bcc=${encodeURIComponent(emails)}&su=${subject}&body=${body}`,"_blank");
                 }} style={{...bS("#1565c0","#fff"),fontSize:13,flex:1}}>
                   📧 מייל ({withEmail.length})
-                </button>
+                </button>}
               </div>
               <div style={{marginTop:10,fontSize:11,color:"#a09080",fontFamily:"'Heebo',sans-serif"}}>
-                💡 ניתן להשתמש ב- {String.fromCharCode(123)}שם{String.fromCharCode(125)} בהודעת WhatsApp לשם אישי לכל אורח
+                {"💡 ניתן להשתמש ב- {שם} בהודעת WhatsApp לשם אישי לכל אורח"}
               </div>
             </div>
           </div>
+          </>
         );
       })()}
 
