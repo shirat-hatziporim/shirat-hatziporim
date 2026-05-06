@@ -646,7 +646,10 @@ function CalendarView({bookings,onEdit,blockedDates=[]}){
   const yr=vd.getFullYear(),mo=vd.getMonth();
   const firstDay=new Date(yr,mo,1).getDay(),dim=new Date(yr,mo+1,0).getDate();
   const occ={};
-
+  blockedDates.forEach(bd=>{
+    const ds=parseDate(bd.date)||bd.date;
+    if(ds)(occ[ds]=occ[ds]||[]).push({name:`🔒 ${bd.note||"חסום"}`,_blocked:true});
+  });
   bookings.filter(b=>b.status!=="cancelled").forEach(b=>{
     const checkin=parseDate(b.checkin);
     const checkout=parseDate(b.checkout);
