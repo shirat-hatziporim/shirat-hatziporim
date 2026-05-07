@@ -258,23 +258,27 @@ function isUnavailable(ds){ return isPast(ds)||isBlocked(ds)||isBooked(ds); }
 
 // טען נתונים מ-Sheets
 function loadData(){
-  // טען מחירים
+  // טען מחירים מ-Sheets
   const cbp="cbp"+Date.now();
   const sp=document.createElement("script");
   sp.src=SCRIPT_URL+"?action=getTemplates&callback="+cbp+"&t="+Date.now();
   window[cbp]=function(data){
-    // המחירים נשמרים תחת מפתח 'shirat_prices' בגיליון תבניות
     if(data&&data.shirat_prices){
-      try{const p=JSON.parse(data.shirat_prices);
-        if(p.weekday) PRICES.weekday=p.weekday;
-        if(p.weekend) PRICES.weekend=p.weekend;
-        if(p.packageDeal) PRICES.packageDeal=p.packageDeal;
-        if(p.sundayExtra) PRICES.sundayExtra=p.sundayExtra;
-        if(p.extraGuest) PRICES.extraGuest=p.extraGuest;
-      }catch(e){}
+      try{
+        const p=JSON.parse(data.shirat_prices);
+        if(p.weekday)    PRICES.weekday=Number(p.weekday);
+        if(p.weekend)    PRICES.weekend=Number(p.weekend);
+        if(p.packageDeal)PRICES.packageDeal=Number(p.packageDeal);
+        if(p.sundayExtra)PRICES.sundayExtra=Number(p.sundayExtra);
+        if(p.extraGuest) PRICES.extraGuest=Number(p.extraGuest);
+        // אם המשתמש כבר בחר תאריכים — חשב מחדש
+        if(document.getElementById("checkin").value&&document.getElementById("checkout").value) calcPrice();
+      }catch(e){console.log("prices parse error",e);}
     }
-    delete window[cbp]; document.body.removeChild(sp);
+    delete window[cbp];
+    try{document.body.removeChild(sp);}catch(e){}
   };
+  sp.onerror=function(){delete window[cbp];};
   document.body.appendChild(sp);
   const cb="cb"+Date.now();
   const s=document.createElement("script");
