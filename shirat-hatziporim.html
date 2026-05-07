@@ -1128,17 +1128,182 @@ function App(){
     const totalWords=numberToWords(totalWithVat);
     const paymentMethods={"bit":"ביט","paybox":"פייבוקס","transfer":"העברה בנקאית","cash":"מזומן","card":"כרטיס אשראי"};
     const payMethod=paymentMethods[inv.paymentMethod]||inv.paymentMethod||"לא צוין";
+    const docNum=`${inv.type==="receipt"?"R":"I"}${inv.num}`;
+    const color="#2e7d5e";
 
-    const vatSection=inv.vatType==="vat"?`
-      <tr><td>מחיר לפני מע"מ</td><td style="text-align:left">₪${inv.total.toLocaleString()}</td></tr>
-      <tr><td>מע"מ 18%</td><td style="text-align:left">₪${vatAmount.toLocaleString()}</td></tr>
-      <tr style="background:#1a1a2e;color:#fff;font-weight:800;font-size:15px">
-        <td>סה"כ כולל מע"מ</td><td style="text-align:left">₪${totalWithVat.toLocaleString()}</td>
-      </tr>`:`
-      <tr style="background:#1a1a2e;color:#fff;font-weight:800;font-size:15px">
-        <td>סה"כ לתשלום</td><td style="text-align:left">₪${totalWithVat.toLocaleString()}</td>
-      </tr>
-      <tr><td colspan="2" style="font-size:11px;color:#888;padding-top:4px">עוסק פטור — אינו מחייב במע"מ</td></tr>`;
+    const html=`<!DOCTYPE html><html dir="rtl" lang="he">
+<head><meta charset="UTF-8"><style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:Arial,sans-serif;direction:rtl;color:#222;background:#fff;font-size:13px;}
+.page{max-width:780px;margin:0 auto;padding:0;}
+/* HEADER */
+.header{background:${color};color:#fff;padding:28px 36px;display:flex;justify-content:space-between;align-items:center;}
+.header-left{text-align:right;}
+.biz-name{font-size:22px;font-weight:900;letter-spacing:.02em;}
+.biz-detail{font-size:11px;opacity:.85;margin-top:2px;line-height:1.6;}
+.logo{width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.4);}
+/* DOC TITLE BAR */
+.title-bar{background:#f5f5f5;border-bottom:3px solid ${color};padding:14px 36px;display:flex;justify-content:space-between;align-items:center;}
+.doc-title{font-size:22px;font-weight:900;color:${color};}
+.doc-meta{text-align:left;font-size:12px;color:#555;line-height:1.8;}
+.draft-badge{background:#e65100;color:#fff;font-size:13px;font-weight:900;padding:4px 14px;border-radius:4px;margin-right:10px;}
+/* BODY */
+.body{padding:24px 36px;}
+/* PARTIES */
+.parties{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;}
+.party-box{background:#f9f9f9;border-radius:8px;padding:14px 16px;border-right:4px solid ${color};}
+.party-title{font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;}
+.party-name{font-size:15px;font-weight:800;margin-bottom:4px;}
+.party-detail{font-size:12px;color:#666;line-height:1.7;}
+/* TABLE */
+.table-title{background:${color};color:#fff;padding:8px 14px;font-size:12px;font-weight:700;border-radius:6px 6px 0 0;}
+table{width:100%;border-collapse:collapse;margin-bottom:16px;}
+th{background:#e8f5ee;color:${color};font-size:11px;padding:8px 12px;text-align:right;font-weight:700;}
+td{padding:9px 12px;border-bottom:1px solid #eee;font-size:13px;}
+tr:last-child td{border-bottom:none;}
+/* TOTALS */
+.totals{background:#f9f9f9;border-radius:8px;padding:14px 16px;margin-bottom:16px;}
+.total-row{display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid #eee;}
+.total-row:last-child{border-bottom:none;font-weight:900;font-size:16px;color:${color};padding-top:10px;}
+/* PAYMENT */
+.payment-table{background:#e8f5ee;border-radius:8px;overflow:hidden;margin-bottom:16px;}
+.payment-table th{background:${color};}
+/* WORDS */
+.words-box{background:#fff8e1;border-radius:6px;padding:10px 14px;font-size:13px;font-weight:700;border:1px dashed #f0c000;margin-bottom:16px;}
+/* FOOTER */
+.footer-bar{background:#f5f5f5;border-top:2px solid ${color};padding:14px 36px;display:flex;justify-content:space-between;align-items:center;margin-top:20px;}
+.footer-sig{font-size:12px;font-weight:700;color:#333;}
+.footer-sig small{display:block;color:#888;font-weight:400;font-size:10px;}
+.footer-note{font-size:10px;color:#aaa;text-align:left;}
+.stamp{font-size:11px;color:#888;}
+@media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact;}}
+</style></head><body>
+<div class="page">
+
+${isDraft?`<div style="background:#e65100;color:#fff;text-align:center;padding:8px;font-size:15px;font-weight:900;">⚠️ טיוטה בלבד — לא מסמך סופי</div>`:""}
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="biz-name">צימר שירת הציפורים</div>
+    <div class="biz-detail">
+      עוסק ${inv.vatType==="vat"?"מורשה":"פטור"} | מס' 036731560<br>
+      נחל קדם 93, מיצד, ישראל<br>
+      050-4103353 | shirathatziporim@gmail.com
+    </div>
+  </div>
+  <img src="https://shirat-hatziporim.github.io/shirat-hatziporim/logo.jpeg" class="logo">
+</div>
+
+<!-- TITLE BAR -->
+<div class="title-bar">
+  <div style="display:flex;align-items:center;">
+    ${isDraft?`<span class="draft-badge">טיוטה</span>`:""}
+    <div class="doc-title">${inv.type==="receipt"?"קבלה":"חשבונית מס / קבלה"} ${isDraft?"":docNum}</div>
+  </div>
+  <div class="doc-meta">
+    <div>תאריך הנפקה: <strong>${new Date(inv.date).toLocaleDateString("he-IL")}</strong></div>
+    <div>תאריך תשלום: <strong>${inv.paymentDate?new Date(inv.paymentDate).toLocaleDateString("he-IL"):new Date(inv.date).toLocaleDateString("he-IL")}</strong></div>
+  </div>
+</div>
+
+<div class="body">
+
+<!-- PARTIES -->
+<div class="parties">
+  <div class="party-box">
+    <div class="party-title">מוכר / נותן שירות</div>
+    <div class="party-name">יעקב גרזון</div>
+    <div class="party-detail">
+      צימר שירת הציפורים<br>
+      נחל קדם 93, מיצד<br>
+      050-4103353
+    </div>
+  </div>
+  <div class="party-box">
+    <div class="party-title">לכבוד / קונה</div>
+    <div class="party-name">${inv.guestName}</div>
+    <div class="party-detail">
+      ${inv.guestPhone}<br>
+      ${inv.guestEmail||""}<br>
+      ${inv.guestId?`ת.ז: ${inv.guestId}`:""}
+    </div>
+  </div>
+</div>
+
+<!-- SERVICE TABLE -->
+<div class="table-title">פירוט השירות</div>
+<table>
+  <tr>
+    <th>תיאור</th>
+    <th style="text-align:center;width:80px">כניסה</th>
+    <th style="text-align:center;width:80px">יציאה</th>
+    <th style="text-align:center;width:60px">לילות</th>
+    <th style="text-align:left;width:100px">מחיר</th>
+  </tr>
+  <tr>
+    <td>שירותי לינה — ${inv.guestExtra||"אירוח"}</td>
+    <td style="text-align:center">${inv.checkin}</td>
+    <td style="text-align:center">${inv.checkout}</td>
+    <td style="text-align:center">${inv.nights}</td>
+    <td style="text-align:left;font-weight:700">₪${inv.total.toLocaleString()}</td>
+  </tr>
+</table>
+
+<!-- TOTALS -->
+<div class="totals">
+  ${inv.vatType==="vat"?`
+  <div class="total-row"><span>מחיר לפני מע"מ</span><span>₪${inv.total.toLocaleString()}</span></div>
+  <div class="total-row"><span>מע"מ 18%</span><span>₪${vatAmount.toLocaleString()}</span></div>
+  <div class="total-row"><span>סה"כ לתשלום</span><span>₪${totalWithVat.toLocaleString()}</span></div>
+  `:`
+  <div class="total-row"><span>עוסק פטור — אינו מחייב במע"מ</span><span></span></div>
+  <div class="total-row"><span>סה"כ לתשלום</span><span>₪${totalWithVat.toLocaleString()}</span></div>
+  `}
+</div>
+
+<!-- WORDS -->
+<div class="words-box">סכום במילים: ${totalWords}</div>
+
+<!-- PAYMENT TABLE -->
+<div class="table-title">פרטי תשלום</div>
+<table class="payment-table">
+  <tr>
+    <th>אמצעי תשלום</th>
+    <th style="text-align:center">תאריך</th>
+    <th style="text-align:center">אסמכתה</th>
+    <th style="text-align:left">סכום</th>
+  </tr>
+  <tr>
+    <td>${payMethod}</td>
+    <td style="text-align:center">${inv.paymentDate?new Date(inv.paymentDate).toLocaleDateString("he-IL"):new Date(inv.date).toLocaleDateString("he-IL")}</td>
+    <td style="text-align:center">${inv.paymentRef||"—"}</td>
+    <td style="text-align:left;font-weight:700">₪${totalWithVat.toLocaleString()}</td>
+  </tr>
+</table>
+
+</div><!-- /body -->
+
+<!-- FOOTER -->
+<div class="footer-bar">
+  <div class="footer-sig">
+    יעקב גרזון
+    <small>צימר שירת הציפורים | עוסק ${inv.vatType==="vat"?"מורשה":"פטור"} 036731560</small>
+  </div>
+  <div class="footer-note">
+    חתימה דיגיטלית מאובטחת<br>
+    הופק ב-${new Date().toLocaleString("he-IL")}${isDraft?"":" | "+docNum+" | עמוד 1 מתוך 1"}
+  </div>
+</div>
+
+${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:130px;font-weight:900;color:rgba(200,80,0,0.05);z-index:0;pointer-events:none;">טיוטה</div>`:""}</div>
+</body></html>`;
+
+    const w=window.open("","_blank");
+    w.document.write(html);
+    w.document.close();
+    setTimeout(()=>w.print(),600);
+  }
 
     const html=`<!DOCTYPE html><html dir="rtl" lang="he">
 <head><meta charset="UTF-8"><style>
