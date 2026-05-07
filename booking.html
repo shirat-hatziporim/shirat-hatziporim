@@ -118,6 +118,7 @@ textarea{resize:vertical;min-height:70px;direction:rtl;}
 
 @media(max-width:480px){.grid2{grid-template-columns:1fr;}}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 </head>
 <body>
 
@@ -241,6 +242,10 @@ textarea{resize:vertical;min-height:70px;direction:rtl;}
 <script>
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyKUvfneAaQwRYiQ67xvzfBQH0CTnoUfOuX3QgfUpOXoEaKUCRhjx5jEytDCYAeLX1N/exec";
 const OWNER_PHONE = "972504103353";
+const EMAILJS_SERVICE = "service_0on84wi";
+const EMAILJS_TEMPLATE = "jea64r8";
+const EMAILJS_KEY = "vjxirKrtHb4jblDmc";
+emailjs.init(EMAILJS_KEY);
 let PRICES = { weekday:800, weekend:1200, packageDeal:1700, sundayExtra:350, extraGuest:300 };
 const MONTHS = ["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
 
@@ -480,6 +485,26 @@ async function submitBooking(){
   try{
     const url=SCRIPT_URL+"?action=addBooking&booking="+encodeURIComponent(JSON.stringify(b))+"&t="+Date.now();
     await fetch(url,{mode:"no-cors"});
+
+    // שלח מייל התראה
+    const emailMsg=`🔔 בקשת הזמנה חדשה!
+
+שם: ${name}
+טלפון: ${phone}
+מייל: ${email||"לא הוזן"}
+כניסה: ${fd(checkin)} | יציאה: ${fd(checkout)}
+לילות: ${nights} | אורחים: ${guests}${babies>0?` + ${babies} תינוק`:""}
+סוג: ${roomLabel}
+סה"כ: ₪${total.toLocaleString()}
+${notes?"הערות: "+notes:""}
+
+לאישור ההזמנה: https://shirat-hatziporim.github.io/shirat-hatziporim/`;
+    emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
+      name: name,
+      message: emailMsg,
+      email: email||"לא הוזן",
+      title: "הזמנה חדשה"
+    }).catch(e=>console.log("email error",e));
     const msg=encodeURIComponent(
 `🔔 בקשת הזמנה חדשה!
 שם: ${name}
