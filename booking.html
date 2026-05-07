@@ -205,6 +205,14 @@ textarea{resize:vertical;min-height:70px;direction:rtl;}
           <option value="5">5 אורחים</option>
         </select>
       </div>
+      <div class="field">
+        <label>תינוקות עד גיל 2 (ללא עלות)</label>
+        <select id="babyCount">
+          <option value="0">ללא תינוקות</option>
+          <option value="1">תינוק אחד</option>
+          <option value="2">שני תינוקות</option>
+        </select>
+      </div>
     </div>
     <div class="field">
       <label>סוג אירוח</label>
@@ -473,6 +481,7 @@ async function submitBooking(){
   const total=pb._total||0;
   const nights=pb._nights||0;
   const guests=parseInt(document.getElementById("guestCount").value)||2;
+  const babies=parseInt(document.getElementById("babyCount").value)||0;
   const roomLabel=pb._roomLabel||`${nights} לילות`;
   const email=document.getElementById("guestEmail").value.trim();
   const notes=document.getElementById("guestNotes").value.trim();
@@ -480,7 +489,7 @@ async function submitBooking(){
     id:Date.now(),
     name,phone,email,
     checkin,checkout,
-    guests,extraGuests:Math.max(0,guests-2),babies:0,
+    guests,extraGuests:Math.max(0,guests-2),babies,
     status:"pending",
     total,paid:0,nights,
     guestExtra:roomLabel,
@@ -488,16 +497,14 @@ async function submitBooking(){
     discount:0,
   };
   try{
-    // שמור ב-Sheets
     const url=SCRIPT_URL+"?action=save&bookings="+encodeURIComponent(JSON.stringify([b]))+"&t="+Date.now();
     await fetch(url,{mode:"no-cors"});
-    // שלח WhatsApp לבעל הצימר
     const msg=encodeURIComponent(
 `🔔 בקשת הזמנה חדשה!
 שם: ${name}
 טלפון: ${phone}
 כניסה: ${fd(checkin)} | יציאה: ${fd(checkout)}
-לילות: ${nights} | אורחים: ${guests}
+לילות: ${nights} | אורחים: ${guests}${babies>0?` + ${babies} תינוק/ות`:""}
 סוג: ${roomLabel}
 סה"כ: ₪${total.toLocaleString()}
 ${notes?"הערות: "+notes:""}
