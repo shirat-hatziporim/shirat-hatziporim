@@ -1122,7 +1122,7 @@ function App(){
     return result.trim()+" שקלים";
   }
 
-  function generatePDF(inv){
+  function generatePDF(inv,isDraft=false){
     const totalWithVat=inv.vatType==="vat"?Math.round(inv.total*1.18):inv.total;
     const vatAmount=inv.vatType==="vat"?Math.round(inv.total*0.18):0;
     const totalWords=numberToWords(totalWithVat);
@@ -1167,6 +1167,8 @@ tr:nth-child(even) td{background:#fafaf8;}
 .legal-note{font-size:10px;color:#aaa;margin-top:8px;text-align:center;}
 @media print{body{padding:20px;}}
 </style></head><body>
+${isDraft?`<div style="background:#cc0000;color:#fff;text-align:center;padding:10px;font-size:16px;font-weight:900;border-radius:6px;margin-bottom:16px;">⚠️ טיוטה בלבד — לא מסמך סופי</div>
+<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:120px;font-weight:900;color:rgba(200,0,0,0.06);z-index:0;pointer-events:none;">טיוטה</div>`:""}
 
 <div class="header">
   <div>
@@ -2109,14 +2111,13 @@ tr:nth-child(even) td{background:#fafaf8;}
             </div>
             <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
               {["receipt","invoice"].map(type=>(
-                <button key={type} onClick={()=>{
+                <button key={"draft_"+type} onClick={()=>{
                   const sel=document.getElementById("invBookingSelect").value;
                   if(!sel){alert("נא לבחור הזמנה");return;}
                   const b=bookings.find(x=>String(x.id)===sel);
                   if(!b)return;
-                  const num=getNextInvoiceNum(type);
                   const inv={
-                    id:Date.now(),num,type,vatType:invoiceVatType,
+                    id:Date.now(),num:"DRAFT",type,vatType:invoiceVatType,draft:true,
                     bookingId:b.id,guestName:b.name,guestPhone:b.phone,
                     guestEmail:b.email||"",checkin:b.checkin,checkout:b.checkout,
                     nights:b.nights||0,total:b.total||0,guestExtra:b.guestExtra||"",
@@ -2127,9 +2128,9 @@ tr:nth-child(even) td{background:#fafaf8;}
                     paymentRef:document.getElementById("invPayRef").value,
                   };
                   saveInvoices([...invoices,inv]);
-                  generatePDF(inv);
-                }} style={{...bS(type==="receipt"?"#e8f5e9":"#e3f2fd",type==="receipt"?"#2e7d32":"#1565c0"),fontSize:13,padding:"8px 16px"}}>
-                  {type==="receipt"?"🧾 הנפק קבלה":"📋 הנפק חשבונית מס"}
+                  generatePDF(inv,true);
+                }} style={{...bS("#f0eee8","#5a4e40"),fontSize:13,padding:"8px 16px"}}>
+                  📄 שמור טיוטה — {type==="receipt"?"קבלה":"חשבונית"}
                 </button>
               ))}
             </div>
@@ -2149,10 +2150,10 @@ tr:nth-child(even) td{background:#fafaf8;}
                 {invoices.slice().reverse().map((inv,i)=>(
                   <React.Fragment key={inv.id}>
                     <div style={{padding:"12px 14px",borderBottom:"1px solid #f0eee8",fontFamily:"'Heebo',sans-serif",fontSize:13,fontWeight:700}}>
-                      <span style={{background:inv.type==="receipt"?"#e8f5e9":"#e3f2fd",color:inv.type==="receipt"?"#2e7d32":"#1565c0",padding:"2px 8px",borderRadius:6,fontSize:11}}>
-                        {inv.type==="receipt"?"קבלה":"חשבונית"}
+                      <span style={{background:inv.draft?"#fff3e0":inv.type==="receipt"?"#e8f5e9":"#e3f2fd",color:inv.draft?"#e65100":inv.type==="receipt"?"#2e7d32":"#1565c0",padding:"2px 8px",borderRadius:6,fontSize:11}}>
+                        {inv.draft?"טיוטה":inv.type==="receipt"?"קבלה":"חשבונית"}
                       </span>
-                      <span style={{marginRight:6}}>{inv.type==="receipt"?"R":"I"}{inv.num}</span>
+                      <span style={{marginRight:6}}>{inv.draft?"":"("}{inv.type==="receipt"?"R":"I"}{inv.num}{inv.draft?"":")"}</span>
                     </div>
                     <div style={{padding:"12px 14px",borderBottom:"1px solid #f0eee8",fontFamily:"'Heebo',sans-serif",fontSize:13}}>
                       <div style={{fontWeight:700}}>{inv.guestName}</div>
@@ -2162,9 +2163,22 @@ tr:nth-child(even) td{background:#fafaf8;}
                       ₪{(inv.vatType==="vat"?Math.round(inv.total*1.18):inv.total).toLocaleString()}
                     </div>
                     <div style={{padding:"12px 14px",borderBottom:"1px solid #f0eee8",fontFamily:"'Heebo',sans-serif",fontSize:12,color:"#8a7e6e"}}>{fd(inv.date)}</div>
-                    <div style={{padding:"8px 12px",borderBottom:"1px solid #f0eee8",display:"flex",gap:5,alignItems:"center"}}>
-                      <button onClick={()=>generatePDF(inv)} style={{...bS("#f0eee8","#1a1a2e"),fontSize:11,padding:"4px 8px"}} title="הדפס PDF">🖨️</button>
-                      {inv.guestEmail&&<button onClick={()=>sendInvoiceEmail(inv)} style={{...bS("#e3f2fd","#1565c0"),fontSize:11,padding:"4px 8px"}} title="שלח במייל">📧</button>}
+                    <div style={{padding:"8px 12px",borderBottom:"1px solid #f0eee8",display:"flex",gap:5,alignItems:"center",flexWrap:"wrap"}}>
+                      <button onClick={()=>generatePDF(inv,inv.draft)} style={{...bS("#f0eee8","#1a1a2e"),fontSize:11,padding:"4px 8px"}} title="הדפס">🖨️</button>
+                      {inv.guestEmail&&!inv.draft&&<button onClick={()=>sendInvoiceEmail(inv)} style={{...bS("#e3f2fd","#1565c0"),fontSize:11,padding:"4px 8px"}} title="שלח במייל">📧</button>}
+                      {inv.draft&&(
+                        <>
+                          <button onClick={()=>{
+                            if(!window.confirm("להנפיק כמסמך סופי? לא ניתן לערוך אחר כך.")) return;
+                            const num=getNextInvoiceNum(inv.type);
+                            const final={...inv,num,draft:false};
+                            saveInvoices(invoices.map(x=>x.id===inv.id?final:x));
+                            generatePDF(final,false);
+                          }} style={{...bS(inv.type==="receipt"?"#e8f5e9":"#e3f2fd",inv.type==="receipt"?"#2e7d32":"#1565c0"),fontSize:11,padding:"4px 8px",fontWeight:700}}>
+                            {inv.type==="receipt"?"🧾 הנפק":"📋 הנפק"}
+                          </button>
+                        </>
+                      )}
                       <button onClick={()=>{if(window.confirm("למחוק מסמך זה?"))saveInvoices(invoices.filter(x=>x.id!==inv.id));}} style={{...bS("#fce4ec","#c62828"),fontSize:11,padding:"4px 8px"}} title="מחק">🗑️</button>
                     </div>
                   </React.Fragment>
