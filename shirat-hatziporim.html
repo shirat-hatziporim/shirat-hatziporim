@@ -2039,8 +2039,8 @@ https://dira4shabat.co.il/listing/%D7%A6%D7%99%D7%9E%D7%A8-%D7%A9%D7%99%D7%A8%D7
               </div>
               <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
                 <button onClick={()=>setEmailEditorType("confirm")} style={{padding:"7px 14px",borderRadius:10,border:"none",cursor:"pointer",background:isConfirm?"#1a1a2e":"#f0eee8",color:isConfirm?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>📧 אישור הזמנה</button>
-                <button onClick={()=>setEmailEditorType("review")} style={{padding:"7px 14px",borderRadius:10,border:"none",cursor:"pointer",background:isReview?"#1a1a2e":"#f0eee8",color:isReview?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>⭐ בקשת ביקורת</button>
                 <button onClick={()=>setEmailEditorType("reminder")} style={{padding:"7px 14px",borderRadius:10,border:"none",cursor:"pointer",background:isReminder?"#f57f17":"#f0eee8",color:isReminder?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>⏰ תזכורת יום לפני</button>
+                <button onClick={()=>setEmailEditorType("review")} style={{padding:"7px 14px",borderRadius:10,border:"none",cursor:"pointer",background:isReview?"#1a1a2e":"#f0eee8",color:isReview?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>⭐ בקשת ביקורת</button>
               </div>
               {isConfirm&&<div style={{background:"#f0f4ff",borderRadius:8,padding:"8px 12px",marginBottom:12,fontSize:12,color:"#3a4a8a",fontFamily:"'Heebo',sans-serif"}}>
                 משתנים: <b>{"{שם}"}</b> שם לקוח, <b>{"{סוג}"}</b> סוג אירוח, <b>{"{כניסה}"}</b> <b>{"{יציאה}"}</b> תאריכים, <b>{"{לילות}"}</b> לילות, <b>{"{סכום}"}</b> מחיר
