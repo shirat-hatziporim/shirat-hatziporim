@@ -1137,40 +1137,32 @@ function App(){
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Heebo',Arial,sans-serif;direction:rtl;color:#1a1a2e;background:#fff;font-size:13px;line-height:1.5;}
+body{font-family:'Heebo',sans-serif;direction:rtl;color:#1a1a2e;background:#fff;font-size:13px;line-height:1.5;}
 .page{max-width:794px;margin:0 auto;}
-/* HEADER */
-.header{background:${color};color:#fff;padding:24px 40px;display:flex;justify-content:space-between;align-items:center;gap:20px;}
-.biz-name{font-size:20px;font-weight:900;letter-spacing:-.01em;}
+.header{background:${color};color:#fff;padding:26px 40px;display:flex;justify-content:space-between;align-items:center;}
+.biz-name{font-size:20px;font-weight:900;}
 .biz-detail{font-size:11px;opacity:.8;margin-top:4px;line-height:1.7;}
 .logo{width:72px;height:72px;border-radius:50%;object-fit:cover;border:2.5px solid rgba(255,255,255,.35);}
-/* SUBHEADER */
 .subheader{background:#f7f7f7;border-bottom:2px solid ${color};padding:12px 40px;display:flex;justify-content:space-between;align-items:center;}
-.doc-title{font-size:20px;font-weight:900;color:${color};letter-spacing:-.01em;}
-.draft-badge{background:#d84315;color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:3px;margin-left:10px;vertical-align:middle;}
+.doc-title{font-size:20px;font-weight:900;color:${color};}
+.draft-badge{background:#d84315;color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:3px;margin-left:10px;}
 .doc-meta{font-size:11px;color:#666;text-align:left;line-height:1.9;}
-/* BODY */
 .body{padding:28px 40px;}
-/* CLIENT BOX */
-.client-box{background:#f7faf9;border-radius:10px;padding:16px 20px;margin-bottom:22px;border:1px solid #e0ede8;display:flex;justify-content:space-between;align-items:flex-start;}
+.client-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid #eee;}
 .client-label{font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px;}
 .client-name{font-size:16px;font-weight:900;margin-bottom:3px;}
-.client-detail{font-size:12px;color:#666;line-height:1.7;}
-.doc-info{text-align:left;font-size:12px;color:#555;line-height:1.9;}
-/* TABLE */
+.client-detail{font-size:12px;color:#666;line-height:1.8;}
+.pay-info{text-align:left;font-size:12px;color:#555;line-height:1.9;}
 table{width:100%;border-collapse:collapse;margin-bottom:18px;}
-.table-head th{background:${color};color:#fff;font-size:11px;font-weight:600;padding:9px 14px;text-align:right;letter-spacing:.02em;}
-td{padding:10px 14px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#333;}
+.table-head th{background:${color};color:#fff;font-size:11px;font-weight:600;padding:9px 14px;text-align:right;}
+td{padding:10px 14px;border-bottom:1px solid #f0f0f0;font-size:13px;}
 tr:last-child td{border-bottom:none;}
-/* TOTALS */
-.totals{margin-bottom:18px;}
-.total-row{display:flex;justify-content:space-between;padding:6px 14px;font-size:13px;border-radius:4px;}
-.total-row.highlight{background:#f7faf9;font-weight:700;font-size:15px;color:${color};border-radius:8px;padding:10px 14px;margin-top:4px;}
-/* PAYMENT */
-.pay-head th{background:#f0f0f0;color:#555;font-size:11px;font-weight:600;padding:8px 14px;}
-/* FOOTER */
+.total-area{display:flex;justify-content:flex-left;margin-bottom:20px;}
+.total-box{margin-right:auto;min-width:260px;}
+.total-row{display:flex;justify-content:space-between;padding:5px 14px;font-size:13px;color:#555;}
+.total-final{display:flex;justify-content:space-between;padding:10px 14px;font-size:16px;font-weight:900;color:#fff;background:${color};border-radius:8px;margin-top:6px;}
 .footer{background:#f7f7f7;border-top:1.5px solid #e0e0e0;padding:14px 40px;display:flex;justify-content:space-between;align-items:center;margin-top:24px;}
-.footer-sig{font-size:13px;font-weight:700;color:#1a1a2e;}
+.footer-sig{font-size:13px;font-weight:700;}
 .footer-sig small{display:block;font-size:10px;color:#888;font-weight:400;margin-top:2px;}
 .footer-meta{font-size:10px;color:#aaa;text-align:left;line-height:1.7;}
 @media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact;}}
@@ -1204,7 +1196,7 @@ ${isDraft?`<div style="background:#d84315;color:#fff;text-align:center;padding:7
 
 <div class="body">
 
-<div class="client-box">
+<div class="client-row">
   <div>
     <div class="client-label">לכבוד</div>
     <div class="client-name">${inv.guestName}</div>
@@ -1212,7 +1204,7 @@ ${isDraft?`<div style="background:#d84315;color:#fff;text-align:center;padding:7
       ${inv.guestPhone}${inv.guestEmail?`<br>${inv.guestEmail}`:""}${inv.guestId?`<br>ת.ז: ${inv.guestId}`:""}
     </div>
   </div>
-  <div class="doc-info">
+  <div class="pay-info">
     <div>אמצעי תשלום: <strong>${payMethod}</strong></div>
     ${inv.paymentRef?`<div>אסמכתה: <strong>${inv.paymentRef}</strong></div>`:""}
   </div>
@@ -1223,8 +1215,8 @@ ${isDraft?`<div style="background:#d84315;color:#fff;text-align:center;padding:7
     <th>תיאור</th>
     <th style="text-align:center;width:90px">כניסה</th>
     <th style="text-align:center;width:90px">יציאה</th>
-    <th style="text-align:center;width:60px">לילות</th>
-    <th style="text-align:left;width:110px">סכום</th>
+    <th style="text-align:center;width:55px">לילות</th>
+    <th style="text-align:left;width:100px">סכום</th>
   </tr>
   <tr>
     <td>שירותי לינה — ${inv.guestExtra||"אירוח"}</td>
@@ -1235,15 +1227,14 @@ ${isDraft?`<div style="background:#d84315;color:#fff;text-align:center;padding:7
   </tr>
 </table>
 
-<div class="totals">
-  ${inv.vatType==="vat"?`
-  <div class="total-row"><span style="color:#888">מחיר לפני מע"מ</span><span>₪${inv.total.toLocaleString()}</span></div>
-  <div class="total-row"><span style="color:#888">מע"מ 18%</span><span>₪${vatAmount.toLocaleString()}</span></div>
-  <div class="total-row highlight"><span>סה"כ לתשלום</span><span>₪${totalWithVat.toLocaleString()}</span></div>
-  `:`
-  <div class="total-row" style="color:#888;font-size:11px;padding:4px 14px">עוסק פטור — אינו מחייב במע"מ</div>
-  <div class="total-row highlight"><span>סה"כ לתשלום</span><span>₪${totalWithVat.toLocaleString()}</span></div>
-  `}
+<div class="total-area">
+  <div class="total-box">
+    ${inv.vatType==="vat"?`
+    <div class="total-row"><span>מחיר לפני מע"מ</span><span>₪${inv.total.toLocaleString()}</span></div>
+    <div class="total-row"><span>מע"מ 18%</span><span>₪${vatAmount.toLocaleString()}</span></div>
+    `:`<div style="font-size:11px;color:#aaa;padding:4px 14px;">עוסק פטור — אינו מחייב במע"מ</div>`}
+    <div class="total-final"><span>סה"כ לתשלום</span><span>₪${totalWithVat.toLocaleString()}</span></div>
+  </div>
 </div>
 
 </div>
