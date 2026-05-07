@@ -500,7 +500,7 @@ async function submitBooking(){
     discount:0,
   };
   try{
-    const url=SCRIPT_URL+"?action=save&bookings="+encodeURIComponent(JSON.stringify([b]))+"&t="+Date.now();
+    const url=SCRIPT_URL+"?action=addBooking&booking="+encodeURIComponent(JSON.stringify(b))+"&t="+Date.now();
     await fetch(url,{mode:"no-cors"});
     const msg=encodeURIComponent(
 `🔔 בקשת הזמנה חדשה!
