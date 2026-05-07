@@ -197,7 +197,7 @@ textarea{resize:vertical;min-height:70px;direction:rtl;}
       </div>
       <div class="field">
         <label>מספר אורחים</label>
-        <select id="guestCount">
+        <select id="guestCount" onchange="calcPrice()">
           <option value="1">1 אורח</option>
           <option value="2" selected>2 אורחים</option>
           <option value="3">3 אורחים</option>
