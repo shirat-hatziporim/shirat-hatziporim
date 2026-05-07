@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>הזמנה — צימר שירת הציפורים</title>
+<title>הזמנה — שירת הציפורים</title>
 <link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;700;900&family=Heebo:wght@300;400;600;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -208,11 +208,10 @@ textarea{resize:vertical;min-height:70px;direction:rtl;}
     </div>
     <div class="field">
       <label>סוג אירוח</label>
-      <select id="roomType" onchange="calcPrice()">
-        <option value="standard">רגיל</option>
-        <option value="package_thu">חבילת חמישי+שישי+שבת</option>
-        <option value="package_sun">חבילת חמישי+שישי+שבת+ראשון</option>
-      </select>
+      <div id="roomTypeDisplay" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;background:#f8f4ec;color:var(--dark);min-height:42px;">
+        יחושב אוטומטית לפי התאריכים
+      </div>
+      <input type="hidden" id="roomType" value="standard">
     </div>
     <div class="field">
       <label>הערות מיוחדות</label>
@@ -235,7 +234,7 @@ textarea{resize:vertical;min-height:70px;direction:rtl;}
 <script>
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyKUvfneAaQwRYiQ67xvzfBQH0CTnoUfOuX3QgfUpOXoEaKUCRhjx5jEytDCYAeLX1N/exec";
 const OWNER_PHONE = "972504103353";
-const PRICES = { weekday:800, weekend:1200, packageDeal:1700, sundayExtra:350, extraGuest:300 };
+let PRICES = { weekday:800, weekend:1200, packageDeal:1700, sundayExtra:350, extraGuest:300 };
 const MONTHS = ["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
 
 let calYear, calMonth, blockedDates=[], bookedRanges=[], selStart=null, selEnd=null;
@@ -252,6 +251,24 @@ function isUnavailable(ds){ return isPast(ds)||isBlocked(ds)||isBooked(ds); }
 
 // טען נתונים מ-Sheets
 function loadData(){
+  // טען מחירים
+  const cbp="cbp"+Date.now();
+  const sp=document.createElement("script");
+  sp.src=SCRIPT_URL+"?action=getTemplates&callback="+cbp+"&t="+Date.now();
+  window[cbp]=function(data){
+    // המחירים נשמרים תחת מפתח 'shirat_prices' בגיליון תבניות
+    if(data&&data.shirat_prices){
+      try{const p=JSON.parse(data.shirat_prices);
+        if(p.weekday) PRICES.weekday=p.weekday;
+        if(p.weekend) PRICES.weekend=p.weekend;
+        if(p.packageDeal) PRICES.packageDeal=p.packageDeal;
+        if(p.sundayExtra) PRICES.sundayExtra=p.sundayExtra;
+        if(p.extraGuest) PRICES.extraGuest=p.extraGuest;
+      }catch(e){}
+    }
+    delete window[cbp]; document.body.removeChild(sp);
+  };
+  document.body.appendChild(sp);
   const cb="cb"+Date.now();
   const s=document.createElement("script");
   s.src=SCRIPT_URL+"?action=get&callback="+cb+"&t="+Date.now();
@@ -359,40 +376,79 @@ function calcPrice(){
   const co=document.getElementById("checkout").value;
   if(!ci||!co||co<=ci){ hidePrice(); return; }
   const guests=parseInt(document.getElementById("guestCount").value)||2;
-  const roomType=document.getElementById("roomType").value;
-  let rows=[], total=0;
-  let cur=new Date(ci+"T12:00:00");
-  const end=new Date(co+"T12:00:00");
-  let nights=0;
-  while(cur<end){
-    const ds=toDS(cur);
-    const type=getDayType(ds);
-    const price=type==="weekend"?PRICES.weekend:PRICES.weekday;
-    total+=price; nights++;
-    cur.setDate(cur.getDate()+1);
+
+  // זיהוי אוטומטי של חבילה
+  const ciDate=new Date(ci+"T12:00:00");
+  const coDate=new Date(co+"T12:00:00");
+  const ciDay=ciDate.getDay(); // 0=א, 4=ה, 5=ו, 6=ש
+  const coDay=coDate.getDay();
+  const nights=Math.round((coDate-ciDate)/(1000*60*60*24));
+
+  let roomType="standard";
+  let roomLabel="";
+
+  // חמישי + יציאה שבת (3 לילות: ה+ו+ש)
+  if(ciDay===4 && coDay===6 && nights===2){
+    roomType="package_thu"; roomLabel="חבילת חמישי+שישי+שבת";
   }
-  if(roomType==="package_thu"||roomType==="package_sun"){
+  // חמישי + יציאה ראשון (3 לילות: ה+ו+ש)
+  else if(ciDay===4 && coDay===0 && nights===3){
+    roomType="package_sun"; roomLabel="חבילת חמישי+שישי+שבת+ראשון";
+  }
+  // שישי + יציאה שבת (1 לילה)
+  else if(ciDay===5 && coDay===6 && nights===1){
+    roomType="standard"; roomLabel="לינת שישי-שבת";
+  }
+
+  // עדכן שדה הצגה
+  document.getElementById("roomType").value=roomType;
+  const display=document.getElementById("roomTypeDisplay");
+  if(roomLabel){
+    display.textContent=roomLabel;
+    display.style.color="var(--dark)";
+    display.style.fontWeight="700";
+  } else {
+    display.textContent=`${nights} לילות — חישוב רגיל`;
+    display.style.color="var(--muted)";
+    display.style.fontWeight="400";
+  }
+
+  let rows=[], total=0;
+
+  if(roomType==="package_thu"){
     total=PRICES.packageDeal;
     rows.push({label:"חבילת חמישי+שישי+שבת",val:"₪"+PRICES.packageDeal.toLocaleString()});
-    if(roomType==="package_sun"){
-      total+=PRICES.sundayExtra;
-      rows.push({label:"תוספת יציאה ראשון",val:"₪"+PRICES.sundayExtra.toLocaleString()});
-    }
+  } else if(roomType==="package_sun"){
+    total=PRICES.packageDeal+PRICES.sundayExtra;
+    rows.push({label:"חבילת חמישי+שישי+שבת",val:"₪"+PRICES.packageDeal.toLocaleString()});
+    rows.push({label:"תוספת יציאה ראשון",val:"₪"+PRICES.sundayExtra.toLocaleString()});
   } else {
+    // חישוב רגיל לפי לילות
+    let cur=new Date(ci+"T12:00:00");
+    const end=new Date(co+"T12:00:00");
+    while(cur<end){
+      const dow=cur.getDay();
+      const price=(dow===5||dow===6)?PRICES.weekend:PRICES.weekday;
+      total+=price;
+      cur.setDate(cur.getDate()+1);
+    }
     rows.push({label:`${nights} לילות`,val:"₪"+total.toLocaleString()});
   }
+
   const extraGuests=Math.max(0,guests-2);
   if(extraGuests>0){
     const ex=extraGuests*PRICES.extraGuest*nights;
     total+=ex;
     rows.push({label:`${extraGuests} אורחים נוספים × ${nights} לילות`,val:"₪"+ex.toLocaleString()});
   }
+
   let html=rows.map(r=>`<div class="price-row"><span class="price-label">${r.label}</span><span>${r.val}</span></div>`).join("");
   html+=`<div class="price-row total"><span class="price-label">סה"כ לתשלום</span><span class="price-total">₪${total.toLocaleString()}</span></div>`;
   document.getElementById("priceRows").innerHTML=html;
   document.getElementById("priceBox").style.display="block";
   document.getElementById("priceBox")._total=total;
   document.getElementById("priceBox")._nights=nights;
+  document.getElementById("priceBox")._roomLabel=roomLabel||`${nights} לילות`;
 }
 
 function hidePrice(){ document.getElementById("priceBox").style.display="none"; }
@@ -417,7 +473,7 @@ async function submitBooking(){
   const total=pb._total||0;
   const nights=pb._nights||0;
   const guests=parseInt(document.getElementById("guestCount").value)||2;
-  const roomType=document.getElementById("roomType").value;
+  const roomLabel=pb._roomLabel||`${nights} לילות`;
   const email=document.getElementById("guestEmail").value.trim();
   const notes=document.getElementById("guestNotes").value.trim();
   const b={
@@ -427,7 +483,7 @@ async function submitBooking(){
     guests,extraGuests:Math.max(0,guests-2),babies:0,
     status:"pending",
     total,paid:0,nights,
-    guestExtra:document.getElementById("roomType").selectedOptions[0].text,
+    guestExtra:roomLabel,
     notes,
     discount:0,
   };
@@ -442,7 +498,7 @@ async function submitBooking(){
 טלפון: ${phone}
 כניסה: ${fd(checkin)} | יציאה: ${fd(checkout)}
 לילות: ${nights} | אורחים: ${guests}
-סוג: ${document.getElementById("roomType").selectedOptions[0].text}
+סוג: ${roomLabel}
 סה"כ: ₪${total.toLocaleString()}
 ${notes?"הערות: "+notes:""}
 לאישור: https://shirat-hatziporim.github.io/shirat-hatziporim/`);
