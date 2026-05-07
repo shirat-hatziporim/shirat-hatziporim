@@ -617,6 +617,8 @@ function openEmailBcc(bcc,subject,body){
     window.open(`https://mail.google.com/mail/?view=cm&bcc=${encodeURIComponent(bcc)}&su=${subject}&body=${body}`,"_blank");
   }
 }
+
+function checkReminders(bookings){
   const today=new Date().toISOString().split("T")[0];
   const tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);
   const tomorrowStr=tomorrow.toISOString().split("T")[0];
