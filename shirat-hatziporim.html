@@ -1287,7 +1287,10 @@ function App(){
                           onMouseLeave={e=>e.currentTarget.style.background=b.checkin===new Date().toISOString().split("T")[0]?"#e3f2fd":"transparent"}
                           onClick={()=>{if(window.innerWidth<700)setMobileActionMenu(b);}}>
                           <td style={{padding:"11px 12px"}}>
-                            <div style={{fontWeight:700,color:"#1a1a2e"}}>{b.name}</div>
+                            <div style={{fontWeight:700,color:"#1a1a2e",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                              {b.name}
+                              {b.source==="online"&&<span style={{fontSize:10,background:"#e3f2fd",color:"#1565c0",borderRadius:5,padding:"1px 6px",fontWeight:700}}>🌐 אונליין</span>}
+                            </div>
                             <div style={{display:"flex",gap:4,marginTop:2,flexWrap:"wrap"}}>
                               {b.notes&&<div style={{fontSize:11,color:"#a09080"}}>{b.notes}</div>}
                               {b.babyCrib&&<span style={{fontSize:11,background:"#e3f2fd",color:"#1565c0",borderRadius:5,padding:"1px 6px",fontWeight:700}}>🛏️ מיטת תינוק</span>}
