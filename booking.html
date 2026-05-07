@@ -480,6 +480,7 @@ async function submitBooking(){
     guestExtra:roomLabel,
     notes,
     discount:0,
+    source:"online",
   };
   try{
     const url=SCRIPT_URL+"?action=addBooking&booking="+encodeURIComponent(JSON.stringify(b))+"&t="+Date.now();
