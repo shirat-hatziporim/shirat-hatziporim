@@ -987,7 +987,11 @@ function App(){
   const [reminderPopup,setReminderPopup]=useState(null);
   const [confirmPopup,setConfirmPopup]=useState(null);
   const [reviewPopup,setReviewPopup]=useState(null);
-  const [householdTab,setHouseholdTab]=useState("cleaning"); // cleaning | inventory | suppliers
+  const [householdTab,setHouseholdTab]=useState("cleaning");
+  const [accountingTab,setAccountingTab]=useState("list"); // list | new
+  const [invoices,setInvoices]=useState(()=>{try{const s=localStorage.getItem("shirat_invoices");return s?JSON.parse(s):[];}catch{return[];}});
+  const [newInvoice,setNewInvoice]=useState(null); // {booking, type, vatType}
+  const [invoiceVatType,setInvoiceVatType]=useState("exempt"); // exempt | vat // cleaning | inventory | suppliers
 
   // משק בית — צ'קליסט ניקיון
   const DEFAULT_CHECKLIST=[
@@ -1094,7 +1098,170 @@ function App(){
     saveManualGuestsToSheets(mg);
   }
 
-  function saveChecklist(cl){
+  function saveInvoices(inv){
+    setInvoices(inv);
+    try{localStorage.setItem("shirat_invoices",JSON.stringify(inv));}catch(e){}
+  }
+
+  function getNextInvoiceNum(type){
+    const prefix=type==="receipt"?"R":"I";
+    const nums=invoices.filter(i=>i.type===type).map(i=>parseInt(i.num)||0);
+    const next=(nums.length?Math.max(...nums):0)+1;
+    return String(next).padStart(3,"0");
+  }
+
+  function numberToWords(n){
+    const ones=["","אחד","שניים","שלושה","ארבעה","חמישה","שישה","שבעה","שמונה","תשעה","עשרה","אחד עשר","שניים עשר","שלושה עשר","ארבעה עשר","חמישה עשר","שישה עשר","שבעה עשר","שמונה עשר","תשעה עשר"];
+    const tens=["","","עשרים","שלושים","ארבעים","חמישים","שישים","שבעים","שמונים","תשעים"];
+    if(n===0) return "אפס";
+    let result="";
+    if(n>=1000){result+=ones[Math.floor(n/1000)]+" אלף ";n%=1000;}
+    if(n>=100){result+=ones[Math.floor(n/100)]+" מאות ";n%=100;}
+    if(n>=20){result+=tens[Math.floor(n/10)]+" ";n%=10;}
+    if(n>0) result+=ones[n]+" ";
+    return result.trim()+" שקלים";
+  }
+
+  function generatePDF(inv){
+    const totalWithVat=inv.vatType==="vat"?Math.round(inv.total*1.18):inv.total;
+    const vatAmount=inv.vatType==="vat"?Math.round(inv.total*0.18):0;
+    const totalWords=numberToWords(totalWithVat);
+    const paymentMethods={"bit":"ביט","paybox":"פייבוקס","transfer":"העברה בנקאית","cash":"מזומן","card":"כרטיס אשראי"};
+    const payMethod=paymentMethods[inv.paymentMethod]||inv.paymentMethod||"לא צוין";
+
+    const vatSection=inv.vatType==="vat"?`
+      <tr><td>מחיר לפני מע"מ</td><td style="text-align:left">₪${inv.total.toLocaleString()}</td></tr>
+      <tr><td>מע"מ 18%</td><td style="text-align:left">₪${vatAmount.toLocaleString()}</td></tr>
+      <tr style="background:#1a1a2e;color:#fff;font-weight:800;font-size:15px">
+        <td>סה"כ כולל מע"מ</td><td style="text-align:left">₪${totalWithVat.toLocaleString()}</td>
+      </tr>`:`
+      <tr style="background:#1a1a2e;color:#fff;font-weight:800;font-size:15px">
+        <td>סה"כ לתשלום</td><td style="text-align:left">₪${totalWithVat.toLocaleString()}</td>
+      </tr>
+      <tr><td colspan="2" style="font-size:11px;color:#888;padding-top:4px">עוסק פטור — אינו מחייב במע"מ</td></tr>`;
+
+    const html=`<!DOCTYPE html><html dir="rtl" lang="he">
+<head><meta charset="UTF-8"><style>
+*{box-sizing:border-box;}
+body{font-family:Arial,sans-serif;direction:rtl;padding:40px;color:#1a1a2e;max-width:740px;margin:0 auto;font-size:13px;}
+.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;border-bottom:3px solid #1a1a2e;padding-bottom:18px;}
+.logo{width:65px;height:65px;border-radius:50%;object-fit:cover;}
+.doc-title{font-size:26px;font-weight:900;color:#1a1a2e;}
+.doc-num{font-size:13px;color:#555;margin-top:3px;}
+.biz-name{font-size:17px;font-weight:800;text-align:left;}
+.biz-detail{font-size:12px;color:#666;margin-top:2px;text-align:left;}
+.section{margin:14px 0;}
+.section-title{font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.05em;border-bottom:1.5px solid #eee;padding-bottom:4px;margin-bottom:8px;}
+table{width:100%;border-collapse:collapse;}
+td,th{padding:7px 10px;text-align:right;}
+th{background:#f0eee8;font-weight:700;font-size:12px;}
+tr:nth-child(even) td{background:#fafaf8;}
+.total-table td{border-top:1px solid #eee;padding:6px 10px;}
+.amount-words{background:#f8f4ec;border-radius:8px;padding:10px 14px;font-size:13px;font-weight:700;margin:12px 0;border:1px solid #e0d8cc;}
+.payment-box{background:#f0f8ff;border-radius:8px;padding:10px 14px;font-size:13px;margin:12px 0;border:1px solid #d0e8f8;}
+.sig-area{margin-top:30px;display:flex;justify-content:space-between;border-top:1px dashed #ccc;padding-top:16px;}
+.sig-block{text-align:center;width:45%;}
+.sig-line{border-bottom:1px solid #333;height:40px;margin-bottom:6px;}
+.sig-label{font-size:11px;color:#888;}
+.footer{margin-top:28px;text-align:center;font-size:11px;color:#aaa;border-top:1px solid #eee;padding-top:12px;}
+.legal-note{font-size:10px;color:#aaa;margin-top:8px;text-align:center;}
+@media print{body{padding:20px;}}
+</style></head><body>
+
+<div class="header">
+  <div>
+    <div class="doc-title">${inv.type==="receipt"?"קבלה":"חשבונית מס"}</div>
+    <div class="doc-num">מספר: <strong>${inv.type==="receipt"?"R":"I"}${inv.num}</strong></div>
+    <div class="doc-num">תאריך הנפקה: <strong>${new Date(inv.date).toLocaleDateString("he-IL")}</strong></div>
+    <div class="doc-num">תאריך תשלום: <strong>${inv.paymentDate?new Date(inv.paymentDate).toLocaleDateString("he-IL"):new Date(inv.date).toLocaleDateString("he-IL")}</strong></div>
+  </div>
+  <div>
+    <img src="https://shirat-hatziporim.github.io/shirat-hatziporim/logo.jpeg" class="logo"><br>
+    <div class="biz-name">צימר שירת הציפורים</div>
+    <div class="biz-detail">נחל קדם 93, מיצד, ישראל</div>
+    <div class="biz-detail">עוסק ${inv.vatType==="vat"?"מורשה":"פטור"} | מס' עוסק: <strong>036731560</strong></div>
+    <div class="biz-detail">טל': 050-4103353 | shirathatziporim@gmail.com</div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+  <div class="section">
+    <div class="section-title">פרטי הלקוח</div>
+    <table>
+      <tr><th>שם</th><td>${inv.guestName}</td></tr>
+      ${inv.guestId?`<tr><th>ת.ז / ח.פ</th><td>${inv.guestId}</td></tr>`:""}
+      <tr><th>טלפון</th><td>${inv.guestPhone}</td></tr>
+      ${inv.guestEmail?`<tr><th>מייל</th><td dir="ltr">${inv.guestEmail}</td></tr>`:""}
+    </table>
+  </div>
+  <div class="section">
+    <div class="section-title">פרטי השירות</div>
+    <table>
+      <tr><th>כניסה</th><td>${inv.checkin}</td></tr>
+      <tr><th>יציאה</th><td>${inv.checkout}</td></tr>
+      <tr><th>לילות</th><td>${inv.nights}</td></tr>
+      <tr><th>סוג</th><td>${inv.guestExtra||"לינה"}</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">פירוט חיוב</div>
+  <table>
+    <tr><th>תיאור</th><th style="text-align:left">סכום</th></tr>
+    <tr><td>שירותי לינה — ${inv.guestExtra||"אירוח"} (${inv.nights} לילות)</td><td style="text-align:left">₪${inv.total.toLocaleString()}</td></tr>
+  </table>
+</div>
+
+<div class="section">
+  <table class="total-table">
+    ${vatSection}
+  </table>
+</div>
+
+<div class="amount-words">
+  סכום במילים: <strong>${totalWords}</strong>
+</div>
+
+<div class="payment-box">
+  💳 אמצעי תשלום: <strong>${payMethod}</strong>
+  ${inv.paymentRef?` &nbsp;|&nbsp; אסמכתה: <strong>${inv.paymentRef}</strong>`:""}
+</div>
+
+<div class="sig-area">
+  <div style="font-size:12px;color:#888;">מסמך זה הופק ממוחשבית ואינו טעון חתימה ידנית</div>
+  <div style="text-align:left;font-size:13px;font-weight:700;">יעקב גרזון<br><span style="font-size:11px;color:#888;font-weight:400;">צימר שירת הציפורים | עוסק ${inv.vatType==="vat"?"מורשה":"פטור"} 036731560</span></div>
+</div>
+
+<div class="footer">
+  תודה על בחירתכם בצימר שירת הציפורים 🐦 | נחל קדם 93, מיצד | 050-4103353
+</div>
+<div class="legal-note">
+  מסמך זה הופק ממערכת ניהול פנימית. יש לשמור עותק לצרכי חשבונאות ומס.
+</div>
+</body></html>`;
+
+    const w=window.open("","_blank");
+    w.document.write(html);
+    w.document.close();
+    setTimeout(()=>w.print(),600);
+  }
+
+  function sendInvoiceEmail(inv){
+    if(!inv.guestEmail){alert("לא הוזן מייל ללקוח זה");return;}
+    const subject=encodeURIComponent(`${inv.type==="receipt"?"קבלה":"חשבונית מס"} מספר ${inv.type==="receipt"?"R":"I"}${inv.num} — שירת הציפורים`);
+    const body=encodeURIComponent(`שלום ${inv.guestName},
+
+מצורפת ${inv.type==="receipt"?"קבלה":"חשבונית מס"} עבור לינתכם בצימר שירת הציפורים.
+
+מספר מסמך: ${inv.type==="receipt"?"R":"I"}${inv.num}
+תאריכים: ${inv.checkin} עד ${inv.checkout}
+סכום: ₪${inv.total.toLocaleString()}
+
+תודה על בחירתכם!
+צימר שירת הציפורים | 050-4103353`);
+    openEmail(inv.guestEmail,subject,body);
+  }
     setChecklist(cl);
     try{localStorage.setItem("shirat_checklist",JSON.stringify(cl));}catch(e){}
   }
@@ -1251,7 +1418,7 @@ function App(){
 
         {/* Tabs */}
         <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
-          {[["list","📋 רשימה"],["calendar","📅 יומן"],["reports","📊 דוחות"],["guests","👥 אורחים"],["household","🏠 משק בית"]].map(([k,l])=>(
+          {[["list","📋 רשימה"],["calendar","📅 יומן"],["reports","📊 דוחות"],["guests","👥 אורחים"],["household","🏠 משק בית"],["accounting","📄 חשבונות"]].map(([k,l])=>(
             <button key={k} onClick={()=>setView(k)} style={{padding:"7px 14px",borderRadius:10,border:"none",cursor:"pointer",background:view===k?"#1a1a2e":"#fff",color:view===k?"#fff":"#5a4e40",fontWeight:view===k?700:500,fontSize:14,fontFamily:"'Heebo',sans-serif",boxShadow:"0 2px 8px rgba(0,0,0,.07)"}}>{l}</button>
           ))}
         </div>
@@ -1882,6 +2049,129 @@ function App(){
             )}
           </div>
         )}
+
+      {/* ── Accounting ── */}
+      {view==="accounting"&&(
+        <div style={{marginTop:16}}>
+          {/* כותרת + כפתור יצירה */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}>
+            <h3 style={{fontFamily:"'Heebo',sans-serif",fontSize:16,fontWeight:800,color:"#1a1a2e",margin:0}}>📄 חשבונות ומסמכים</h3>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <select value={invoiceVatType} onChange={e=>setInvoiceVatType(e.target.value)}
+                style={{padding:"6px 12px",borderRadius:8,border:"1.5px solid #e0d8cc",fontSize:13,fontFamily:"'Heebo',sans-serif",background:"#fff"}}>
+                <option value="exempt">עוסק פטור</option>
+                <option value="vat">עוסק מורשה (מע"מ)</option>
+              </select>
+            </div>
+          </div>
+
+          {/* יצירה מהזמנה */}
+          <div style={{background:"#fff",borderRadius:16,padding:"16px",boxShadow:"0 2px 12px rgba(0,0,0,.06)",marginBottom:16}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#1a1a2e",fontFamily:"'Heebo',sans-serif",marginBottom:10}}>צור מסמך מהזמנה קיימת</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+              <div style={{gridColumn:"1/-1"}}>
+                <label style={{display:"block",fontSize:12,color:"#7a6a58",marginBottom:4,fontWeight:600,fontFamily:"'Heebo',sans-serif"}}>הזמנה *</label>
+                <select id="invBookingSelect"
+                  style={{width:"100%",padding:"9px 12px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:14,fontFamily:"'Heebo',sans-serif",direction:"rtl",boxSizing:"border-box"}}>
+                  <option value="">— בחר הזמנה —</option>
+                  {bookings.filter(b=>b.status==="confirmed").map(b=>(
+                    <option key={b.id} value={b.id}>{b.name} | {b.checkin} | ₪{(b.total||0).toLocaleString()}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={{display:"block",fontSize:12,color:"#7a6a58",marginBottom:4,fontWeight:600,fontFamily:"'Heebo',sans-serif"}}>אמצעי תשלום *</label>
+                <select id="invPayMethod" style={{width:"100%",padding:"9px 12px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:14,fontFamily:"'Heebo',sans-serif",boxSizing:"border-box"}}>
+                  <option value="bit">ביט</option>
+                  <option value="paybox">פייבוקס</option>
+                  <option value="transfer">העברה בנקאית</option>
+                  <option value="cash">מזומן</option>
+                  <option value="card">כרטיס אשראי</option>
+                </select>
+              </div>
+              <div>
+                <label style={{display:"block",fontSize:12,color:"#7a6a58",marginBottom:4,fontWeight:600,fontFamily:"'Heebo',sans-serif"}}>תאריך קבלת תשלום</label>
+                <input type="date" id="invPayDate" defaultValue={new Date().toISOString().split("T")[0]}
+                  style={{width:"100%",padding:"9px 12px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:14,fontFamily:"'Heebo',sans-serif",boxSizing:"border-box",direction:"ltr"}}/>
+              </div>
+              <div>
+                <label style={{display:"block",fontSize:12,color:"#7a6a58",marginBottom:4,fontWeight:600,fontFamily:"'Heebo',sans-serif"}}>ת.ז / ח.פ לקוח (אופציונלי)</label>
+                <input type="text" id="invGuestId" placeholder="000000000"
+                  style={{width:"100%",padding:"9px 12px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:14,fontFamily:"'Heebo',sans-serif",boxSizing:"border-box",direction:"ltr"}}/>
+              </div>
+              <div>
+                <label style={{display:"block",fontSize:12,color:"#7a6a58",marginBottom:4,fontWeight:600,fontFamily:"'Heebo',sans-serif"}}>אסמכתה (אופציונלי)</label>
+                <input type="text" id="invPayRef" placeholder="מספר אסמכתה / אישור"
+                  style={{width:"100%",padding:"9px 12px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:14,fontFamily:"'Heebo',sans-serif",boxSizing:"border-box"}}/>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              {["receipt","invoice"].map(type=>(
+                <button key={type} onClick={()=>{
+                  const sel=document.getElementById("invBookingSelect").value;
+                  if(!sel){alert("נא לבחור הזמנה");return;}
+                  const b=bookings.find(x=>String(x.id)===sel);
+                  if(!b)return;
+                  const num=getNextInvoiceNum(type);
+                  const inv={
+                    id:Date.now(),num,type,vatType:invoiceVatType,
+                    bookingId:b.id,guestName:b.name,guestPhone:b.phone,
+                    guestEmail:b.email||"",checkin:b.checkin,checkout:b.checkout,
+                    nights:b.nights||0,total:b.total||0,guestExtra:b.guestExtra||"",
+                    date:new Date().toISOString().split("T")[0],
+                    paymentMethod:document.getElementById("invPayMethod").value,
+                    paymentDate:document.getElementById("invPayDate").value,
+                    guestId:document.getElementById("invGuestId").value,
+                    paymentRef:document.getElementById("invPayRef").value,
+                  };
+                  saveInvoices([...invoices,inv]);
+                  generatePDF(inv);
+                }} style={{...bS(type==="receipt"?"#e8f5e9":"#e3f2fd",type==="receipt"?"#2e7d32":"#1565c0"),fontSize:13,padding:"8px 16px"}}>
+                  {type==="receipt"?"🧾 הנפק קבלה":"📋 הנפק חשבונית מס"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* רשימת מסמכים */}
+          {invoices.length===0?(
+            <div style={{background:"#fff",borderRadius:16,padding:"32px",textAlign:"center",color:"#a09080",fontFamily:"'Heebo',sans-serif",fontSize:14}}>
+              אין מסמכים עדיין
+            </div>
+          ):(
+            <div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}>
+              <div style={{display:"grid",gridTemplateColumns:"auto 1fr auto auto auto",gap:0}}>
+                {["מספר","לקוח","סכום","תאריך","פעולות"].map(h=>(
+                  <div key={h} style={{padding:"10px 14px",background:"#1a1a2e",color:"#fff",fontSize:12,fontWeight:700,fontFamily:"'Heebo',sans-serif"}}>{h}</div>
+                ))}
+                {invoices.slice().reverse().map((inv,i)=>(
+                  <React.Fragment key={inv.id}>
+                    <div style={{padding:"12px 14px",borderBottom:"1px solid #f0eee8",fontFamily:"'Heebo',sans-serif",fontSize:13,fontWeight:700}}>
+                      <span style={{background:inv.type==="receipt"?"#e8f5e9":"#e3f2fd",color:inv.type==="receipt"?"#2e7d32":"#1565c0",padding:"2px 8px",borderRadius:6,fontSize:11}}>
+                        {inv.type==="receipt"?"קבלה":"חשבונית"}
+                      </span>
+                      <span style={{marginRight:6}}>{inv.type==="receipt"?"R":"I"}{inv.num}</span>
+                    </div>
+                    <div style={{padding:"12px 14px",borderBottom:"1px solid #f0eee8",fontFamily:"'Heebo',sans-serif",fontSize:13}}>
+                      <div style={{fontWeight:700}}>{inv.guestName}</div>
+                      <div style={{fontSize:11,color:"#8a7e6e"}}>{inv.checkin} → {inv.checkout}</div>
+                    </div>
+                    <div style={{padding:"12px 14px",borderBottom:"1px solid #f0eee8",fontFamily:"'Heebo',sans-serif",fontSize:13,fontWeight:700}}>
+                      ₪{(inv.vatType==="vat"?Math.round(inv.total*1.18):inv.total).toLocaleString()}
+                    </div>
+                    <div style={{padding:"12px 14px",borderBottom:"1px solid #f0eee8",fontFamily:"'Heebo',sans-serif",fontSize:12,color:"#8a7e6e"}}>{fd(inv.date)}</div>
+                    <div style={{padding:"8px 12px",borderBottom:"1px solid #f0eee8",display:"flex",gap:5,alignItems:"center"}}>
+                      <button onClick={()=>generatePDF(inv)} style={{...bS("#f0eee8","#1a1a2e"),fontSize:11,padding:"4px 8px"}} title="הדפס PDF">🖨️</button>
+                      {inv.guestEmail&&<button onClick={()=>sendInvoiceEmail(inv)} style={{...bS("#e3f2fd","#1565c0"),fontSize:11,padding:"4px 8px"}} title="שלח במייל">📧</button>}
+                      <button onClick={()=>{if(window.confirm("למחוק מסמך זה?"))saveInvoices(invoices.filter(x=>x.id!==inv.id));}} style={{...bS("#fce4ec","#c62828"),fontSize:11,padding:"4px 8px"}} title="מחק">🗑️</button>
+                    </div>
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* פופאפ בקשת ביקורת */}
       {reviewPopup&&(
