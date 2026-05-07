@@ -258,28 +258,6 @@ function isUnavailable(ds){ return isPast(ds)||isBlocked(ds)||isBooked(ds); }
 
 // טען נתונים מ-Sheets
 function loadData(){
-  // טען מחירים מ-Sheets
-  const cbp="cbp"+Date.now();
-  const sp=document.createElement("script");
-  sp.src=SCRIPT_URL+"?action=getTemplates&callback="+cbp+"&t="+Date.now();
-  window[cbp]=function(data){
-    if(data&&data.shirat_prices){
-      try{
-        const p=JSON.parse(data.shirat_prices);
-        if(p.weekday)    PRICES.weekday=Number(p.weekday);
-        if(p.weekend)    PRICES.weekend=Number(p.weekend);
-        if(p.packageDeal)PRICES.packageDeal=Number(p.packageDeal);
-        if(p.sundayExtra)PRICES.sundayExtra=Number(p.sundayExtra);
-        if(p.extraGuest) PRICES.extraGuest=Number(p.extraGuest);
-        // אם המשתמש כבר בחר תאריכים — חשב מחדש
-        if(document.getElementById("checkin").value&&document.getElementById("checkout").value) calcPrice();
-      }catch(e){console.log("prices parse error",e);}
-    }
-    delete window[cbp];
-    try{document.body.removeChild(sp);}catch(e){}
-  };
-  sp.onerror=function(){delete window[cbp];};
-  document.body.appendChild(sp);
   const cb="cb"+Date.now();
   const s=document.createElement("script");
   s.src=SCRIPT_URL+"?action=get&callback="+cb+"&t="+Date.now();
@@ -527,7 +505,29 @@ ${notes?"הערות: "+notes:""}
 const todayStr=new Date().toISOString().split("T")[0];
 document.getElementById("checkin").min=todayStr;
 document.getElementById("checkout").min=todayStr;
-loadData();
+
+// טען מחירים קודם, ואחר כך שאר הנתונים
+const cbpInit="cbpinit"+Date.now();
+const spInit=document.createElement("script");
+spInit.src=SCRIPT_URL+"?action=getTemplates&callback="+cbpInit+"&t="+Date.now();
+window[cbpInit]=function(data){
+  if(data&&data.shirat_prices){
+    try{
+      const p=JSON.parse(data.shirat_prices);
+      if(p.weekday)     PRICES.weekday=Number(p.weekday);
+      if(p.weekend)     PRICES.weekend=Number(p.weekend);
+      if(p.packageDeal) PRICES.packageDeal=Number(p.packageDeal);
+      if(p.sundayExtra) PRICES.sundayExtra=Number(p.sundayExtra);
+      if(p.extraGuest)  PRICES.extraGuest=Number(p.extraGuest);
+    }catch(e){}
+  }
+  delete window[cbpInit];
+  try{document.body.removeChild(spInit);}catch(e){}
+  // טען שאר הנתונים אחרי המחירים
+  loadData();
+};
+spInit.onerror=function(){delete window[cbpInit]; loadData();};
+document.body.appendChild(spInit);
 </script>
 </body>
 </html>
