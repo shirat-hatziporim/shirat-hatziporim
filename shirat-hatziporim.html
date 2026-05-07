@@ -483,7 +483,7 @@ ${balance>0?`\n💳 יתרה לתשלום בהגעה: ${fm(balance)}`:"✅ שו�
 מחכים לכם!
 יעקב 📞 050-410-3353
 שירת הציפורים`;
-  window.open(`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(b.email)}&su=${subject}&body=${encodeURIComponent(bodyText)}`,"_blank");
+  openEmail(b.email,subject,encodeURIComponent(bodyText));
 }
 
 // ── מיילים ──
@@ -568,14 +568,14 @@ https://charedi.net/tzimar/25569/
 function sendWelcomeEmail(b){
   if(!b.email){alert("לא הוזן מייל ללקוח זה");return;}
   const {subject,body}=buildWelcomeEmail(b);
-  window.open(`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(b.email)}&su=${subject}&body=${body}`,"_blank");
+  openEmail(b.email,subject,body);
 }
 
 function sendReviewEmail(b){
   if(!b.email){alert("לא הוזן מייל ללקוח זה");return;}
   const custom=localStorage.getItem("shirat_review_template")||"";
   const {subject,body}=buildReviewEmail(b,custom||null);
-  window.open(`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(b.email)}&su=${subject}&body=${body}`,"_blank");
+  openEmail(b.email,subject,body);
 }
 
 function sendReviewWhatsApp(b){
@@ -600,7 +600,23 @@ https://dira4shabat.co.il/listing/%D7%A6%D7%99%D7%9E%D7%A8-%D7%A9%D7%99%D7%A8%D7
   window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(text)}`,"_blank");
 }
 
-function checkReminders(bookings){
+function openEmail(to,subject,body){
+  const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if(isMobile){
+    window.location.href=`mailto:${to}?subject=${subject}&body=${body}`;
+  } else {
+    window.open(`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(to)}&su=${subject}&body=${body}`,"_blank");
+  }
+}
+
+function openEmailBcc(bcc,subject,body){
+  const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if(isMobile){
+    window.location.href=`mailto:?bcc=${bcc}&subject=${subject}&body=${body}`;
+  } else {
+    window.open(`https://mail.google.com/mail/?view=cm&bcc=${encodeURIComponent(bcc)}&su=${subject}&body=${body}`,"_blank");
+  }
+}
   const today=new Date().toISOString().split("T")[0];
   const tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);
   const tomorrowStr=tomorrow.toISOString().split("T")[0];
@@ -677,7 +693,7 @@ function sendConfirmEmail(b){
   if(!b.email){alert("לא הוזן מייל ללקוח זה");return;}
   const custom=localStorage.getItem("shirat_confirm_template")||"";
   const {subject,body}=buildConfirmEmail(b,custom||null);
-  window.open(`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(b.email)}&su=${subject}&body=${body}`,"_blank");
+  openEmail(b.email,subject,body);
 }
 
 // ── Styles ──
@@ -1805,7 +1821,9 @@ function App(){
                 window.open(`https://api.whatsapp.com/send?phone=${phone}`,"_blank");
               }} style={{...bS("#e7f7e7","#2e7d32"),fontSize:13,padding:"7px 14px"}}>💬 WhatsApp</button>
               {guestPopup.email&&<button onClick={()=>{
-                window.open(`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(guestPopup.email)}`,"_blank");
+                const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+                if(isMobile) window.location.href=`mailto:${guestPopup.email}`;
+                else window.open(`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(guestPopup.email)}`,"_blank");
               }} style={{...bS("#e3f2fd","#1565c0"),fontSize:13,padding:"7px 14px"}}>📧 מייל</button>}
             </div>
 
@@ -1880,7 +1898,7 @@ function App(){
                   const emails=withEmail.map(g=>g.email).join(",");
                   const subject=encodeURIComponent("שירת הציפורים — עדכון מיוחד");
                   const body=encodeURIComponent(broadcastMsg);
-                  window.open(`https://mail.google.com/mail/?view=cm&bcc=${encodeURIComponent(emails)}&su=${subject}&body=${body}`,"_blank");
+                  openEmailBcc(emails,subject,body);
                 }} style={{...bS("#1565c0","#fff"),fontSize:13,flex:1}}>
                   📧 מייל ({withEmail.length})
                 </button>}
@@ -2080,7 +2098,7 @@ https://dira4shabat.co.il/listing/%D7%A6%D7%99%D7%9E%D7%A8-%D7%A9%D7%99%D7%A8%D7
                 if(!inquiryEmail){alert("הזן כתובת מייל");return;}
                 const sub=encodeURIComponent('מידע על צימר שירת הציפורים');
                 const body=encodeURIComponent(inquiryTemplate);
-                window.open(`https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(inquiryEmail)}&su=${sub}&body=${body}`,"_blank");
+                openEmail(inquiryEmail,sub,body);
               }} style={{...bS("#1a1a2e","#fff"),fontSize:13}}>📧 שלח מייל</button>
               <button onClick={()=>{
                 if(!inquiryPhone){alert("הזן מספר טלפון");return;}
