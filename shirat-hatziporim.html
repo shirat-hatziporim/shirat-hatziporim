@@ -987,6 +987,48 @@ function App(){
   const [reminderPopup,setReminderPopup]=useState(null);
   const [confirmPopup,setConfirmPopup]=useState(null);
   const [reviewPopup,setReviewPopup]=useState(null);
+  const [householdTab,setHouseholdTab]=useState("cleaning"); // cleaning | inventory | suppliers
+
+  // משק בית — צ'קליסט ניקיון
+  const DEFAULT_CHECKLIST=[
+    {id:1,text:"שינוי מצעים",done:false},
+    {id:2,text:"החלפת מגבות",done:false},
+    {id:3,text:"ניקוי חדר אמבטיה",done:false},
+    {id:4,text:"שטיפת רצפות",done:false},
+    {id:5,text:"ניקוי מטבח",done:false},
+    {id:6,text:"רענון מוצרי ניקיון",done:false},
+    {id:7,text:"בדיקת ג'קוזי",done:false},
+    {id:8,text:"מילוי קפה וסוכר",done:false},
+    {id:9,text:"איסוף אשפה",done:false},
+    {id:10,text:"ניקוי חצר",done:false},
+  ];
+  const [checklist,setChecklist]=useState(()=>{
+    try{const s=localStorage.getItem("shirat_checklist");return s?JSON.parse(s):DEFAULT_CHECKLIST;}catch{return DEFAULT_CHECKLIST;}
+  });
+  const [newCheckItem,setNewCheckItem]=useState("");
+
+  // מלאי
+  const DEFAULT_INVENTORY=[
+    {id:1,name:"סבון ידיים",qty:3,min:2,unit:"יח'"},
+    {id:2,name:"שמפו",qty:2,min:2,unit:"יח'"},
+    {id:3,name:"קפה",qty:5,min:3,unit:"שקיות"},
+    {id:4,name:"מגבות",qty:8,min:4,unit:"יח'"},
+    {id:5,name:"נייר טואלט",qty:6,min:4,unit:"גלילים"},
+    {id:6,name:"תה",qty:10,min:5,unit:"שקיות"},
+    {id:7,name:"סוכר",qty:1,min:1,unit:"קופסה"},
+  ];
+  const [inventory,setInventory]=useState(()=>{
+    try{const s=localStorage.getItem("shirat_inventory");return s?JSON.parse(s):DEFAULT_INVENTORY;}catch{return DEFAULT_INVENTORY;}
+  });
+  const [newItem,setNewItem]=useState({name:"",qty:1,min:1,unit:"יח'"});
+  const [editInv,setEditInv]=useState(null);
+
+  // ספקים
+  const [suppliers,setSuppliers]=useState(()=>{
+    try{const s=localStorage.getItem("shirat_suppliers");return s?JSON.parse(s):[];}catch{return[];}
+  });
+  const [newSupplier,setNewSupplier]=useState({name:"",phone:"",service:"",lastPayment:"",amount:""});
+  const [showAddSupplier,setShowAddSupplier]=useState(false);
   const [inquiryTemplate,setInquiryTemplate]=useState(()=>{
     try{const s=localStorage.getItem("shirat_inquiry");return s||DEFAULT_INQUIRY_TEMPLATE;}catch{return DEFAULT_INQUIRY_TEMPLATE;}
   });
@@ -1043,6 +1085,19 @@ function App(){
   function saveManualGuests(mg){
     setManualGuests(mg);
     saveManualGuestsToSheets(mg);
+  }
+
+  function saveChecklist(cl){
+    setChecklist(cl);
+    try{localStorage.setItem("shirat_checklist",JSON.stringify(cl));}catch(e){}
+  }
+  function saveInventory(inv){
+    setInventory(inv);
+    try{localStorage.setItem("shirat_inventory",JSON.stringify(inv));}catch(e){}
+  }
+  function saveSuppliers(sup){
+    setSuppliers(sup);
+    try{localStorage.setItem("shirat_suppliers",JSON.stringify(sup));}catch(e){}
   }
 
   const filtered=bookings.filter(b=>{
@@ -1189,7 +1244,7 @@ function App(){
 
         {/* Tabs */}
         <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
-          {[["list","📋 רשימה"],["calendar","📅 יומן"],["reports","📊 דוחות"],["guests","👥 אורחים"]].map(([k,l])=>(
+          {[["list","📋 רשימה"],["calendar","📅 יומן"],["reports","📊 דוחות"],["guests","👥 אורחים"],["household","🏠 משק בית"]].map(([k,l])=>(
             <button key={k} onClick={()=>setView(k)} style={{padding:"7px 14px",borderRadius:10,border:"none",cursor:"pointer",background:view===k?"#1a1a2e":"#fff",color:view===k?"#fff":"#5a4e40",fontWeight:view===k?700:500,fontSize:14,fontFamily:"'Heebo',sans-serif",boxShadow:"0 2px 8px rgba(0,0,0,.07)"}}>{l}</button>
           ))}
         </div>
@@ -1620,6 +1675,203 @@ function App(){
           );
         })()}
       </div>
+
+        {/* ── Household ── */}
+        {view==="household"&&(
+          <div style={{marginTop:16}}>
+            <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
+              {[["cleaning","🧹 ניקיון"],["inventory","📦 מלאי"],["suppliers","🤝 ספקים"]].map(([k,l])=>(
+                <button key={k} onClick={()=>setHouseholdTab(k)}
+                  style={{padding:"6px 14px",borderRadius:10,border:"none",cursor:"pointer",
+                    background:householdTab===k?"#1a1a2e":"#fff",
+                    color:householdTab===k?"#fff":"#5a4e40",
+                    fontWeight:householdTab===k?700:500,fontSize:13,
+                    fontFamily:"'Heebo',sans-serif",boxShadow:"0 2px 8px rgba(0,0,0,.07)"}}>
+                  {l}
+                </button>
+              ))}
+            </div>
+
+            {householdTab==="cleaning"&&(
+              <div>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}}>
+                  <div>
+                    <span style={{fontFamily:"'Heebo',sans-serif",fontSize:14,color:"#8a7e6e"}}>
+                      {checklist.filter(c=>c.done).length}/{checklist.length} פריטים הושלמו
+                    </span>
+                    <div style={{background:"#f0eee8",borderRadius:100,height:6,width:180,marginTop:4}}>
+                      <div style={{background:"#2e7d32",height:6,borderRadius:100,transition:"width .3s",
+                        width:`${checklist.length?Math.round(checklist.filter(c=>c.done).length/checklist.length*100):0}%`}}/>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",gap:8}}>
+                    <button onClick={()=>saveChecklist(checklist.map(c=>({...c,done:false})))}
+                      style={{...bS("#f0eee8","#1a1a2e"),fontSize:12,padding:"6px 12px"}}>איפוס</button>
+                    <button onClick={()=>saveChecklist(checklist.map(c=>({...c,done:true})))}
+                      style={{...bS("#e8f5e9","#2e7d32"),fontSize:12,padding:"6px 12px"}}>סמן הכל</button>
+                  </div>
+                </div>
+                <div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,.06)",marginBottom:12}}>
+                  {checklist.map((item,i)=>(
+                    <div key={item.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",
+                      borderBottom:i<checklist.length-1?"1px solid #f0eee8":"none",
+                      background:item.done?"#f8fff8":"#fff"}}>
+                      <input type="checkbox" checked={item.done}
+                        onChange={e=>{saveChecklist(checklist.map(c=>c.id===item.id?{...c,done:e.target.checked}:c));}}
+                        style={{width:18,height:18,cursor:"pointer",accentColor:"#2e7d32"}}/>
+                      <span style={{flex:1,fontFamily:"'Heebo',sans-serif",fontSize:14,
+                        color:item.done?"#a09080":"#1a1a2e",
+                        textDecoration:item.done?"line-through":"none"}}>{item.text}</span>
+                      <button onClick={()=>saveChecklist(checklist.filter(c=>c.id!==item.id))}
+                        style={{border:"none",background:"none",cursor:"pointer",color:"#ccc",fontSize:16,padding:0}}>✕</button>
+                    </div>
+                  ))}
+                </div>
+                <div style={{display:"flex",gap:8}}>
+                  <input value={newCheckItem} onChange={e=>setNewCheckItem(e.target.value)}
+                    onKeyDown={e=>{if(e.key==="Enter"&&newCheckItem.trim()){
+                      saveChecklist([...checklist,{id:Date.now(),text:newCheckItem.trim(),done:false}]);
+                      setNewCheckItem("");
+                    }}}
+                    placeholder="הוסף פריט ניקיון..."
+                    style={{flex:1,padding:"9px 14px",borderRadius:10,border:"1.5px solid #e0d8cc",
+                      fontSize:14,fontFamily:"'Heebo',sans-serif",direction:"rtl",outline:"none"}}/>
+                  <button onClick={()=>{if(newCheckItem.trim()){
+                    saveChecklist([...checklist,{id:Date.now(),text:newCheckItem.trim(),done:false}]);
+                    setNewCheckItem("");
+                  }}} style={{...bS("#1a1a2e","#fff"),padding:"9px 18px",fontSize:14}}>+ הוסף</button>
+                </div>
+              </div>
+            )}
+
+            {householdTab==="inventory"&&(
+              <div>
+                {inventory.filter(i=>i.qty<=i.min).length>0&&(
+                  <div style={{background:"#fff8e1",border:"1px solid #ffe0b2",borderRadius:12,padding:"10px 16px",
+                    marginBottom:12,fontSize:13,color:"#e65100",fontFamily:"'Heebo',sans-serif"}}>
+                    ⚠️ מלאי נמוך: {inventory.filter(i=>i.qty<=i.min).map(i=>i.name).join(", ")}
+                  </div>
+                )}
+                <div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,.06)",marginBottom:12}}>
+                  {inventory.map((item,i)=>(
+                    <div key={item.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",
+                      borderBottom:i<inventory.length-1?"1px solid #f0eee8":"none"}}>
+                      <div style={{flex:1}}>
+                        <div style={{fontWeight:700,color:"#1a1a2e",fontFamily:"'Heebo',sans-serif",fontSize:14}}>{item.name}</div>
+                        <div style={{fontSize:11,color:item.qty<=item.min?"#c62828":"#8a7e6e",fontFamily:"'Heebo',sans-serif"}}>
+                          {item.qty<=item.min?"⚠️ ":""}מינימום: {item.min} {item.unit}
+                        </div>
+                      </div>
+                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        <button onClick={()=>saveInventory(inventory.map(x=>x.id===item.id?{...x,qty:Math.max(0,x.qty-1)}:x))}
+                          style={{width:28,height:28,borderRadius:8,border:"1px solid #e0d8cc",background:"#fff",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
+                        <span style={{minWidth:36,textAlign:"center",fontWeight:800,fontSize:16,
+                          color:item.qty<=item.min?"#c62828":"#1a1a2e",fontFamily:"'Heebo',sans-serif"}}>
+                          {item.qty}
+                        </span>
+                        <button onClick={()=>saveInventory(inventory.map(x=>x.id===item.id?{...x,qty:x.qty+1}:x))}
+                          style={{width:28,height:28,borderRadius:8,border:"1px solid #e0d8cc",background:"#fff",cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+                        <span style={{fontSize:12,color:"#8a7e6e",minWidth:30,fontFamily:"'Heebo',sans-serif"}}>{item.unit}</span>
+                        <button onClick={()=>saveInventory(inventory.filter(x=>x.id!==item.id))}
+                          style={{border:"none",background:"none",cursor:"pointer",color:"#ccc",fontSize:14,padding:0}}>✕</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{background:"#fff",borderRadius:16,padding:"16px",boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}>
+                  <div style={{fontSize:13,fontWeight:700,color:"#1a1a2e",fontFamily:"'Heebo',sans-serif",marginBottom:10}}>+ הוסף פריט</div>
+                  <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",gap:8,marginBottom:8}}>
+                    {[{k:"name",p:"שם פריט"},{k:"qty",p:"כמות",t:"number"},{k:"min",p:"מינימום",t:"number"},{k:"unit",p:"יחידה"}].map(({k,p,t})=>(
+                      <div key={k}>
+                        <input value={newItem[k]} type={t||"text"}
+                          onChange={e=>setNewItem(x=>({...x,[k]:t==="number"?parseInt(e.target.value)||0:e.target.value}))}
+                          placeholder={p} style={{width:"100%",padding:"8px 10px",borderRadius:8,border:"1.5px solid #e0d8cc",
+                            fontSize:13,fontFamily:"'Heebo',sans-serif",direction:"rtl",outline:"none",boxSizing:"border-box"}}/>
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={()=>{if(!newItem.name.trim())return;
+                    saveInventory([...inventory,{...newItem,id:Date.now()}]);
+                    setNewItem({name:"",qty:1,min:1,unit:"יח'"});
+                  }} style={{...bS("#1a1a2e","#fff"),width:"100%",fontSize:14}}>הוסף לרשימה</button>
+                </div>
+              </div>
+            )}
+
+            {householdTab==="suppliers"&&(
+              <div>
+                <div style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}>
+                  <button onClick={()=>setShowAddSupplier(true)}
+                    style={{...bS("#1a1a2e","#fff"),fontSize:13}}>+ הוסף ספק</button>
+                </div>
+                {suppliers.length===0&&(
+                  <div style={{background:"#fff",borderRadius:16,padding:"32px",textAlign:"center",
+                    color:"#a09080",fontFamily:"'Heebo',sans-serif",fontSize:14}}>
+                    אין ספקים עדיין — לחץ "הוסף ספק" להתחלה
+                  </div>
+                )}
+                <div style={{display:"grid",gap:10}}>
+                  {suppliers.map(s=>(
+                    <div key={s.id} style={{background:"#fff",borderRadius:14,padding:"14px 18px",
+                      boxShadow:"0 2px 10px rgba(0,0,0,.06)",display:"flex",justifyContent:"space-between",
+                      alignItems:"flex-start",flexWrap:"wrap",gap:8}}>
+                      <div>
+                        <div style={{fontWeight:800,color:"#1a1a2e",fontFamily:"'Heebo',sans-serif",fontSize:15,marginBottom:2}}>{s.name}</div>
+                        <div style={{fontSize:12,color:"#8a7e6e",fontFamily:"'Heebo',sans-serif"}}>{s.service}</div>
+                        <div style={{fontSize:12,color:"#8a7e6e",fontFamily:"'Heebo',sans-serif",marginTop:2}}>{s.phone}</div>
+                      </div>
+                      <div style={{textAlign:"left"}}>
+                        {s.amount&&<div style={{fontWeight:800,color:"#1a1a2e",fontFamily:"'Heebo',sans-serif"}}>₪{Number(s.amount).toLocaleString()}</div>}
+                        {s.lastPayment&&<div style={{fontSize:11,color:"#8a7e6e",fontFamily:"'Heebo',sans-serif"}}>תשלום אחרון: {fd(s.lastPayment)}</div>}
+                        <div style={{display:"flex",gap:6,marginTop:6}}>
+                          {s.phone&&<button onClick={()=>{const p="972"+(s.phone||"").replace(/\D/g,"").replace(/^0/,"");window.open(`https://api.whatsapp.com/send?phone=${p}`,"_blank");}}
+                            style={{...bS("#e7f7e7","#2e7d32"),fontSize:11,padding:"4px 8px"}}>💬</button>}
+                          <button onClick={()=>saveSuppliers(suppliers.filter(x=>x.id!==s.id))}
+                            style={{...bS("#fce4ec","#c62828"),fontSize:11,padding:"4px 8px"}}>🗑️</button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {showAddSupplier&&(
+                  <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center"}}
+                    onClick={()=>setShowAddSupplier(false)}>
+                    <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:20,padding:"24px 28px",
+                      width:"min(400px,94vw)",boxShadow:"0 24px 80px rgba(0,0,0,.22)",direction:"rtl"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+                        <h3 style={{margin:0,fontFamily:"'Heebo',sans-serif",fontSize:17,fontWeight:800}}>+ הוספת ספק</h3>
+                        <button onClick={()=>setShowAddSupplier(false)} style={{border:"none",background:"none",fontSize:20,cursor:"pointer",color:"#aaa"}}>✕</button>
+                      </div>
+                      <div style={{display:"grid",gap:10,marginBottom:16}}>
+                        {[{k:"name",l:"שם הספק *"},{k:"service",l:"שירות / תחום"},{k:"phone",l:"טלפון"},{k:"amount",l:"סכום תשלום (₪)",t:"number"},{k:"lastPayment",l:"תאריך תשלום אחרון",t:"date"}].map(({k,l,t})=>(
+                          <div key={k}>
+                            <label style={{display:"block",fontSize:12,color:"#7a6a58",marginBottom:4,fontWeight:600,fontFamily:"'Heebo',sans-serif"}}>{l}</label>
+                            <input value={newSupplier[k]||""} type={t||"text"}
+                              onChange={e=>setNewSupplier(p=>({...p,[k]:e.target.value}))}
+                              style={{width:"100%",padding:"9px 12px",borderRadius:10,border:"1.5px solid #e0d8cc",
+                                fontSize:14,fontFamily:"'Heebo',sans-serif",direction:t==="date"?"ltr":"rtl",
+                                outline:"none",boxSizing:"border-box"}}/>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{display:"flex",gap:8}}>
+                        <button onClick={()=>{if(!newSupplier.name.trim())return;
+                          saveSuppliers([...suppliers,{...newSupplier,id:Date.now()}]);
+                          setNewSupplier({name:"",phone:"",service:"",lastPayment:"",amount:""});
+                          setShowAddSupplier(false);
+                        }} style={{flex:1,padding:"10px",borderRadius:10,border:"none",background:"#1a1a2e",
+                          color:"#fff",fontFamily:"'Heebo',sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>הוספה</button>
+                        <button onClick={()=>setShowAddSupplier(false)}
+                          style={{flex:1,padding:"10px",borderRadius:10,border:"none",background:"#f0eee8",
+                            color:"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>ביטול</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
       {/* פופאפ בקשת ביקורת */}
       {reviewPopup&&(
