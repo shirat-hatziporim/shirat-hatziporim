@@ -515,7 +515,6 @@ ${notes?"הערות: "+notes:""}
 סה"כ: ₪${total.toLocaleString()}
 ${notes?"הערות: "+notes:""}
 לאישור: https://shirat-hatziporim.github.io/shirat-hatziporim/`);
-    setTimeout(()=>window.open(`https://api.whatsapp.com/send?phone=${OWNER_PHONE}&text=${msg}`,"_blank"),500);
     // הצג הצלחה
     document.getElementById("successBox").style.display="block";
     btn.style.display="none";
