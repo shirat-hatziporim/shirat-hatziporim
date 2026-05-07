@@ -2224,6 +2224,7 @@ function App(){
               <div style={{display:"flex",gap:10,marginTop:20}}>
                 <button onClick={()=>{
                   localStorage.setItem("shirat_prices",JSON.stringify(prices));
+                  saveTemplateToSheets("shirat_prices",JSON.stringify(prices));
                   setShowPriceEditor(false);
                   alert("המחירון עודכן בהצלחה!");
                 }} style={{padding:"10px 24px",borderRadius:10,border:"none",background:"#1a1a2e",color:"#fff",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer"}}>שמירה</button>
