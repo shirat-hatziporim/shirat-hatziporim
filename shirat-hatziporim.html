@@ -1262,6 +1262,8 @@ tr:nth-child(even) td{background:#fafaf8;}
 צימר שירת הציפורים | 050-4103353`);
     openEmail(inv.guestEmail,subject,body);
   }
+
+  function saveChecklist(cl){
     setChecklist(cl);
     try{localStorage.setItem("shirat_checklist",JSON.stringify(cl));}catch(e){}
   }
