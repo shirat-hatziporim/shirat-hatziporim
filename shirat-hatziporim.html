@@ -1137,106 +1137,121 @@ function App(){
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Heebo',sans-serif;direction:rtl;color:#1a1a2e;background:#fff;font-size:13px;line-height:1.5;}
-.page{max-width:794px;margin:0 auto;}
-.header{background:${color};color:#fff;padding:26px 40px;display:flex;justify-content:space-between;align-items:center;}
-.biz-name{font-size:20px;font-weight:900;}
-.biz-detail{font-size:11px;opacity:.8;margin-top:4px;line-height:1.7;}
-.logo{width:72px;height:72px;border-radius:50%;object-fit:cover;border:2.5px solid rgba(255,255,255,.35);}
-.subheader{background:#f7f7f7;border-bottom:2px solid ${color};padding:12px 40px;display:flex;justify-content:space-between;align-items:center;}
-.doc-title{font-size:20px;font-weight:900;color:${color};}
-.draft-badge{background:#d84315;color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:3px;margin-left:10px;}
-.doc-meta{font-size:11px;color:#666;text-align:left;line-height:1.9;}
-.body{padding:28px 40px;}
-.client-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid #eee;}
-.client-label{font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px;}
-.client-name{font-size:16px;font-weight:900;margin-bottom:3px;}
-.client-detail{font-size:12px;color:#666;line-height:1.8;}
-.pay-info{text-align:left;font-size:12px;color:#555;line-height:1.9;}
-table{width:100%;border-collapse:collapse;margin-bottom:18px;}
-.table-head th{background:${color};color:#fff;font-size:11px;font-weight:600;padding:9px 14px;text-align:right;}
-td{padding:10px 14px;border-bottom:1px solid #f0f0f0;font-size:13px;}
-tr:last-child td{border-bottom:none;}
-.total-area{display:flex;justify-content:flex-left;margin-bottom:20px;}
-.total-box{margin-right:auto;min-width:260px;}
-.total-row{display:flex;justify-content:space-between;padding:5px 14px;font-size:13px;color:#555;}
-.total-final{display:flex;justify-content:space-between;padding:10px 14px;font-size:16px;font-weight:900;color:#fff;background:${color};border-radius:8px;margin-top:6px;}
-.footer{background:#f7f7f7;border-top:1.5px solid #e0e0e0;padding:14px 40px;display:flex;justify-content:space-between;align-items:center;margin-top:24px;}
-.footer-sig{font-size:13px;font-weight:700;}
-.footer-sig small{display:block;font-size:10px;color:#888;font-weight:400;margin-top:2px;}
-.footer-meta{font-size:10px;color:#aaa;text-align:left;line-height:1.7;}
-@media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact;}}
+body{font-family:'Heebo',sans-serif;direction:rtl;color:#1a1a2e;background:#fff;font-size:13px;line-height:1.5;padding:40px;}
+/* HEADER */
+.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:20px;border-bottom:1.5px solid #e8e8e8;}
+.logo{width:80px;height:80px;border-radius:50%;object-fit:cover;}
+.biz-info{text-align:right;}
+.biz-name{font-size:22px;font-weight:900;color:#1a1a2e;margin-bottom:2px;}
+.biz-type{font-size:12px;color:#888;margin-bottom:8px;}
+.biz-row{display:flex;gap:20px;flex-wrap:wrap;justify-content:flex-end;margin-top:8px;border-top:1px solid #f0f0f0;padding-top:10px;}
+.biz-item{display:flex;align-items:center;gap:5px;font-size:11px;color:#555;}
+.biz-item span{font-weight:600;}
+/* DOC TITLE ROW */
+.doc-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.doc-title{font-size:20px;font-weight:900;color:#1a1a2e;}
+.doc-badge{display:flex;align-items:center;gap:6px;font-size:11px;color:${color};font-weight:600;}
+.doc-badge::before{content:'✓';background:${color};color:#fff;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;}
+.draft-badge{background:#d84315;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:3px;}
+.doc-meta-row{display:flex;align-items:center;gap:16px;margin-bottom:20px;padding-bottom:16px;border-bottom:1.5px solid #e8e8e8;font-size:12px;color:#666;}
+.doc-meta-row strong{color:#1a1a2e;}
+/* CLIENT */
+.client-section{margin-bottom:22px;}
+.client-label{font-size:11px;color:#aaa;margin-bottom:3px;}
+.client-name{font-size:17px;font-weight:900;}
+/* TABLE */
+table{width:100%;border-collapse:collapse;margin-bottom:0;}
+.table-head th{font-size:11px;font-weight:700;color:#888;padding:8px 0;border-bottom:1.5px solid #e8e8e8;text-align:right;}
+.table-head th:last-child{text-align:left;}
+td{padding:12px 0;border-bottom:1px solid #f0f0f0;font-size:13px;}
+td:last-child{text-align:left;font-weight:700;}
+/* TOTALS */
+.totals-section{display:flex;justify-content:flex-start;margin:16px 0 24px;}
+.totals-box{margin-right:auto;}
+.total-line{display:flex;justify-content:space-between;gap:60px;padding:4px 0;font-size:13px;color:#555;}
+.total-main{display:flex;justify-content:space-between;gap:60px;padding:8px 0;font-size:15px;font-weight:900;color:#1a1a2e;border-top:1.5px solid #1a1a2e;margin-top:4px;}
+/* PAYMENT */
+.payment-section{margin-top:20px;padding-top:16px;border-top:1.5px solid #e8e8e8;}
+.section-label{font-size:11px;font-weight:700;color:#888;margin-bottom:10px;}
+.pay-row{display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid #f5f5f5;}
+.pay-row:last-child{border-bottom:none;}
+/* FOOTER */
+.footer{margin-top:32px;padding-top:16px;border-top:1px dashed #ccc;display:flex;justify-content:space-between;align-items:flex-end;}
+.footer-sig{font-size:12px;font-weight:700;}
+.footer-sig small{display:block;font-size:10px;color:#aaa;font-weight:400;margin-top:2px;}
+.footer-meta{font-size:10px;color:#bbb;text-align:left;line-height:1.7;}
+@media print{body{padding:28px;print-color-adjust:exact;-webkit-print-color-adjust:exact;}}
 </style>
 </head><body>
-<div class="page">
 
-${isDraft?`<div style="background:#d84315;color:#fff;text-align:center;padding:7px;font-size:13px;font-weight:700;letter-spacing:.05em;">⚠ טיוטה בלבד — לא מסמך סופי</div>`:""}
+${isDraft?`<div style="background:#d84315;color:#fff;text-align:center;padding:7px;font-size:13px;font-weight:700;margin-bottom:20px;border-radius:4px;">⚠ טיוטה בלבד — לא מסמך סופי</div>`:""}
 
 <div class="header">
-  <div>
-    <div class="biz-name">צימר שירת הציפורים</div>
-    <div class="biz-detail">
-      עוסק ${inv.vatType==="vat"?"מורשה":"פטור"} | מס' 036731560<br>
-      נחל קדם 93, מיצד, ישראל | 050-4103353
-    </div>
-  </div>
   <img src="https://shirat-hatziporim.github.io/shirat-hatziporim/logo.jpeg" class="logo">
-</div>
-
-<div class="subheader">
-  <div style="display:flex;align-items:center;">
-    ${isDraft?`<span class="draft-badge">טיוטה</span>`:""}
-    <span class="doc-title">${inv.type==="receipt"?"קבלה":"חשבונית מס / קבלה"}${isDraft?"":" "+docNum}</span>
-  </div>
-  <div class="doc-meta">
-    <div>תאריך הנפקה: <strong>${new Date(inv.date).toLocaleDateString("he-IL")}</strong></div>
-    <div>תאריך תשלום: <strong>${inv.paymentDate?new Date(inv.paymentDate).toLocaleDateString("he-IL"):new Date(inv.date).toLocaleDateString("he-IL")}</strong></div>
-  </div>
-</div>
-
-<div class="body">
-
-<div class="client-row">
-  <div>
-    <div class="client-label">לכבוד</div>
-    <div class="client-name">${inv.guestName}</div>
-    <div class="client-detail">
-      ${inv.guestPhone}${inv.guestEmail?`<br>${inv.guestEmail}`:""}${inv.guestId?`<br>ת.ז: ${inv.guestId}`:""}
+  <div class="biz-info">
+    <div class="biz-name">צימר שירת הציפורים</div>
+    <div class="biz-type">יעקב גרזון</div>
+    <div class="biz-row">
+      <div class="biz-item">🏛 <span>עוסק ${inv.vatType==="vat"?"מורשה":"פטור"}: 036731560</span></div>
+      <div class="biz-item">@ <span>shirathatziporim@gmail.com</span></div>
+      <div class="biz-item">📞 <span>050-4103353</span></div>
+      <div class="biz-item">📍 <span>נחל קדם 93, מיצד, ישראל</span></div>
     </div>
   </div>
-  <div class="pay-info">
-    <div>אמצעי תשלום: <strong>${payMethod}</strong></div>
-    ${inv.paymentRef?`<div>אסמכתה: <strong>${inv.paymentRef}</strong></div>`:""}
+</div>
+
+<div class="doc-row">
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div class="doc-title">${inv.type==="receipt"?"חשבון/קבלה":"חשבונית מס / קבלה"}${isDraft?"":" "+docNum}</div>
+    ${isDraft?`<span class="draft-badge">טיוטה</span>`:`<div class="doc-badge">חתום דיגיטלית</div>`}
   </div>
+</div>
+<div class="doc-meta-row">
+  <div>${new Date(inv.date).toLocaleDateString("he-IL")}</div>
+  <div style="color:#ddd">|</div>
+  <div>אמצעי תשלום: <strong>${payMethod}</strong></div>
+  ${inv.paymentRef?`<div style="color:#ddd">|</div><div>אסמכתה: <strong>${inv.paymentRef}</strong></div>`:""}
+</div>
+
+<div class="client-section">
+  <div class="client-label">לכבוד:</div>
+  <div class="client-name">${inv.guestName}</div>
+  ${inv.guestPhone||inv.guestEmail||inv.guestId?`<div style="font-size:12px;color:#666;margin-top:3px;">${[inv.guestPhone,inv.guestEmail,inv.guestId?`ת.ז: ${inv.guestId}`:""].filter(Boolean).join(" | ")}</div>`:""}
 </div>
 
 <table>
   <tr class="table-head">
-    <th>תיאור</th>
-    <th style="text-align:center;width:90px">כניסה</th>
-    <th style="text-align:center;width:90px">יציאה</th>
-    <th style="text-align:center;width:55px">לילות</th>
-    <th style="text-align:left;width:100px">סכום</th>
+    <th>מוצר/שירות</th>
+    <th style="width:90px;text-align:center">כניסה</th>
+    <th style="width:90px;text-align:center">יציאה</th>
+    <th style="width:55px;text-align:center">לילות</th>
+    <th style="width:100px">סה"כ</th>
   </tr>
   <tr>
-    <td>שירותי לינה — ${inv.guestExtra||"אירוח"}</td>
-    <td style="text-align:center">${inv.checkin}</td>
-    <td style="text-align:center">${inv.checkout}</td>
-    <td style="text-align:center">${inv.nights}</td>
-    <td style="text-align:left;font-weight:700">₪${inv.total.toLocaleString()}</td>
+    <td>${inv.guestExtra||"נופש צימר"}</td>
+    <td style="text-align:center;font-weight:400">${inv.checkin}</td>
+    <td style="text-align:center;font-weight:400">${inv.checkout}</td>
+    <td style="text-align:center;font-weight:400">${inv.nights}</td>
+    <td>₪${inv.total.toLocaleString()}</td>
   </tr>
 </table>
 
-<div class="total-area">
-  <div class="total-box">
+<div class="totals-section">
+  <div class="totals-box">
     ${inv.vatType==="vat"?`
-    <div class="total-row"><span>מחיר לפני מע"מ</span><span>₪${inv.total.toLocaleString()}</span></div>
-    <div class="total-row"><span>מע"מ 18%</span><span>₪${vatAmount.toLocaleString()}</span></div>
-    `:`<div style="font-size:11px;color:#aaa;padding:4px 14px;">עוסק פטור — אינו מחייב במע"מ</div>`}
-    <div class="total-final"><span>סה"כ לתשלום</span><span>₪${totalWithVat.toLocaleString()}</span></div>
+    <div class="total-line"><span>מחיר לפני מע"מ</span><span>₪${inv.total.toLocaleString()}</span></div>
+    <div class="total-line"><span>מע"מ 18%</span><span>₪${vatAmount.toLocaleString()}</span></div>
+    `:`<div style="font-size:11px;color:#bbb;padding:4px 0">עוסק פטור — אינו מחייב במע"מ</div>`}
+    <div class="total-main"><span>סה"כ</span><span>₪${totalWithVat.toLocaleString()}</span></div>
   </div>
 </div>
 
+<div class="payment-section">
+  <div class="section-label">אמצעי תשלום</div>
+  <div class="pay-row">
+    <span>${payMethod}</span>
+    <span>₪${totalWithVat.toLocaleString()}</span>
+  </div>
 </div>
 
 <div class="footer">
@@ -1245,14 +1260,13 @@ ${isDraft?`<div style="background:#d84315;color:#fff;text-align:center;padding:7
     <small>צימר שירת הציפורים | עוסק ${inv.vatType==="vat"?"מורשה":"פטור"} 036731560</small>
   </div>
   <div class="footer-meta">
-    חתימה דיגיטלית מאובטחת<br>
     הופק: ${new Date().toLocaleString("he-IL")}${isDraft?"":" | "+docNum}
   </div>
 </div>
 
-${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:130px;font-weight:900;color:rgba(216,67,21,0.05);pointer-events:none;">טיוטה</div>`:""}
+${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:130px;font-weight:900;color:rgba(216,67,21,0.04);pointer-events:none;">טיוטה</div>`:""}
 
-</div></body></html>`;
+</body></html>`;
 
     const w=window.open("","_blank");
     w.document.write(html);
