@@ -1285,7 +1285,7 @@ function App(){
                         <tr key={b.id} style={{borderBottom:"1px solid #f4f0ea",transition:"background .1s",cursor:"pointer",background:b.checkin===new Date().toISOString().split("T")[0]?"#e3f2fd":"transparent"}}
                           onMouseEnter={e=>e.currentTarget.style.background=b.checkin===new Date().toISOString().split("T")[0]?"#bbdefb":"#fdfaf6"}
                           onMouseLeave={e=>e.currentTarget.style.background=b.checkin===new Date().toISOString().split("T")[0]?"#e3f2fd":"transparent"}
-                          onClick={()=>{if(window.innerWidth<700)setMobileActionMenu(b);}}>
+                          onClick={()=>{if(window.innerWidth<700)setMobileActionMenu(b); else openEdit(b);}}>
                           <td style={{padding:"11px 12px"}}>
                             <div style={{fontWeight:700,color:"#1a1a2e",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                               {b.name}
@@ -1314,10 +1314,10 @@ function App(){
                           <td className="desktop-actions" style={{padding:"11px 12px"}}>
                             <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
                               <button onClick={e=>{e.stopPropagation();openEdit(b);}} style={{border:"none",background:"#f0eee8",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="עריכה">✏️</button>
-                              <button onClick={()=>setConfirmPopup(b)} style={{border:"none",background:"#e7f7e7",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="אישור הזמנה">✉️</button>
-                              <button onClick={()=>setReminderPopup(b)} style={{border:"none",background:"#fff8e1",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="תזכורת יום לפני">⏰</button>
-                              <button onClick={()=>setReviewPopup(b)} style={{border:"none",background:"#f3e5f5",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="בקשת ביקורת">⭐</button>
-                              <button onClick={()=>setDelC(b.id)} style={{border:"none",background:"#fce4ec",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="מחיקה">🗑️</button>
+                              <button onClick={e=>{e.stopPropagation();setConfirmPopup(b);}} style={{border:"none",background:"#e7f7e7",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="אישור הזמנה">✉️</button>
+                              <button onClick={e=>{e.stopPropagation();setReminderPopup(b);}} style={{border:"none",background:"#fff8e1",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="תזכורת יום לפני">⏰</button>
+                              <button onClick={e=>{e.stopPropagation();setReviewPopup(b);}} style={{border:"none",background:"#f3e5f5",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="בקשת ביקורת">⭐</button>
+                              <button onClick={e=>{e.stopPropagation();setDelC(b.id);}} style={{border:"none",background:"#fce4ec",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="מחיקה">🗑️</button>
                             </div>
                           </td>
                         </tr>
