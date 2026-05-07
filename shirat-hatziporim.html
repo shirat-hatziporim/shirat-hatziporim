@@ -1059,6 +1059,13 @@ function App(){
       try{localStorage.setItem("shirat_manual_guests",JSON.stringify(mGuests));}catch(e){}
       setLoading(false);
       setLastSync(new Date());
+      // בדוק אם יש פרמטר booking ב-URL
+      const urlParams=new URLSearchParams(window.location.search);
+      const bookingId=urlParams.get("booking");
+      if(bookingId){
+        const found=data.find(b=>String(b.id)===String(bookingId));
+        if(found){setEditB(found);setShowForm(true);}
+      }
     }).catch(()=>{
       try{
         const b=localStorage.getItem("shirat_bookings");
