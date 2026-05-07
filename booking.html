@@ -497,7 +497,7 @@ async function submitBooking(){
 סה"כ: ₪${total.toLocaleString()}
 ${notes?"הערות: "+notes:""}
 
-לאישור ההזמנה: https://shirat-hatziporim.github.io/shirat-hatziporim/?booking=${b.id}`;
+לאישור ההזמנה: https://shirat-hatziporim.github.io/shirat-hatziporim/shirat-hatziporim.html?booking=${b.id}`;
     emailjs.init({publicKey: EMAILJS_KEY});
     emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
       name: name,
