@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>הזמנה — שירת הציפורים</title>
+<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;700;900&family=Heebo:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --dark:#1a1a2e;
+  --gold:#c8a97e;
+  --cream:#f7f3ed;
+  --white:#fff;
+  --border:#e0d8cc;
+  --muted:#8a7e6e;
+  --green:#2e7d32;
+}
+body{font-family:'Heebo',sans-serif;background:var(--cream);color:var(--dark);min-height:100vh;}
+
+header{
+  background:var(--dark);
+  padding:1rem 1.5rem;
+  display:flex;align-items:center;justify-content:center;gap:14px;
+}
+.logo{width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);}
+.site-name{font-family:'Frank Ruhl Libre',serif;font-size:20px;color:#fff;font-weight:700;}
+.site-sub{font-size:12px;color:rgba(255,255,255,0.5);}
+
+.hero{
+  background:linear-gradient(160deg,#1a1208,#1a1a2e);
+  padding:2rem 1.5rem;
+  text-align:center;
+  color:#fff;
+}
+.hero h1{font-family:'Frank Ruhl Libre',serif;font-size:clamp(1.6rem,4vw,2.5rem);font-weight:900;margin-bottom:.4rem;}
+.hero h1 span{color:var(--gold);}
+.hero p{color:rgba(255,255,255,0.55);font-size:14px;}
+
+.main{max-width:640px;margin:0 auto;padding:1.5rem 1rem 4rem;}
+
+.card{background:var(--white);border-radius:16px;border:1px solid var(--border);padding:1.5rem;margin-bottom:1rem;}
+.card-title{font-size:15px;font-weight:800;color:var(--dark);margin-bottom:1rem;display:flex;align-items:center;gap:8px;}
+
+label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px;}
+input,select,textarea{
+  width:100%;padding:10px 14px;
+  border:1.5px solid var(--border);
+  border-radius:10px;
+  font-size:14px;font-family:'Heebo',sans-serif;
+  background:#fff;color:var(--dark);
+  outline:none;transition:border-color .2s;
+  box-sizing:border-box;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--gold);}
+input[type="date"]{direction:ltr;text-align:right;}
+textarea{resize:vertical;min-height:70px;direction:rtl;}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.field{margin-bottom:12px;}
+
+/* לוח שנה זמינות */
+.cal-wrap{background:#f8f4ec;border-radius:12px;padding:12px;}
+.cal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.cal-title{font-weight:800;font-size:15px;}
+.cal-nav{border:none;background:none;cursor:pointer;font-size:18px;color:var(--dark);padding:4px 8px;border-radius:6px;}
+.cal-nav:hover{background:rgba(0,0,0,.06);}
+.cal-days-header{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:4px;}
+.cal-day-label{text-align:center;font-size:10px;color:var(--muted);font-weight:600;padding:3px 0;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+.cal-day{
+  aspect-ratio:1;display:flex;align-items:center;justify-content:center;
+  border-radius:8px;font-size:12px;cursor:pointer;transition:all .15s;
+  font-weight:500;border:1.5px solid transparent;
+}
+.cal-day.empty{cursor:default;}
+.cal-day.past{color:#ccc;cursor:not-allowed;}
+.cal-day.blocked{background:#fee2e2;color:#c62828;cursor:not-allowed;font-size:10px;}
+.cal-day.booked{background:#fce4ec;color:#c62828;cursor:not-allowed;}
+.cal-day.available:hover{background:rgba(200,169,126,.2);border-color:var(--gold);}
+.cal-day.selected-start,.cal-day.selected-end{background:var(--dark);color:#fff;border-color:var(--dark);}
+.cal-day.selected-range{background:rgba(200,169,126,.25);border-color:rgba(200,169,126,.5);}
+.cal-day.today{border-color:var(--gold);}
+
+/* מחיר */
+.price-box{background:linear-gradient(135deg,#1a1208,#1a1a2e);border-radius:12px;padding:1.25rem;color:#fff;margin-bottom:1rem;}
+.price-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:14px;}
+.price-row.total{border-top:1px solid rgba(255,255,255,.15);margin-top:8px;padding-top:12px;}
+.price-total{font-size:24px;font-weight:900;color:var(--gold);}
+.price-label{color:rgba(255,255,255,.6);}
+
+/* כפתור */
+.btn-submit{
+  width:100%;padding:16px;
+  background:var(--dark);color:var(--gold);
+  border:none;border-radius:12px;
+  font-size:16px;font-weight:800;font-family:'Heebo',sans-serif;
+  cursor:pointer;transition:all .2s;
+}
+.btn-submit:hover{background:#252545;transform:translateY(-2px);}
+.btn-submit:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+
+/* הצלחה */
+.success-box{
+  background:#e8f5e9;border:1px solid #c8e6c9;border-radius:16px;
+  padding:2rem;text-align:center;display:none;
+}
+.success-icon{font-size:48px;margin-bottom:1rem;}
+.success-title{font-size:20px;font-weight:800;color:var(--green);margin-bottom:.5rem;}
+.success-sub{font-size:14px;color:#555;line-height:1.6;}
+
+.error-msg{color:#c62828;font-size:12px;margin-top:4px;display:none;}
+
+/* legend */
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);}
+.legend-dot{width:14px;height:14px;border-radius:4px;}
+
+@media(max-width:480px){.grid2{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<header>
+  <img src="https://shirat-hatziporim.github.io/shirat-hatziporim/logo.jpeg" class="logo" onerror="this.style.display='none'">
+  <div>
+    <div class="site-name">שירת הציפורים</div>
+    <div class="site-sub">הזמנת לינה</div>
+  </div>
+</header>
+
+<div class="hero">
+  <h1>בואו <span>להתארח</span> אצלנו</h1>
+  <p>מלאו את הפרטים ונחזור אליכם לאישור תוך זמן קצר</p>
+</div>
+
+<div class="main">
+
+  <!-- זמינות -->
+  <div class="card">
+    <div class="card-title">📅 בחרו תאריכים</div>
+    <div class="cal-wrap">
+      <div class="cal-header">
+        <button class="cal-nav" onclick="prevMonth()">‹</button>
+        <div class="cal-title" id="calTitle"></div>
+        <button class="cal-nav" onclick="nextMonth()">›</button>
+      </div>
+      <div class="cal-days-header">
+        <div class="cal-day-label">א'</div>
+        <div class="cal-day-label">ב'</div>
+        <div class="cal-day-label">ג'</div>
+        <div class="cal-day-label">ד'</div>
+        <div class="cal-day-label">ה'</div>
+        <div class="cal-day-label">ו'</div>
+        <div class="cal-day-label">ש'</div>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#1a1a2e;"></div>נבחר</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fce4ec;border:1px solid #f8bbd9;"></div>תפוס</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fee2e2;"></div>חסום</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px;">
+      <div>
+        <label>תאריך כניסה</label>
+        <input type="date" id="checkin" onchange="onDateInput()" min="">
+      </div>
+      <div>
+        <label>תאריך יציאה</label>
+        <input type="date" id="checkout" onchange="onDateInput()" min="">
+      </div>
+    </div>
+    <div id="dateError" class="error-msg"></div>
+  </div>
+
+  <!-- מחיר -->
+  <div class="price-box" id="priceBox" style="display:none;">
+    <div id="priceRows"></div>
+  </div>
+
+  <!-- פרטים -->
+  <div class="card">
+    <div class="card-title">👤 פרטי האורח</div>
+    <div class="grid2">
+      <div class="field">
+        <label>שם מלא *</label>
+        <input type="text" id="guestName" placeholder="ישראל ישראלי">
+      </div>
+      <div class="field">
+        <label>טלפון *</label>
+        <input type="tel" id="guestPhone" placeholder="050-0000000">
+      </div>
+      <div class="field">
+        <label>מייל</label>
+        <input type="email" id="guestEmail" placeholder="name@gmail.com" dir="ltr">
+      </div>
+      <div class="field">
+        <label>מספר אורחים</label>
+        <select id="guestCount">
+          <option value="1">1 אורח</option>
+          <option value="2" selected>2 אורחים</option>
+          <option value="3">3 אורחים</option>
+          <option value="4">4 אורחים</option>
+          <option value="5">5 אורחים</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>סוג אירוח</label>
+      <select id="roomType" onchange="calcPrice()">
+        <option value="standard">רגיל</option>
+        <option value="package_thu">חבילת חמישי+שישי+שבת</option>
+        <option value="package_sun">חבילת חמישי+שישי+שבת+ראשון</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>הערות מיוחדות</label>
+      <textarea id="guestNotes" placeholder="אלרגיות, בקשות מיוחדות, מיטת תינוק..."></textarea>
+    </div>
+  </div>
+
+  <div id="successBox" class="success-box">
+    <div class="success-icon">🎉</div>
+    <div class="success-title">הבקשה נשלחה בהצלחה!</div>
+    <div class="success-sub">קיבלנו את פרטי ההזמנה שלכם.<br>ניצור איתכם קשר בהקדם לאישור.<br><br>📞 לבירורים: <strong>050-4103353</strong></div>
+  </div>
+
+  <button class="btn-submit" id="submitBtn" onclick="submitBooking()">
+    שלח בקשת הזמנה ✦
+  </button>
+
+</div>
+
+<script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyKUvfneAaQwRYiQ67xvzfBQH0CTnoUfOuX3QgfUpOXoEaKUCRhjx5jEytDCYAeLX1N/exec";
+const OWNER_PHONE = "972504103353";
+const PRICES = { weekday:800, weekend:1200, packageDeal:1700, sundayExtra:350, extraGuest:300 };
+const MONTHS = ["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
+
+let calYear, calMonth, blockedDates=[], bookedRanges=[], selStart=null, selEnd=null;
+
+function toDS(d){ return d.toISOString().split("T")[0]; }
+function fd(ds){ if(!ds)return""; const[y,m,d]=ds.split("-"); return `${d}/${m}/${y}`; }
+
+function isBlocked(ds){ return blockedDates.includes(ds); }
+function isBooked(ds){
+  return bookedRanges.some(b=>ds>=b.checkin && ds<b.checkout);
+}
+function isPast(ds){ return ds < toDS(new Date()); }
+function isUnavailable(ds){ return isPast(ds)||isBlocked(ds)||isBooked(ds); }
+
+// טען נתונים מ-Sheets
+function loadData(){
+  const cb="cb"+Date.now();
+  const s=document.createElement("script");
+  s.src=SCRIPT_URL+"?action=get&callback="+cb+"&t="+Date.now();
+  window[cb]=function(data){
+    if(Array.isArray(data)){
+      bookedRanges=data.filter(b=>b.status!=="cancelled"&&b.checkin&&b.checkout)
+        .map(b=>({checkin:b.checkin,checkout:b.checkout}));
+    }
+    delete window[cb]; document.body.removeChild(s);
+    renderCal();
+  };
+  document.body.appendChild(s);
+
+  const cb2="cb2"+Date.now();
+  const s2=document.createElement("script");
+  s2.src=SCRIPT_URL+"?action=getBlocked&callback="+cb2+"&t="+Date.now();
+  window[cb2]=function(data){
+    if(Array.isArray(data)) blockedDates=data.map(b=>b.date);
+    delete window[cb2]; document.body.removeChild(s2);
+    renderCal();
+  };
+  document.body.appendChild(s2);
+}
+
+function renderCal(){
+  const today=new Date();
+  if(!calYear){ calYear=today.getFullYear(); calMonth=today.getMonth(); }
+  document.getElementById("calTitle").textContent=MONTHS[calMonth]+" "+calYear;
+  const grid=document.getElementById("calGrid");
+  grid.innerHTML="";
+  const first=new Date(calYear,calMonth,1);
+  const startDay=(first.getDay()+1)%7; // ראשון=0 → א'=0
+  for(let i=0;i<startDay;i++){
+    const el=document.createElement("div");
+    el.className="cal-day empty";
+    grid.appendChild(el);
+  }
+  const days=new Date(calYear,calMonth+1,0).getDate();
+  for(let d=1;d<=days;d++){
+    const ds=`${calYear}-${String(calMonth+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    const el=document.createElement("div");
+    el.textContent=d;
+    const todayDs=toDS(today);
+    let cls="cal-day ";
+    if(isPast(ds)) cls+="past";
+    else if(isBlocked(ds)) cls+="blocked";
+    else if(isBooked(ds)) cls+="booked";
+    else {
+      cls+="available";
+      el.onclick=()=>selectDay(ds);
+    }
+    if(ds===todayDs) cls+=" today";
+    if(selStart&&selEnd){
+      if(ds===selStart||ds===selEnd) cls+=" selected-start";
+      else if(ds>selStart&&ds<selEnd) cls+=" selected-range";
+    } else if(ds===selStart) cls+=" selected-start";
+    el.className=cls.trim();
+    grid.appendChild(el);
+  }
+}
+
+function selectDay(ds){
+  if(!selStart||selEnd){
+    selStart=ds; selEnd=null;
+    document.getElementById("checkin").value=ds;
+    document.getElementById("checkout").value="";
+    hidePrice();
+  } else {
+    if(ds<=selStart){ selStart=ds; selEnd=null; document.getElementById("checkin").value=ds; document.getElementById("checkout").value=""; hidePrice(); }
+    else {
+      // בדוק שאין תאריך חסום בטווח
+      let cur=new Date(selStart); cur.setDate(cur.getDate()+1);
+      let blocked=false;
+      while(toDS(cur)<ds){
+        if(isUnavailable(toDS(cur))){ blocked=true; break; }
+        cur.setDate(cur.getDate()+1);
+      }
+      if(blocked){ selStart=ds; selEnd=null; document.getElementById("checkin").value=ds; document.getElementById("checkout").value=""; showDateError("יש תאריך תפוס בטווח שנבחר"); return; }
+      selEnd=ds;
+      document.getElementById("checkout").value=ds;
+      hideDateError();
+      calcPrice();
+    }
+  }
+  renderCal();
+}
+
+function onDateInput(){
+  selStart=document.getElementById("checkin").value||null;
+  selEnd=document.getElementById("checkout").value||null;
+  if(selStart&&selEnd) calcPrice();
+  else hidePrice();
+  renderCal();
+}
+
+function getDayType(ds){
+  const d=new Date(ds+"T12:00:00");
+  const dow=d.getDay();
+  if(dow===5||dow===6) return "weekend";
+  return "weekday";
+}
+
+function calcPrice(){
+  const ci=document.getElementById("checkin").value;
+  const co=document.getElementById("checkout").value;
+  if(!ci||!co||co<=ci){ hidePrice(); return; }
+  const guests=parseInt(document.getElementById("guestCount").value)||2;
+  const roomType=document.getElementById("roomType").value;
+  let rows=[], total=0;
+  let cur=new Date(ci+"T12:00:00");
+  const end=new Date(co+"T12:00:00");
+  let nights=0;
+  while(cur<end){
+    const ds=toDS(cur);
+    const type=getDayType(ds);
+    const price=type==="weekend"?PRICES.weekend:PRICES.weekday;
+    total+=price; nights++;
+    cur.setDate(cur.getDate()+1);
+  }
+  if(roomType==="package_thu"||roomType==="package_sun"){
+    total=PRICES.packageDeal;
+    rows.push({label:"חבילת חמישי+שישי+שבת",val:"₪"+PRICES.packageDeal.toLocaleString()});
+    if(roomType==="package_sun"){
+      total+=PRICES.sundayExtra;
+      rows.push({label:"תוספת יציאה ראשון",val:"₪"+PRICES.sundayExtra.toLocaleString()});
+    }
+  } else {
+    rows.push({label:`${nights} לילות`,val:"₪"+total.toLocaleString()});
+  }
+  const extraGuests=Math.max(0,guests-2);
+  if(extraGuests>0){
+    const ex=extraGuests*PRICES.extraGuest*nights;
+    total+=ex;
+    rows.push({label:`${extraGuests} אורחים נוספים × ${nights} לילות`,val:"₪"+ex.toLocaleString()});
+  }
+  let html=rows.map(r=>`<div class="price-row"><span class="price-label">${r.label}</span><span>${r.val}</span></div>`).join("");
+  html+=`<div class="price-row total"><span class="price-label">סה"כ לתשלום</span><span class="price-total">₪${total.toLocaleString()}</span></div>`;
+  document.getElementById("priceRows").innerHTML=html;
+  document.getElementById("priceBox").style.display="block";
+  document.getElementById("priceBox")._total=total;
+  document.getElementById("priceBox")._nights=nights;
+}
+
+function hidePrice(){ document.getElementById("priceBox").style.display="none"; }
+function showDateError(msg){ const e=document.getElementById("dateError"); e.textContent=msg; e.style.display="block"; }
+function hideDateError(){ document.getElementById("dateError").style.display="none"; }
+
+function prevMonth(){ calMonth--; if(calMonth<0){calMonth=11;calYear--;} renderCal(); }
+function nextMonth(){ calMonth++; if(calMonth>11){calMonth=0;calYear++;} renderCal(); }
+
+async function submitBooking(){
+  const name=document.getElementById("guestName").value.trim();
+  const phone=document.getElementById("guestPhone").value.trim();
+  const checkin=document.getElementById("checkin").value;
+  const checkout=document.getElementById("checkout").value;
+  if(!name){alert("נא להזין שם מלא");return;}
+  if(!phone){alert("נא להזין טלפון");return;}
+  if(!checkin||!checkout){alert("נא לבחור תאריכי כניסה ויציאה");return;}
+  if(checkout<=checkin){alert("תאריך יציאה חייב להיות אחרי כניסה");return;}
+  const btn=document.getElementById("submitBtn");
+  btn.disabled=true; btn.textContent="שולח...";
+  const pb=document.getElementById("priceBox");
+  const total=pb._total||0;
+  const nights=pb._nights||0;
+  const guests=parseInt(document.getElementById("guestCount").value)||2;
+  const roomType=document.getElementById("roomType").value;
+  const email=document.getElementById("guestEmail").value.trim();
+  const notes=document.getElementById("guestNotes").value.trim();
+  const b={
+    id:Date.now(),
+    name,phone,email,
+    checkin,checkout,
+    guests,extraGuests:Math.max(0,guests-2),babies:0,
+    status:"pending",
+    total,paid:0,nights,
+    guestExtra:document.getElementById("roomType").selectedOptions[0].text,
+    notes,
+    discount:0,
+  };
+  try{
+    // שמור ב-Sheets
+    const url=SCRIPT_URL+"?action=save&bookings="+encodeURIComponent(JSON.stringify([b]))+"&t="+Date.now();
+    await fetch(url,{mode:"no-cors"});
+    // שלח WhatsApp לבעל הצימר
+    const msg=encodeURIComponent(
+`🔔 בקשת הזמנה חדשה!
+שם: ${name}
+טלפון: ${phone}
+כניסה: ${fd(checkin)} | יציאה: ${fd(checkout)}
+לילות: ${nights} | אורחים: ${guests}
+סוג: ${document.getElementById("roomType").selectedOptions[0].text}
+סה"כ: ₪${total.toLocaleString()}
+${notes?"הערות: "+notes:""}
+לאישור: https://shirat-hatziporim.github.io/shirat-hatziporim/`);
+    setTimeout(()=>window.open(`https://api.whatsapp.com/send?phone=${OWNER_PHONE}&text=${msg}`,"_blank"),500);
+    // הצג הצלחה
+    document.getElementById("successBox").style.display="block";
+    btn.style.display="none";
+    document.getElementById("successBox").scrollIntoView({behavior:"smooth"});
+  } catch(e){
+    btn.disabled=false; btn.textContent="שלח בקשת הזמנה ✦";
+    alert("אירעה שגיאה, אנא נסה שוב");
+  }
+}
+
+// אתחול
+const todayStr=new Date().toISOString().split("T")[0];
+document.getElementById("checkin").min=todayStr;
+document.getElementById("checkout").min=todayStr;
+loadData();
+</script>
+</body>
+</html>
