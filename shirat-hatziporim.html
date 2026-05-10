@@ -1520,6 +1520,15 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
                               {b.source==="online"&&<span style={{fontSize:10,background:"#e3f2fd",color:"#1565c0",borderRadius:5,padding:"1px 6px",fontWeight:700}}>🌐</span>}
                               {b.babyCrib&&<span style={{fontSize:10,background:"#e3f2fd",color:"#1565c0",borderRadius:5,padding:"1px 6px",fontWeight:700}}>🛏️</span>}
                               {b.receiptIssued&&<span style={{fontSize:10,background:"#e8f5e9",color:"#2e7d32",borderRadius:5,padding:"1px 6px",fontWeight:700}}>🧾</span>}
+                              {(()=>{
+                                const allSent=b.sentConfirm&&b.sentReminder&&b.sentReview;
+                                const noneSent=!b.sentConfirm&&!b.sentReminder&&!b.sentReview;
+                                if(noneSent) return null;
+                                return <span title={`אישור:${b.sentConfirm?"✓":"✗"} תזכורת:${b.sentReminder?"✓":"✗"} ביקורת:${b.sentReview?"✓":"✗"}`}
+                                  style={{fontSize:10,background:allSent?"#e8f5e9":"#fff3e0",color:allSent?"#2e7d32":"#e65100",borderRadius:5,padding:"1px 6px",fontWeight:700}}>
+                                  {allSent?"✉️✓":"✉️~"}
+                                </span>;
+                              })()}
                             </div>
                             {b.notes&&<div style={{fontSize:11,color:"#a09080",marginTop:1}}>{b.notes}</div>}
                           </td>
