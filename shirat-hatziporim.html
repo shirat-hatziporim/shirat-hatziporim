@@ -833,10 +833,23 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[],blockedDates=[
                 </select>
               </div>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:10}}>
               <div><Lbl>שולם סה"כ (₪)</Lbl><input style={iS()} type="number" min={0} value={f.paid} onFocus={e=>e.target.select()} onChange={e=>set("paid",parseInt(e.target.value)||0)}/></div>
               <div><Lbl>יתרה לתשלום</Lbl><input readOnly style={{...iS(),background:"#f8f4ec",color:balance>0?"#c62828":"#2e7d32",fontWeight:700}} value={balance}/></div>
             </div>
+            {balance>0&&(
+              <div>
+                <Lbl>שיטת תשלום יתרה</Lbl>
+                <select style={iS()} value={f.balanceMethod||""} onChange={e=>set("balanceMethod",e.target.value)}>
+                  <option value="">לא שולם עדיין</option>
+                  <option value="bit">ביט</option>
+                  <option value="paybox">פייבוקס</option>
+                  <option value="transfer">העברה בנקאית</option>
+                  <option value="cash">מזומן</option>
+                  <option value="card">כרטיס אשראי</option>
+                </select>
+              </div>
+            )}
           </Sec>
           <Sec title="הערות">
             <textarea style={{...iS(),resize:"vertical",minHeight:55,width:"100%"}} value={f.notes} onChange={e=>set("notes",e.target.value)} placeholder="הערות..."/>
@@ -852,11 +865,23 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[],blockedDates=[
             </div>
           </Sec>
           <div style={{marginBottom:16}}>
-            <label style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",userSelect:"none"}}>
-              <input type="checkbox" checked={!!f.receiptIssued} onChange={e=>set("receiptIssued",e.target.checked)}
-                style={{width:18,height:18,cursor:"pointer",accentColor:"#1a1a2e"}}/>
-              <span style={{fontFamily:"'Heebo',sans-serif",fontSize:14,color:"#1a1a2e",fontWeight:600}}>🧾 הונפקה קבלה</span>
-            </label>
+            <div style={{fontSize:12,fontWeight:700,color:"#7a6a58",marginBottom:8,fontFamily:"'Heebo',sans-serif"}}>אינדיקציות</div>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              {[
+                {k:"sentConfirm",label:"✉️ אישור נשלח",color:"#e7f7e7",tc:"#2e7d32"},
+                {k:"sentReminder",label:"⏰ תזכורת נשלחה",color:"#fff8e1",tc:"#f57f17"},
+                {k:"sentReview",label:"⭐ ביקורת נשלחה",color:"#f3e5f5",tc:"#7b1fa2"},
+                {k:"receiptIssued",label:"🧾 קבלה הונפקה",color:"#e8f5e9",tc:"#2e7d32"},
+              ].map(({k,label,color,tc})=>(
+                <label key={k} style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",
+                  background:f[k]?color:"#f5f5f5",border:`1.5px solid ${f[k]?tc:"#ddd"}`,
+                  borderRadius:8,padding:"6px 12px",transition:"all .15s"}}>
+                  <input type="checkbox" checked={!!f[k]} onChange={e=>set(k,e.target.checked)}
+                    style={{width:14,height:14,cursor:"pointer",accentColor:tc}}/>
+                  <span style={{fontSize:12,fontWeight:600,color:f[k]?tc:"#888",fontFamily:"'Heebo',sans-serif"}}>{label}</span>
+                </label>
+              ))}
+            </div>
           </div>
           <div style={{display:"flex",gap:10}}>
             <button onClick={save} style={bS("#1a1a2e","#fff")}>שמירה</button>
@@ -1482,22 +1507,20 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
                           onMouseEnter={e=>e.currentTarget.style.background=b.checkin===new Date().toISOString().split("T")[0]?"#bbdefb":"#fdfaf6"}
                           onMouseLeave={e=>e.currentTarget.style.background=b.checkin===new Date().toISOString().split("T")[0]?"#e3f2fd":"transparent"}
                           onClick={()=>{if(window.innerWidth<700)setMobileActionMenu(b); else openEdit(b);}}>
-                          <td style={{padding:"11px 12px"}}>
-                            <div style={{fontWeight:700,color:"#1a1a2e",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                          <td style={{padding:"8px 12px"}}>
+                            <div style={{fontWeight:700,color:"#1a1a2e",display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}>
                               {b.name}
-                              {b.source==="online"&&<span style={{fontSize:10,background:"#e3f2fd",color:"#1565c0",borderRadius:5,padding:"1px 6px",fontWeight:700}}>🌐 אונליין</span>}
+                              {b.source==="online"&&<span style={{fontSize:10,background:"#e3f2fd",color:"#1565c0",borderRadius:5,padding:"1px 6px",fontWeight:700}}>🌐</span>}
+                              {b.babyCrib&&<span style={{fontSize:10,background:"#e3f2fd",color:"#1565c0",borderRadius:5,padding:"1px 6px",fontWeight:700}}>🛏️</span>}
+                              {b.receiptIssued&&<span style={{fontSize:10,background:"#e8f5e9",color:"#2e7d32",borderRadius:5,padding:"1px 6px",fontWeight:700}}>🧾</span>}
                             </div>
-                            <div style={{display:"flex",gap:4,marginTop:2,flexWrap:"wrap"}}>
-                              {b.notes&&<div style={{fontSize:11,color:"#a09080"}}>{b.notes}</div>}
-                              {b.babyCrib&&<span style={{fontSize:11,background:"#e3f2fd",color:"#1565c0",borderRadius:5,padding:"1px 6px",fontWeight:700}}>🛏️ מיטת תינוק</span>}
-                              {b.receiptIssued&&<span style={{fontSize:11,background:"#e8f5e9",color:"#2e7d32",borderRadius:5,padding:"1px 6px",fontWeight:700}}>🧾 קבלה</span>}
-                            </div>
+                            {b.notes&&<div style={{fontSize:11,color:"#a09080",marginTop:1}}>{b.notes}</div>}
                           </td>
-                          <td style={{padding:"11px 12px",color:"#6a5e50",direction:"ltr"}}>{b.phone}</td>
-                          <td style={{padding:"11px 12px",color:"#6a5e50",whiteSpace:"nowrap"}}>{fd(b.checkin)}</td>
-                          <td style={{padding:"11px 12px",color:"#6a5e50",whiteSpace:"nowrap"}}>{fd(b.checkout)}</td>
-                          <td style={{padding:"11px 12px",color:"#6a5e50",textAlign:"center"}}>{b.nights||calcNights(b.checkin,b.checkout)}</td>
-                          <td style={{padding:"11px 12px",color:"#6a5e50",textAlign:"center"}}>{(b.guests||2)+(b.extraGuests||0)}{b.babies>0?` + ${b.babies}👶`:""}</td>
+                          <td style={{padding:"8px 12px",color:"#6a5e50",direction:"ltr"}}>{b.phone}</td>
+                          <td style={{padding:"8px 12px",color:"#6a5e50",whiteSpace:"nowrap"}}>{fd(b.checkin)}</td>
+                          <td style={{padding:"8px 12px",color:"#6a5e50",whiteSpace:"nowrap"}}>{fd(b.checkout)}</td>
+                          <td style={{padding:"8px 12px",color:"#6a5e50",textAlign:"center"}}>{b.nights||calcNights(b.checkin,b.checkout)}</td>
+                          <td style={{padding:"8px 12px",color:"#6a5e50",textAlign:"center"}}>{(b.guests||2)+(b.extraGuests||0)}{b.babies>0?` + ${b.babies}👶`:""}</td>
                           <td style={{padding:"11px 12px"}}>
                             <span style={{background:sc.bg,color:sc.text,borderRadius:8,padding:"3px 9px",fontSize:11,fontWeight:700,display:"inline-flex",alignItems:"center",gap:4}}>
                               <span style={{width:6,height:6,borderRadius:"50%",background:sc.dot,display:"inline-block"}}/>
