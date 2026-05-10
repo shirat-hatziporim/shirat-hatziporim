@@ -841,16 +841,15 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[],blockedDates=[
               {discount>0&&<div style={{fontSize:12,color:"#c62828",marginBottom:4}}>הנחה: -{fm(discount)}</div>}
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",borderTop:"1px solid #e2d5bc",paddingTop:8}}>
                 <span style={{color:"#5a4030",fontSize:13}}>סה"כ לתשלום</span>
-                <div style={{display:"flex",alignItems:"center",gap:6}}>
-                  <span style={{color:"#8a7a6a",fontSize:11}}>עריכה ידנית:</span>
-                  <input type="number" value={f.total} onFocus={e=>e.target.select()}
-                    onChange={e=>set("total",parseInt(e.target.value)||0)}
-                    style={{width:90,padding:"3px 8px",borderRadius:7,border:"1.5px solid #c8b898",fontSize:16,fontWeight:900,color:"#1a1a2e",textAlign:"left",fontFamily:"'Heebo',sans-serif"}}/>
-                </div>
+                <span style={{fontWeight:900,color:"#1a1a2e",fontSize:20}}>{fm(total)}</span>
               </div>
             </div>
           )}
           <Sec title="תשלום">
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:10}}>
+              <div><Lbl>סה"כ לתשלום (₪)</Lbl><input style={iS()} type="number" min={0} value={f.total||0} onFocus={e=>e.target.select()} onChange={e=>set("total",parseInt(e.target.value)||0)}/></div>
+              <div style={{display:"flex",alignItems:"flex-end"}}><span style={{fontSize:11,color:"#a09080",fontFamily:"'Heebo',sans-serif",paddingBottom:10}}>ניתן לשנות את הסכום הסופי</span></div>
+            </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:10}}>
               <div><Lbl>מקדמה (₪)</Lbl><input style={iS()} type="number" min={0} value={f.deposit||0} onFocus={e=>e.target.select()} onChange={e=>set("deposit",parseInt(e.target.value)||0)}/></div>
               <div><Lbl>שולמה באמצעות</Lbl>
