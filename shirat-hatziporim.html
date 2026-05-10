@@ -999,7 +999,7 @@ function CalendarView({bookings,onEdit,blockedDates=[],onToggleBlock}){
 
 // ── Main App ──
 function App(){
-  const [auth,setAuth]=useState(()=>sessionStorage.getItem("shirat_auth")==="1");
+  const [auth,setAuth]=useState(true);
   const [bookings,setBookings]=useState([]);
   const [loading,setLoading]=useState(true);
   const [syncing,setSyncing]=useState(false);
