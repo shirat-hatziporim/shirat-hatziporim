@@ -839,9 +839,14 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[],blockedDates=[
               {sundayExtra>0&&<div style={{fontSize:12,color:"#7a6040",marginBottom:4}}>תוספת יציאה ראשון: {fm(sundayExtra)}</div>}
               {guestExtra>0&&<div style={{fontSize:12,color:"#7a6040",marginBottom:4}}>תוספת {f.extraGuests} אורחים נוספים: {fm(guestExtra)}</div>}
               {discount>0&&<div style={{fontSize:12,color:"#c62828",marginBottom:4}}>הנחה: -{fm(discount)}</div>}
-              <div style={{display:"flex",justifyContent:"space-between",borderTop:"1px solid #e2d5bc",paddingTop:8}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",borderTop:"1px solid #e2d5bc",paddingTop:8}}>
                 <span style={{color:"#5a4030",fontSize:13}}>סה"כ לתשלום</span>
-                <span style={{fontWeight:900,color:"#1a1a2e",fontSize:20}}>{fm(total)}</span>
+                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                  <span style={{color:"#8a7a6a",fontSize:11}}>עריכה ידנית:</span>
+                  <input type="number" value={f.total} onFocus={e=>e.target.select()}
+                    onChange={e=>set("total",parseInt(e.target.value)||0)}
+                    style={{width:90,padding:"3px 8px",borderRadius:7,border:"1.5px solid #c8b898",fontSize:16,fontWeight:900,color:"#1a1a2e",textAlign:"left",fontFamily:"'Heebo',sans-serif"}}/>
+                </div>
               </div>
             </div>
           )}
