@@ -774,7 +774,7 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[],blockedDates=[
     setErr(e);return!Object.keys(e).length;
   }
   function save(){if(!validate())return;onSave({...f,total,nights,guestExtra,discount:discount||0,id:f.id||nid++});}
-  const balance=Math.max(0,total-((parseInt(f.deposit)||0)+(parseInt(f.paid)||0)));
+  const balance=Math.max(0,(parseInt(f.total)||total)-((parseInt(f.deposit)||0)+(parseInt(f.paid)||0)));
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}}>
       <div style={{background:"#fff",borderRadius:20,width:"min(620px,96vw)",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.22)",direction:"rtl"}}>
