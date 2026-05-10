@@ -293,7 +293,7 @@ function renderCal(){
   const grid=document.getElementById("calGrid");
   grid.innerHTML="";
   const first=new Date(calYear,calMonth,1);
-  const startDay=(first.getDay()+1)%7; // ראשון=0 → א'=0
+  const startDay=first.getDay(); // 0=ראשון → עמודה א'
   for(let i=0;i<startDay;i++){
     const el=document.createElement("div");
     el.className="cal-day empty";
@@ -340,6 +340,16 @@ function selectDay(ds){
         cur.setDate(cur.getDate()+1);
       }
       if(blocked){ selStart=ds; selEnd=null; document.getElementById("checkin").value=ds; document.getElementById("checkout").value=""; showDateError("יש תאריך תפוס בטווח שנבחר"); return; }
+      // בדוק מינימום לילות
+      const ciDate=new Date(selStart+"T12:00:00");
+      const coDate=new Date(ds+"T12:00:00");
+      const nights=Math.round((coDate-ciDate)/(1000*60*60*24));
+      const ciDay=ciDate.getDay(); // 5=שישי
+      const isFridayOnly=(ciDay===5 && nights===1); // שישי לבד — מותר
+      if(!isFridayOnly && nights<2){
+        showDateError("מינימום 2 לילות בימי חול — שישי בלבד ניתן להזמין ללילה אחד");
+        return;
+      }
       selEnd=ds;
       document.getElementById("checkout").value=ds;
       hideDateError();
@@ -352,8 +362,21 @@ function selectDay(ds){
 function onDateInput(){
   selStart=document.getElementById("checkin").value||null;
   selEnd=document.getElementById("checkout").value||null;
-  if(selStart&&selEnd) calcPrice();
-  else hidePrice();
+  if(selStart&&selEnd){
+    const ciDate=new Date(selStart+"T12:00:00");
+    const coDate=new Date(selEnd+"T12:00:00");
+    const nights=Math.round((coDate-ciDate)/(1000*60*60*24));
+    const ciDay=ciDate.getDay();
+    const isFridayOnly=(ciDay===5 && nights===1);
+    if(nights>0 && !isFridayOnly && nights<2){
+      showDateError("מינימום 2 לילות בימי חול — שישי בלבד ניתן להזמין ללילה אחד");
+      hidePrice();
+      renderCal();
+      return;
+    }
+    hideDateError();
+    calcPrice();
+  } else hidePrice();
   renderCal();
 }
 
