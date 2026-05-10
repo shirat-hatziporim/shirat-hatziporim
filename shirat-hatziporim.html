@@ -1515,20 +1515,22 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
                           onMouseLeave={e=>e.currentTarget.style.background=b.checkin===new Date().toISOString().split("T")[0]?"#e3f2fd":"transparent"}
                           onClick={()=>{if(window.innerWidth<700)setMobileActionMenu(b); else openEdit(b);}}>
                           <td style={{padding:"8px 12px"}}>
-                            <div style={{fontWeight:700,color:"#1a1a2e",display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}>
-                              {b.name}
-                              {b.source==="online"&&<span style={{fontSize:10,background:"#e3f2fd",color:"#1565c0",borderRadius:5,padding:"1px 6px",fontWeight:700}}>🌐</span>}
-                              {b.babyCrib&&<span style={{fontSize:10,background:"#e3f2fd",color:"#1565c0",borderRadius:5,padding:"1px 6px",fontWeight:700}}>🛏️</span>}
-                              {b.receiptIssued&&<span style={{fontSize:10,background:"#e8f5e9",color:"#2e7d32",borderRadius:5,padding:"1px 6px",fontWeight:700}}>🧾</span>}
-                              {(()=>{
-                                const allSent=b.sentConfirm&&b.sentReminder&&b.sentReview;
-                                const noneSent=!b.sentConfirm&&!b.sentReminder&&!b.sentReview;
-                                if(noneSent) return null;
-                                return <span title={`אישור:${b.sentConfirm?"✓":"✗"} תזכורת:${b.sentReminder?"✓":"✗"} ביקורת:${b.sentReview?"✓":"✗"}`}
-                                  style={{fontSize:10,background:allSent?"#e8f5e9":"#fff3e0",color:allSent?"#2e7d32":"#e65100",borderRadius:5,padding:"1px 6px",fontWeight:700}}>
-                                  {allSent?"✉️✓":"✉️~"}
-                                </span>;
-                              })()}
+                            <div style={{fontWeight:700,color:"#1a1a2e",display:"flex",alignItems:"center",gap:5,flexWrap:"nowrap"}}>
+                              <span style={{flexShrink:0}}>{b.name}</span>
+                              <span style={{display:"flex",gap:4,alignItems:"center",flexShrink:0}}>
+                                {b.source==="online"&&<span title="הזמנה אונליין" style={{fontSize:10,background:"#e3f2fd",color:"#1565c0",borderRadius:5,padding:"1px 5px",fontWeight:700,cursor:"default"}}>🌐</span>}
+                                {b.babyCrib&&<span title="נדרשת מיטת תינוק" style={{fontSize:10,background:"#e3f2fd",color:"#1565c0",borderRadius:5,padding:"1px 5px",fontWeight:700,cursor:"default"}}>🛏️</span>}
+                                {b.receiptIssued&&<span title="הונפקה קבלה" style={{fontSize:10,background:"#e8f5e9",color:"#2e7d32",borderRadius:5,padding:"1px 5px",fontWeight:700,cursor:"default"}}>🧾</span>}
+                                {(()=>{
+                                  const allSent=b.sentConfirm&&b.sentReminder&&b.sentReview;
+                                  const noneSent=!b.sentConfirm&&!b.sentReminder&&!b.sentReview;
+                                  if(noneSent) return null;
+                                  const tip=`אישור:${b.sentConfirm?"✓":"✗"} | תזכורת:${b.sentReminder?"✓":"✗"} | ביקורת:${b.sentReview?"✓":"✗"}`;
+                                  return <span title={tip} style={{fontSize:10,background:allSent?"#e8f5e9":"#fff3e0",color:allSent?"#2e7d32":"#e65100",borderRadius:5,padding:"1px 5px",fontWeight:700,cursor:"default"}}>
+                                    {allSent?"✉️✓":"✉️~"}
+                                  </span>;
+                                })()}
+                              </span>
                             </div>
                             {b.notes&&<div style={{fontSize:11,color:"#a09080",marginTop:1}}>{b.notes}</div>}
                           </td>
@@ -1546,13 +1548,13 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
                           <td style={{padding:"11px 12px",fontWeight:700,color:"#1a1a2e"}}>{fm(b.total||0)}</td>
                           <td style={{padding:"11px 12px",color:"#2e7d32",fontWeight:600}}>{fm(b.paid||0)}</td>
                           <td style={{padding:"11px 12px",color:bal>0?"#c62828":"#2e7d32",fontWeight:600}}>{fm(bal)}</td>
-                          <td className="desktop-actions" style={{padding:"11px 12px"}}>
-                            <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-                              <button onClick={e=>{e.stopPropagation();openEdit(b);}} style={{border:"none",background:"#f0eee8",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="עריכה">✏️</button>
-                              <button onClick={e=>{e.stopPropagation();setConfirmPopup(b);}} style={{border:"none",background:"#e7f7e7",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="אישור הזמנה">✉️</button>
-                              <button onClick={e=>{e.stopPropagation();setReminderPopup(b);}} style={{border:"none",background:"#fff8e1",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="תזכורת יום לפני">⏰</button>
-                              <button onClick={e=>{e.stopPropagation();setReviewPopup(b);}} style={{border:"none",background:"#f3e5f5",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="בקשת ביקורת">⭐</button>
-                              <button onClick={e=>{e.stopPropagation();setDelC(b.id);}} style={{border:"none",background:"#fce4ec",borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:13}} title="מחיקה">🗑️</button>
+                          <td className="desktop-actions" style={{padding:"8px 12px"}}>
+                            <div style={{display:"flex",gap:4,flexWrap:"nowrap",alignItems:"center"}}>
+                              <button onClick={e=>{e.stopPropagation();openEdit(b);}} style={{border:"none",background:"#f0eee8",borderRadius:7,padding:"5px 8px",cursor:"pointer",fontSize:12}} title="עריכה">✏️</button>
+                              <button onClick={e=>{e.stopPropagation();setConfirmPopup(b);}} style={{border:"none",background:"#e7f7e7",borderRadius:7,padding:"5px 8px",cursor:"pointer",fontSize:12}} title="אישור הזמנה">✉️</button>
+                              <button onClick={e=>{e.stopPropagation();setReminderPopup(b);}} style={{border:"none",background:"#fff8e1",borderRadius:7,padding:"5px 8px",cursor:"pointer",fontSize:12}} title="תזכורת יום לפני">⏰</button>
+                              <button onClick={e=>{e.stopPropagation();setReviewPopup(b);}} style={{border:"none",background:"#f3e5f5",borderRadius:7,padding:"5px 8px",cursor:"pointer",fontSize:12}} title="בקשת ביקורת">⭐</button>
+                              <button onClick={e=>{e.stopPropagation();setDelC(b.id);}} style={{border:"none",background:"#fce4ec",borderRadius:7,padding:"5px 8px",cursor:"pointer",fontSize:12}} title="מחיקה">🗑️</button>
                             </div>
                           </td>
                         </tr>
