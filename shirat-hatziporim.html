@@ -1094,6 +1094,7 @@ function App(){
     try{const s=localStorage.getItem("shirat_inquiry");return s||DEFAULT_INQUIRY_TEMPLATE;}catch{return DEFAULT_INQUIRY_TEMPLATE;}
   });
   const [inquiryEmail,setInquiryEmail]=useState("");
+  const [inquiryLinks,setInquiryLinks]=useState(()=>{try{return localStorage.getItem("shirat_inquiry_links")||"";}catch{return"";}});
   const [inquiryPhone,setInquiryPhone]=useState("");
   const [showEmailEditor,setShowEmailEditor]=useState(false);
   const [emailEditorType,setEmailEditorType]=useState("confirm"); // confirm | review
@@ -2771,17 +2772,27 @@ https://charedi.net/tzimar/25569/
               <textarea value={inquiryTemplate} onChange={e=>setInquiryTemplate(e.target.value)}
                 style={{width:"100%",boxSizing:"border-box",padding:"10px 12px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:13,fontFamily:"'Heebo',sans-serif",minHeight:280,resize:"vertical",direction:"rtl"}}/>
             </div>
+            <div style={{marginBottom:14}}>
+              <label style={{display:"block",fontSize:12,color:"#7a6a58",marginBottom:4,fontWeight:600,fontFamily:"'Heebo',sans-serif"}}>קישורים לתמונות / מסמכים (כל קישור בשורה נפרדת)</label>
+              <textarea value={inquiryLinks} onChange={e=>{setInquiryLinks(e.target.value);try{localStorage.setItem("shirat_inquiry_links",e.target.value);}catch(err){}}}
+                placeholder={"https://drive.google.com/...\nhttps://photos.app.goo.gl/..."}
+                dir="ltr"
+                style={{width:"100%",boxSizing:"border-box",padding:"10px 12px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:12,fontFamily:"monospace",minHeight:80,resize:"vertical"}}/>
+              <div style={{fontSize:11,color:"#a09080",marginTop:3,fontFamily:"'Heebo',sans-serif"}}>הקישורים יצורפו אוטומטית בסוף ההודעה</div>
+            </div>
             <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
               <button onClick={()=>{
                 if(!inquiryEmail){alert("הזן כתובת מייל");return;}
                 const sub=encodeURIComponent('מידע על צימר שירת הציפורים');
-                const body=encodeURIComponent(inquiryTemplate);
+                const fullMsg=inquiryTemplate+(inquiryLinks.trim()?"\n\n📎 קישורים:\n"+inquiryLinks.trim():"");
+                const body=encodeURIComponent(fullMsg);
                 openEmail(inquiryEmail,sub,body);
               }} style={{...bS("#1a1a2e","#fff"),fontSize:13}}>📧 שלח מייל</button>
               <button onClick={()=>{
                 if(!inquiryPhone){alert("הזן מספר טלפון");return;}
                 const phone="972"+(inquiryPhone||"").replace(/\D/g,"").replace(/^0/,"");
-                const msg=encodeURIComponent(inquiryTemplate);
+                const fullMsg=inquiryTemplate+(inquiryLinks.trim()?"\n\n📎 קישורים:\n"+inquiryLinks.trim():"");
+                const msg=encodeURIComponent(fullMsg);
                 window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${msg}`,"_blank");
               }} style={{...bS("#25d366","#fff"),fontSize:13}}>💬 שלח WhatsApp</button>
             </div>
