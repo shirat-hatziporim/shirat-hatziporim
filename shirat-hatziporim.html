@@ -749,7 +749,7 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[],blockedDates=[
     setErr(e);return!Object.keys(e).length;
   }
   function save(){if(!validate())return;onSave({...f,total,nights,guestExtra,discount:discount||0,id:f.id||nid++});}
-  const balance=Math.max(0,total-(parseInt(f.paid)||0));
+  const balance=Math.max(0,total-((parseInt(f.deposit)||0)+(parseInt(f.paid)||0)));
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}}>
       <div style={{background:"#fff",borderRadius:20,width:"min(620px,96vw)",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.22)",direction:"rtl"}}>
@@ -822,26 +822,10 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[],blockedDates=[
           )}
           <Sec title="תשלום">
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:10}}>
-              <div><Lbl>מקדמה ששולמה (₪)</Lbl><input style={iS()} type="number" min={0} value={f.deposit||0} onFocus={e=>e.target.select()} onChange={e=>set("deposit",parseInt(e.target.value)||0)}/></div>
-              <div><Lbl>שיטת תשלום מקדמה</Lbl>
+              <div><Lbl>מקדמה (₪)</Lbl><input style={iS()} type="number" min={0} value={f.deposit||0} onFocus={e=>e.target.select()} onChange={e=>set("deposit",parseInt(e.target.value)||0)}/></div>
+              <div><Lbl>שולמה באמצעות</Lbl>
                 <select style={iS()} value={f.depositMethod||""} onChange={e=>set("depositMethod",e.target.value)}>
                   <option value="">לא שולם</option>
-                  <option value="bit">ביט</option>
-                  <option value="paybox">פייבוקס</option>
-                  <option value="transfer">העברה בנקאית</option>
-                  <option value="cash">מזומן</option>
-                </select>
-              </div>
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:10}}>
-              <div><Lbl>שולם סה"כ (₪)</Lbl><input style={iS()} type="number" min={0} value={f.paid} onFocus={e=>e.target.select()} onChange={e=>set("paid",parseInt(e.target.value)||0)}/></div>
-              <div><Lbl>יתרה לתשלום</Lbl><input readOnly style={{...iS(),background:"#f8f4ec",color:balance>0?"#c62828":"#2e7d32",fontWeight:700}} value={balance}/></div>
-            </div>
-            {balance>0&&(
-              <div>
-                <Lbl>שיטת תשלום יתרה</Lbl>
-                <select style={iS()} value={f.balanceMethod||""} onChange={e=>set("balanceMethod",e.target.value)}>
-                  <option value="">לא שולם עדיין</option>
                   <option value="bit">ביט</option>
                   <option value="paybox">פייבוקס</option>
                   <option value="transfer">העברה בנקאית</option>
@@ -849,7 +833,24 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[],blockedDates=[
                   <option value="card">כרטיס אשראי</option>
                 </select>
               </div>
-            )}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <div><Lbl>יתרה ששולמה (₪)</Lbl><input style={iS()} type="number" min={0} value={f.paid||0} onFocus={e=>e.target.select()} onChange={e=>set("paid",parseInt(e.target.value)||0)}/></div>
+              <div><Lbl>שולמה באמצעות</Lbl>
+                <select style={iS()} value={f.balanceMethod||""} onChange={e=>set("balanceMethod",e.target.value)}>
+                  <option value="">לא שולם</option>
+                  <option value="bit">ביט</option>
+                  <option value="paybox">פייבוקס</option>
+                  <option value="transfer">העברה בנקאית</option>
+                  <option value="cash">מזומן</option>
+                  <option value="card">כרטיס אשראי</option>
+                </select>
+              </div>
+            </div>
+            <div style={{marginTop:10,padding:"8px 12px",background:"#f8f4ec",borderRadius:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontSize:13,fontFamily:"'Heebo',sans-serif",color:"#7a6a58"}}>יתרה לתשלום</span>
+              <span style={{fontSize:15,fontWeight:800,color:balance>0?"#c62828":"#2e7d32",fontFamily:"'Heebo',sans-serif"}}>₪{balance}</span>
+            </div>
           </Sec>
           <Sec title="הערות">
             <textarea style={{...iS(),resize:"vertical",minHeight:55,width:"100%"}} value={f.notes} onChange={e=>set("notes",e.target.value)} placeholder="הערות..."/>
