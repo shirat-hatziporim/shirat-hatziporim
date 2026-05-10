@@ -807,8 +807,6 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[],blockedDates=[
               </label>
             </div>
             <div style={{marginBottom:12}}>
-              <Lbl>הנחה (₪) — השאר 0 אם אין הנחה</Lbl>
-              <input style={{...iS(),borderColor:"#c8e6c9"}} type="number" min={0} value={f.discount||0} onFocus={e=>e.target.select()} onChange={e=>set("discount",parseInt(e.target.value)||0)}/>
               <div><Lbl>סטטוס</Lbl>
                 <select style={iS()} value={f.status} onChange={e=>set("status",e.target.value)}>
                   <option value="confirmed">מאושר</option><option value="pending">ממתין</option><option value="cancelled">מבוטל</option>
@@ -848,7 +846,7 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[],blockedDates=[
           <Sec title="תשלום">
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:10}}>
               <div><Lbl>סה"כ לתשלום (₪)</Lbl><input style={iS()} type="number" min={0} value={f.total||0} onFocus={e=>e.target.select()} onChange={e=>set("total",parseInt(e.target.value)||0)}/></div>
-              <div style={{display:"flex",alignItems:"flex-end"}}><span style={{fontSize:11,color:"#a09080",fontFamily:"'Heebo',sans-serif",paddingBottom:10}}>ניתן לשנות את הסכום הסופי</span></div>
+              <div><Lbl>הנחה (₪)</Lbl><input style={{...iS(),borderColor:"#c8e6c9"}} type="number" min={0} value={f.discount||0} onFocus={e=>e.target.select()} onChange={e=>set("discount",parseInt(e.target.value)||0)}/></div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:10}}>
               <div><Lbl>מקדמה (₪)</Lbl><input style={iS()} type="number" min={0} value={f.deposit||0} onFocus={e=>e.target.select()} onChange={e=>set("deposit",parseInt(e.target.value)||0)}/></div>
@@ -1147,6 +1145,7 @@ function App(){
   // שמירה לגוגל שיטס בכל שינוי
   async function syncSave(newBookings){
     setSyncing(true);
+    try{localStorage.setItem("shirat_bookings",JSON.stringify(newBookings));}catch(e){}
     await saveToSheets(newBookings);
     setSyncing(false);
     setLastSync(new Date());
@@ -1541,7 +1540,7 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
                   <tbody>
                     {!filtered.length&&<tr><td colSpan={11} style={{textAlign:"center",padding:28,color:"#aaa"}}>אין הזמנות</td></tr>}
                     {filtered.sort((a,b)=>a.checkin.localeCompare(b.checkin)).map(b=>{
-                      const sc=SC[b.status],bal=Math.max(0,(b.total||0)-(b.paid||0));
+                      const sc=SC[b.status],bal=Math.max(0,(b.total||0)-((b.paid||0)+(b.deposit||0)));
                       return(
                         <tr key={b.id} style={{borderBottom:"1px solid #f4f0ea",transition:"background .1s",cursor:"pointer",background:b.checkin===new Date().toISOString().split("T")[0]?"#e3f2fd":"transparent"}}
                           onMouseEnter={e=>e.currentTarget.style.background=b.checkin===new Date().toISOString().split("T")[0]?"#bbdefb":"#fdfaf6"}
@@ -1579,7 +1578,7 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
                             </span>
                           </td>
                           <td style={{padding:"11px 12px",fontWeight:700,color:"#1a1a2e"}}>{fm(b.total||0)}</td>
-                          <td style={{padding:"11px 12px",color:"#2e7d32",fontWeight:600}}>{fm(b.paid||0)}</td>
+                          <td style={{padding:"11px 12px",color:"#2e7d32",fontWeight:600}}>{fm((b.paid||0)+(b.deposit||0))}</td>
                           <td style={{padding:"11px 12px",color:bal>0?"#c62828":"#2e7d32",fontWeight:600}}>{fm(bal)}</td>
                           <td className="desktop-actions" style={{padding:"8px 12px"}}>
                             <div style={{display:"flex",gap:4,flexWrap:"nowrap",alignItems:"center"}}>
