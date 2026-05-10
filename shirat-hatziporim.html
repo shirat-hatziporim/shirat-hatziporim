@@ -140,7 +140,25 @@ function LoginScreen({onLogin}){
 // ── מחירון ──
 function isSummer(ds){const md=ds.slice(5);return md>="06-01"&&md<="08-31";}
 function isWeekend(ds){const d=new Date(ds);return d.getDay()===5||d.getDay()===6;}
-const HOLIDAYS=["2025-04-12","2025-04-13","2025-04-14","2025-04-18","2025-04-19","2025-06-01","2025-06-02","2025-09-22","2025-09-23","2025-09-24","2025-09-25","2025-10-01","2025-10-02","2025-10-06","2025-10-07","2025-10-13","2025-10-14"];
+const HOLIDAYS=[
+  // 2025
+  "2025-04-12","2025-04-13","2025-04-14","2025-04-18","2025-04-19",
+  "2025-06-01","2025-06-02",
+  "2025-09-22","2025-09-23","2025-09-24","2025-09-25",
+  "2025-10-01","2025-10-02","2025-10-06","2025-10-07","2025-10-13","2025-10-14",
+  // 2026
+  "2026-04-01","2026-04-02","2026-04-07","2026-04-08",
+  "2026-05-21","2026-05-22",
+  "2026-09-11","2026-09-12",
+  "2026-09-20",
+  "2026-09-25","2026-09-26","2026-10-02","2026-10-03",
+  // 2027
+  "2027-03-22","2027-03-23","2027-03-28","2027-03-29",
+  "2027-05-11","2027-05-12",
+  "2027-09-01","2027-09-02",
+  "2027-09-10",
+  "2027-09-15","2027-09-16","2027-09-22","2027-09-23",
+];
 function isHoliday(ds){return HOLIDAYS.includes(ds);}
 function getActivePrices(){
   try{
@@ -936,26 +954,30 @@ function CalendarView({bookings,onEdit,blockedDates=[],onToggleBlock}){
           if(!d)return <div key={i}/>;
           const ds=`${yr}-${String(mo+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
           const booked=occ[ds],isToday=ds===today.toISOString().split("T")[0],p=getDailyPrice(ds);
+          const holiday=isHoliday(ds);
           return(
             <div key={ds} onClick={()=>{
                 if(booked&&booked[0]._blocked){onToggleBlock&&onToggleBlock(ds,'confirm');}
                 else if(booked){onEdit(booked[0]);}
                 else{onToggleBlock&&onToggleBlock(ds,'add');}
-              }} title={booked?(booked[0]._blocked?"🔓 לחץ לשחרור החסימה":"✏️ לחץ לעריכת ההזמנה"):"🔒 לחץ לחסימת התאריך"}
-              style={{borderRadius:9,padding:"5px 3px",textAlign:"center",cursor:"pointer",background:booked?"#1a1a2e":isToday?"#f0eee8":"transparent",border:isToday&&!booked?"2px solid #c8b898":"2px solid transparent",minHeight:46,transition:"opacity .15s"}}
+              }} title={booked?(booked[0]._blocked?"🔓 לחץ לשחרור החסימה":"✏️ לחץ לעריכת ההזמנה"):holiday?"🕍 חג — "+getDayType(ds):"🔒 לחץ לחסימת התאריך"}
+              style={{borderRadius:9,padding:"5px 3px",textAlign:"center",cursor:"pointer",
+                background:booked?"#1a1a2e":isToday?"#f0eee8":holiday&&!booked?"#f3e8ff":"transparent",
+                border:isToday&&!booked?"2px solid #c8b898":holiday&&!booked?"2px solid #c4b5fd":"2px solid transparent",
+                minHeight:46,transition:"opacity .15s"}}
               onMouseEnter={e=>{if(booked)e.currentTarget.style.opacity=".8";}}
               onMouseLeave={e=>e.currentTarget.style.opacity="1"}>
-              <div style={{fontSize:13,fontWeight:isToday?800:400,color:booked?"#fff":"#3d2c1e"}}>{d}</div>
+              <div style={{fontSize:13,fontWeight:isToday?800:400,color:booked?"#fff":holiday?"#7c3aed":"#3d2c1e"}}>{d}</div>
               {booked
                 ?<div style={{fontSize:9,color:booked[0]._blocked?"#ffccbc":"#f4c26a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",padding:"0 2px"}}>{booked[0].name}</div>
-                :<div style={{fontSize:9,color:"#b0a090"}}>{fm(p)}</div>
+                :<div style={{fontSize:9,color:holiday?"#7c3aed":"#b0a090"}}>{holiday?"חג | ":""}{fm(p)}</div>
               }
             </div>
           );
         })}
       </div>
       <div style={{marginTop:14,paddingTop:12,borderTop:"1px solid #f0eee8",display:"flex",gap:20,flexWrap:"wrap"}}>
-        {[["#1a1a2e","תפוס"],["#f0eee8","היום"],["transparent","פנוי + מחיר"]].map(([c,l])=>(
+        {[["#1a1a2e","תפוס"],["#f3e8ff","חג"],["#f0eee8","היום"],["transparent","פנוי + מחיר"]].map(([c,l])=>(
           <div key={l} style={{display:"flex",alignItems:"center",gap:6}}>
             <div style={{width:14,height:14,borderRadius:4,background:c,border:c==="transparent"?"1.5px solid #c8b898":"none"}}/>
             <span style={{fontSize:12,color:"#8a7e6e"}}>{l}</span>
