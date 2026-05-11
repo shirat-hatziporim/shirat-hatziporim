@@ -3014,18 +3014,11 @@ https://charedi.net/tzimar/25569/
                   <button onClick={()=>{
                     const emails=inquiryLeads.filter(l=>l.email).map(l=>l.email);
                     if(emails.length===0){alert("אין מיילים ברשימה");return;}
-                    if(!confirm("לשלוח מייל מידע ל־"+emails.length+" מתעניינים?")){return;}
-                    let sent=0;
-                    const sendNext=(i)=>{
-                      if(i>=emails.length){alert("נשלח ל־"+sent+" מתעניינים ✅");return;}
-                      const cb="cb_"+Math.random().toString(36).slice(2);
-                      window[cb]=function(){delete window[cb];sent++;sendNext(i+1);};
-                      const s=document.createElement("script");
-                      s.src=SCRIPT_URL+"?action=sendInquiry&email="+encodeURIComponent(emails[i])+"&authuser=0&callback="+cb+"&t="+Date.now();
-                      document.head.appendChild(s);
-                    };
-                    sendNext(0);
-                  }} style={{...bS("#1a1a2e","#fff"),fontSize:13,flex:1}}>📧 שלח מייל מידע לכולם ({inquiryLeads.filter(l=>l.email).length})</button>
+                    const msg=document.getElementById("bulkFreeText").value;
+                    if(!msg.trim()){alert("כתוב הודעה לשליחה");return;}
+                    const bcc=emails.join(",");
+                    window.open("https://mail.google.com/mail/?view=cm&bcc="+encodeURIComponent(bcc)+"&su="+encodeURIComponent("מידע על צימר שירת הציפורים")+"&body="+encodeURIComponent(msg),"_blank");
+                  }} style={{...bS("#1a1a2e","#fff"),fontSize:13,flex:1}}>📧 שלח מייל לכולם ({inquiryLeads.filter(l=>l.email).length})</button>
                   <button onClick={()=>{
                     const phones=inquiryLeads.filter(l=>l.phone).map(l=>l.phone);
                     if(phones.length===0){alert("אין טלפונים ברשימה");return;}
