@@ -1124,6 +1124,16 @@ function App(){
   const [inquiryEmail,setInquiryEmail]=useState("");
   const [inquiryLinks,setInquiryLinks]=useState(()=>{try{return localStorage.getItem("shirat_inquiry_links")||"https://639885bfa3564.site123.me/";}catch{return "https://639885bfa3564.site123.me/";}});
   const [inquiryPhone,setInquiryPhone]=useState("");
+  const [inquiryLeads,setInquiryLeads]=useState(()=>{try{const s=localStorage.getItem("shirat_leads");return s?JSON.parse(s):[];}catch{return [];}});
+  const [showLeads,setShowLeads]=useState(false);
+  function addLead(email,phone){
+    if(!email&&!phone) return;
+    const exists=inquiryLeads.find(l=>l.email===email&&l.phone===phone);
+    if(exists) return;
+    const updated=[...inquiryLeads,{email:email||"",phone:phone||"",date:new Date().toLocaleDateString("he-IL")}];
+    setInquiryLeads(updated);
+    try{localStorage.setItem("shirat_leads",JSON.stringify(updated));}catch(e){}
+  }
   const [showEmailEditor,setShowEmailEditor]=useState(false);
   const [emailEditorType,setEmailEditorType]=useState("confirm"); // confirm | review
   const [confirmTemplate,setConfirmTemplate]=useState(()=>{
@@ -1411,6 +1421,13 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
     setShowForm(false);setEditB(null);
     if(b.status==="confirmed"&&b.email&&(isNew||prevStatus!=="confirmed")){
       sendConfirmationEmail(b);
+    }
+    if(b.email){
+      const cleanedLeads=inquiryLeads.filter(l=>l.email.toLowerCase()!==b.email.toLowerCase());
+      if(cleanedLeads.length!==inquiryLeads.length){
+        setInquiryLeads(cleanedLeads);
+        try{localStorage.setItem("shirat_leads",JSON.stringify(cleanedLeads));}catch(e){}
+      }
     }
   }
   function openEdit(b){setEditB(b);setShowForm(true);}
@@ -2818,12 +2835,21 @@ https://charedi.net/tzimar/25569/
                 emailjs.send("service_0on84wi","template_43xo2sm",{
                   guest_email: inquiryEmail,
                 }).then(()=>{
+                  addLead(inquiryEmail,inquiryPhone);
                   alert("מייל נשלח בהצלחה ל־"+inquiryEmail+" ✅");
                   setInquiryEmail("");
                 }).catch(err=>{
                   alert("שגיאה בשליחה: "+JSON.stringify(err));
                 });
               }} style={{...bS("#1a1a2e","#fff"),fontSize:13}}>📧 שלח מייל מעוצב</button>
+              <button onClick={()=>{
+                if(!inquiryEmail){alert("הזן כתובת מייל");return;}
+                const sub=encodeURIComponent("מידע על צימר שירת הציפורים");
+                const fullMsg=inquiryTemplate+(inquiryLinks.trim()?"\n\n🌐 קישור לאתר הצימר:\n"+inquiryLinks.trim():"");
+                const body=encodeURIComponent(fullMsg);
+                addLead(inquiryEmail,inquiryPhone);
+                openEmail(inquiryEmail,sub,body);
+              }} style={{...bS("#3a3a6e","#fff"),fontSize:13}}>📧 שלח מייל רגיל</button>
               <button onClick={()=>{
                 if(!inquiryPhone){alert("הזן מספר טלפון");return;}
                 const phone="972"+(inquiryPhone||"").replace(/\D/g,"").replace(/^0/,"");
@@ -2837,6 +2863,7 @@ https://charedi.net/tzimar/25569/
                 saveTemplateToSheets("shirat_inquiry",inquiryTemplate);
                 alert("התבנית נשמרה!");
               }} style={{...bS("#e8f5e9","#2e7d32"),fontSize:13}}>שמור תבנית</button>
+              <button onClick={()=>setShowLeads(true)} style={{...bS("#1565c0","#fff"),fontSize:13}}>📋 רשימת מתעניינים ({inquiryLeads.length})</button>
               <button onClick={()=>setInquiryTemplate(DEFAULT_INQUIRY_TEMPLATE)} style={{...bS("#f0eee8","#555"),fontSize:13}}>איפוס</button>
               <button onClick={()=>setShowInquiry(false)} style={{...bS("#f0eee8","#555"),fontSize:13}}>סגור</button>
             </div>
@@ -3004,3 +3031,75 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 </body>
 </html>
+      {showLeads&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <div style={{background:"#fff",borderRadius:20,width:"min(500px,96vw)",maxHeight:"80vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.22)",direction:"rtl",padding:"24px 28px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+              <h2 style={{margin:0,fontSize:18,fontFamily:"'Heebo',sans-serif",color:"#1a1a2e",fontWeight:800}}>📋 רשימת מתעניינים</h2>
+              <button onClick={()=>setShowLeads(false)} style={{border:"none",background:"none",fontSize:22,cursor:"pointer",color:"#aaa"}}>✕</button>
+            </div>
+            {inquiryLeads.length===0?<p style={{color:"#aaa",textAlign:"center",fontFamily:"'Heebo',sans-serif"}}>אין מתעניינים עדיין</p>:(
+              <>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,fontFamily:"'Heebo',sans-serif"}}>
+                <thead>
+                  <tr style={{background:"#f8f4ec"}}>
+                    {["מייל","טלפון","תאריך",""].map(h=><th key={h} style={{padding:"8px 10px",textAlign:"right",fontWeight:700,color:"#5a4e40",borderBottom:"1.5px solid #eee6d8"}}>{h}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {inquiryLeads.map((l,i)=>(
+                    <tr key={i} style={{borderBottom:"1px solid #f4f0ea"}}>
+                      <td style={{padding:"8px 10px",color:"#1a1a2e",direction:"ltr"}}>{l.email||"—"}</td>
+                      <td style={{padding:"8px 10px",color:"#555",direction:"ltr"}}>{l.phone||"—"}</td>
+                      <td style={{padding:"8px 10px",color:"#888"}}>{l.date}</td>
+                      <td style={{padding:"8px 10px"}}>
+                        <button onClick={()=>{const updated=inquiryLeads.filter((_,j)=>j!==i);setInquiryLeads(updated);try{localStorage.setItem("shirat_leads",JSON.stringify(updated));}catch(e){}}}
+                          style={{border:"none",background:"#fce4ec",color:"#c62828",borderRadius:6,padding:"3px 8px",cursor:"pointer",fontSize:12}}>מחק</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div style={{marginTop:16,background:"#f9f7f3",borderRadius:10,padding:"14px 16px"}}>
+                <p style={{margin:"0 0 10px",fontSize:13,fontWeight:700,color:"#1a1a2e",fontFamily:"'Heebo',sans-serif"}}>📢 שלח מייל לכל המתעניינים</p>
+                <select id="bulkTemplate" style={{width:"100%",padding:"8px 10px",borderRadius:8,border:"1.5px solid #e0d8cc",fontSize:13,fontFamily:"'Heebo',sans-serif",marginBottom:8,background:"#fff"}}
+                  defaultValue="designed">
+                  <option value="designed">📧 מייל מעוצב (תבנית EmailJS)</option>
+                  <option value="plain">📧 מייל רגיל (פותח תוכנת מייל)</option>
+                </select>
+                <button onClick={()=>{
+                  const emails=inquiryLeads.filter(l=>l.email).map(l=>l.email);
+                  if(emails.length===0){alert("אין מיילים ברשימה");return;}
+                  const type=document.getElementById("bulkTemplate").value;
+                  if(type==="designed"){
+                    if(!confirm("לשלוח מייל מעוצב ל־"+emails.length+" מתעניינים? (יורד מהמכסה של EmailJS)")){return;}
+                    let sent=0,failed=0;
+                    const sendNext=(i)=>{
+                      if(i>=emails.length){
+                        alert("נשלח ל־"+sent+" מתעניינים"+(failed>0?" | נכשל: "+failed:"")+" ✅");
+                        return;
+                      }
+                      emailjs.send("service_0on84wi","template_43xo2sm",{guest_email:emails[i]})
+                        .then(()=>{sent++;sendNext(i+1);})
+                        .catch(()=>{failed++;sendNext(i+1);});
+                    };
+                    sendNext(0);
+                  } else {
+                    const bcc=emails.join(",");
+                    window.location.href="mailto:?bcc="+encodeURIComponent(bcc)+"&subject="+encodeURIComponent("מידע על צימר שירת הציפורים");
+                  }
+                }} style={{...bS("#1a1a2e","#fff"),fontSize:13,width:"100%"}}>📤 שלח לכולם ({inquiryLeads.filter(l=>l.email).length} מתעניינים)</button>
+              </div>
+              <div style={{marginTop:10,display:"flex",gap:8,flexWrap:"wrap"}}>
+                <button onClick={()=>{
+                  const lines=inquiryLeads.filter(l=>l.email).map(l=>l.email).join("\n");
+                  navigator.clipboard.writeText(lines).then(()=>alert("המיילים הועתקו ✅"));
+                }} style={{...bS("#e8f5e9","#2e7d32"),fontSize:13}}>📋 העתק כל המיילים</button>
+                <button onClick={()=>{if(confirm("למחוק את כל הרשימה?")){setInquiryLeads([]);try{localStorage.removeItem("shirat_leads");}catch(e){}}}}
+                  style={{...bS("#fce4ec","#c62828"),fontSize:13}}>🗑️ נקה רשימה</button>
+              </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
