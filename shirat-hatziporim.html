@@ -299,8 +299,9 @@ function fd(ds){
 }
 function fm(n){return`₪${Number(n).toLocaleString("he-IL")}`;}
 
-const STATUS={confirmed:"מאושר",pending:"ממתין",cancelled:"מבוטל"};
-const SC={confirmed:{bg:"#e8f5e9",text:"#2e7d32",dot:"#43a047"},pending:{bg:"#fff8e1",text:"#f57f17",dot:"#ffc107"},cancelled:{bg:"#fce4ec",text:"#c62828",dot:"#e53935"}};
+const STATUS={confirmed:"מאושר",pending:"ממתין",cancelled:"מבוטל",completed:"הסתיים"};
+const SC={confirmed:{bg:"#e8f5e9",text:"#2e7d32",dot:"#43a047"},pending:{bg:"#fff8e1",text:"#f57f17",dot:"#ffc107"},cancelled:{bg:"#fce4ec",text:"#c62828",dot:"#e53935"},completed:{bg:"#f0f0f0",text:"#757575",dot:"#9e9e9e"}};
+function getDisplayStatus(b){const today=new Date().toISOString().split("T")[0];if(b.status!=="cancelled"&&b.checkout&&b.checkout<today) return "completed";return b.status;}
 const MONTHS_HE=["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
 const DAYS_HE=["א","ב","ג","ד","ה","ו","ש"];
 let nid=10;
@@ -1396,7 +1397,7 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
   }
 
   const filtered=bookings.filter(b=>{
-    return((b.name||"").includes(search)||(b.phone||"").includes(search))&&(fStatus==="all"||b.status===fStatus);
+    return((b.name||"").includes(search)||(b.phone||"").includes(search))&&(fStatus==="all"||getDisplayStatus(b)===fStatus);
   });
 
   function save(b){
@@ -1556,7 +1557,7 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
                 style={{padding:"7px 12px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:14,fontFamily:"'Heebo',sans-serif",width:190,background:"#fff",direction:"rtl"}}/>
               <select value={fStatus} onChange={e=>setFStatus(e.target.value)}
                 style={{padding:"7px 12px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:14,fontFamily:"'Heebo',sans-serif",background:"#fff"}}>
-                <option value="all">כל הסטטוסים</option><option value="confirmed">מאושר</option><option value="pending">ממתין</option><option value="cancelled">מבוטל</option>
+                <option value="all">כל הסטטוסים</option><option value="confirmed">מאושר</option><option value="pending">ממתין</option><option value="cancelled">מבוטל</option><option value="completed">הסתיים</option>
               </select>
             </div>
             <div style={{background:"#fff",borderRadius:20,overflow:"hidden",boxShadow:"0 4px 24px rgba(0,0,0,.07)"}}>
@@ -1572,7 +1573,7 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
                   <tbody>
                     {!filtered.length&&<tr><td colSpan={11} style={{textAlign:"center",padding:28,color:"#aaa"}}>אין הזמנות</td></tr>}
                     {filtered.sort((a,b)=>a.checkin.localeCompare(b.checkin)).map(b=>{
-                      const sc=SC[b.status],bal=Math.max(0,(b.total||0)-((b.paid||0)+(b.deposit||0)));
+                      const sc=SC[getDisplayStatus(b)]||SC[b.status],bal=Math.max(0,(b.total||0)-((b.paid||0)+(b.deposit||0)));
                       return(
                         <tr key={b.id} style={{borderBottom:"1px solid #f4f0ea",transition:"background .1s",cursor:"pointer",background:b.checkin===new Date().toISOString().split("T")[0]?"#e3f2fd":"transparent"}}
                           onMouseEnter={e=>e.currentTarget.style.background=b.checkin===new Date().toISOString().split("T")[0]?"#bbdefb":"#fdfaf6"}
@@ -1606,7 +1607,7 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
                           <td style={{padding:"11px 12px"}}>
                             <span style={{background:sc.bg,color:sc.text,borderRadius:8,padding:"3px 9px",fontSize:11,fontWeight:700,display:"inline-flex",alignItems:"center",gap:4}}>
                               <span style={{width:6,height:6,borderRadius:"50%",background:sc.dot,display:"inline-block"}}/>
-                              {STATUS[b.status]}
+                              {STATUS[getDisplayStatus(b)]}
                             </span>
                           </td>
                           <td style={{padding:"11px 12px",fontWeight:700,color:"#1a1a2e"}}>{fm(b.total||0)}</td>
@@ -1826,7 +1827,7 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
               </button>
               <button onClick={()=>{
                 const w=window.open("","_blank");
-                const rows=bookings.map(b=>{const bal=Math.max(0,(b.total||0)-(b.paid||0));return`<tr><td>${b.name}</td><td>${b.phone}</td><td>${fd(b.checkin)}</td><td>${fd(b.checkout)}</td><td>${b.nights||calcNights(b.checkin,b.checkout)}</td><td>${STATUS[b.status]}</td><td>₪${(b.total||0).toLocaleString()}</td><td>₪${(b.paid||0).toLocaleString()}</td><td style="color:${bal>0?'#c62828':'#2e7d32'}">₪${bal.toLocaleString()}</td></tr>`;}).join("");
+                const rows=bookings.map(b=>{const bal=Math.max(0,(b.total||0)-(b.paid||0));return`<tr><td>${b.name}</td><td>${b.phone}</td><td>${fd(b.checkin)}</td><td>${fd(b.checkout)}</td><td>${b.nights||calcNights(b.checkin,b.checkout)}</td><td>${STATUS[getDisplayStatus(b)]}</td><td>₪${(b.total||0).toLocaleString()}</td><td>₪${(b.paid||0).toLocaleString()}</td><td style="color:${bal>0?'#c62828':'#2e7d32'}">₪${bal.toLocaleString()}</td></tr>`;}).join("");
                 w.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>הזמנות שירת הציפורים</title><style>body{font-family:Arial,sans-serif;padding:20px;direction:rtl}h1{color:#1a1a2e;font-size:20px}table{width:100%;border-collapse:collapse;font-size:13px}th{background:#1a1a2e;color:#fff;padding:8px 10px;text-align:right}td{padding:7px 10px;border-bottom:1px solid #eee}tr:nth-child(even){background:#f8f4ec}.footer{margin-top:20px;font-size:11px;color:#aaa}</style></head><body><h1>🐦 שירת הציפורים — רשימת הזמנות</h1><p style="color:#888;font-size:12px">הודפס: ${new Date().toLocaleDateString("he-IL")}</p><table><thead><tr><th>שם</th><th>טלפון</th><th>כניסה</th><th>יציאה</th><th>לילות</th><th>סטטוס</th><th>סה"כ</th><th>שולם</th><th>יתרה</th></tr></thead><tbody>${rows}</tbody></table><div class="footer">סה"כ ${bookings.length} הזמנות</div></body></html>`);
                 w.document.close();setTimeout(()=>w.print(),500);
               }} style={{...bS("#2e7d32","#fff"),width:"100%",marginBottom:10}}>
