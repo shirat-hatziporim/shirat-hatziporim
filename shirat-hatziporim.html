@@ -2815,11 +2815,15 @@ https://charedi.net/tzimar/25569/
             <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
               <button onClick={()=>{
                 if(!inquiryEmail){alert("הזן כתובת מייל");return;}
-                const sub=encodeURIComponent('מידע על צימר שירת הציפורים');
-                const fullMsg=inquiryTemplate+(inquiryLinks.trim()?"\n\n🌐 קישור לאתר הצימר:\n"+inquiryLinks.trim():"");
-                const body=encodeURIComponent(fullMsg);
-                openEmail(inquiryEmail,sub,body);
-              }} style={{...bS("#1a1a2e","#fff"),fontSize:13}}>📧 שלח מייל</button>
+                emailjs.send("service_0on84wi","template_43xo2sm",{
+                  guest_email: inquiryEmail,
+                }).then(()=>{
+                  alert("מייל נשלח בהצלחה ל־"+inquiryEmail+" ✅");
+                  setInquiryEmail("");
+                }).catch(err=>{
+                  alert("שגיאה בשליחה: "+JSON.stringify(err));
+                });
+              }} style={{...bS("#1a1a2e","#fff"),fontSize:13}}>📧 שלח מייל מעוצב</button>
               <button onClick={()=>{
                 if(!inquiryPhone){alert("הזן מספר טלפון");return;}
                 const phone="972"+(inquiryPhone||"").replace(/\D/g,"").replace(/^0/,"");
