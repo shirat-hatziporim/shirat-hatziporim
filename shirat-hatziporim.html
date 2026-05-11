@@ -509,25 +509,11 @@ ${balance>0?`\n💳 יתרה לתשלום בהגעה: ${fm(balance)}`:""}
 
 function sendReminderEmail(b){
   if(!b.email){alert("לא הוזן מייל ללקוח זה");return;}
-  const balance=Math.max(0,(b.total||0)-(b.paid||0));
-  const custom=localStorage.getItem("shirat_reminder_template")||"";
-  const subject=encodeURIComponent(`מחר מגיעים! תזכורת — שירת הציפורים 🐦`);
-  const bodyText=custom
-    ?custom.replace("{שם}",b.name).replace("{כניסה}",fd(b.checkin)).replace("{יציאה}",fd(b.checkout))
-    :`שלום ${b.name},
-
-תזכורת — מחר אתם מגיעים לשירת הציפורים! 🐦
-
-📅 כניסה: ${fd(b.checkin)} בשעה 13:00
-📅 יציאה: ${fd(b.checkout)} בשעה 11:00
-📍 כתובת: נחל קדם 93, מיצד (אספר)
-🗺️ Waze: https://waze.com/ul?q=מיצד+נחל+קדם+93
-${balance>0?`\n💳 יתרה לתשלום בהגעה: ${fm(balance)}`:"✅ שולם במלואו"}
-
-מחכים לכם!
-יעקב 📞 050-410-3353
-שירת הציפורים`;
-  openEmail(b.email,subject,encodeURIComponent(bodyText));
+  const cb="cb_"+Math.random().toString(36).slice(2);
+  window[cb]=function(r){delete window[cb];alert("תזכורת נשלחה ל־"+b.email+" ✅");};
+  const s=document.createElement("script");
+  s.src=SCRIPT_URL+"?action=sendReminder&booking="+encodeURIComponent(JSON.stringify(b))+"&authuser=0&callback="+cb+"&t="+Date.now();
+  document.head.appendChild(s);
 }
 
 // ── מיילים ──
@@ -617,9 +603,11 @@ function sendWelcomeEmail(b){
 
 function sendReviewEmail(b){
   if(!b.email){alert("לא הוזן מייל ללקוח זה");return;}
-  const custom=localStorage.getItem("shirat_review_template")||"";
-  const {subject,body}=buildReviewEmail(b,custom||null);
-  openEmail(b.email,subject,body);
+  const cb="cb_"+Math.random().toString(36).slice(2);
+  window[cb]=function(r){delete window[cb];alert("מייל ביקורת נשלח ל־"+b.email+" ✅");};
+  const s=document.createElement("script");
+  s.src=SCRIPT_URL+"?action=sendReview&booking="+encodeURIComponent(JSON.stringify(b))+"&authuser=0&callback="+cb+"&t="+Date.now();
+  document.head.appendChild(s);
 }
 
 function sendReviewWhatsApp(b){
