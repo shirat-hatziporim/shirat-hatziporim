@@ -8,6 +8,34 @@
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>
+  (function(){
+    emailjs.init({publicKey:"vjxirKrtHb4jblDmc"});
+  })();
+  function sendConfirmationEmail(booking){
+    if(!booking.email) return;
+    if(booking.status!=="confirmed") return;
+    const fd=d=>d?new Date(d).toLocaleDateString("he-IL",{day:"numeric",month:"numeric",year:"numeric"}):"";
+    const nights=booking.nights||(()=>{
+      const a=new Date(booking.checkin),b=new Date(booking.checkout);
+      return Math.max(0,Math.round((b-a)/86400000));
+    })();
+    emailjs.send("service_0on84wi","template_irjt5ad",{
+      guest_name: booking.name||"",
+      guest_email: booking.email,
+      stay_type: booking.stayType||booking.type||"לינה",
+      checkin_date: fd(booking.checkin),
+      checkout_date: fd(booking.checkout),
+      nights: nights,
+      total_price: (booking.total||0).toLocaleString("he-IL"),
+    }).then(()=>{
+      console.log("אישור הזמנה נשלח ל-"+booking.email);
+    }).catch(err=>{
+      console.error("שגיאה בשליחת מייל:",err);
+    });
+  }
+</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Heebo',sans-serif;background:linear-gradient(160deg,#faf7f2,#f0ece3);min-height:100vh;direction:rtl;}
@@ -1374,12 +1402,16 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
 
   function save(b){
     let updated;
-    if(b.id&&bookings.find(x=>x.id===b.id)) updated=bookings.map(x=>x.id===b.id?b:x);
+    const isNew=!(b.id&&bookings.find(x=>x.id===b.id));
+    const prevStatus=!isNew?bookings.find(x=>x.id===b.id)?.status:null;
+    if(!isNew) updated=bookings.map(x=>x.id===b.id?b:x);
     else updated=[...bookings,b];
     setBookings(updated);
     syncSave(updated);
     setShowForm(false);setEditB(null);
-
+    if(b.status==="confirmed"&&b.email&&(isNew||prevStatus!=="confirmed")){
+      sendConfirmationEmail(b);
+    }
   }
   function openEdit(b){setEditB(b);setShowForm(true);}
   function deleteB(id){const updated=bookings.filter(b=>b.id!==id);setBookings(updated);syncSave(updated);setDelC(null);}
