@@ -2863,7 +2863,7 @@ https://charedi.net/tzimar/25569/
                 saveTemplateToSheets("shirat_inquiry",inquiryTemplate);
                 alert("התבנית נשמרה!");
               }} style={{...bS("#e8f5e9","#2e7d32"),fontSize:13}}>שמור תבנית</button>
-              <button onClick={()=>setShowLeads(true)} style={{...bS("#1565c0","#fff"),fontSize:13}}>📋 רשימת מתעניינים ({inquiryLeads.length})</button>
+              <button onClick={()=>{setShowInquiry(false);setTimeout(()=>setShowLeads(true),100);}} style={{...bS("#1565c0","#fff"),fontSize:13}}>📋 רשימת מתעניינים ({inquiryLeads.length})</button>
               <button onClick={()=>setInquiryTemplate(DEFAULT_INQUIRY_TEMPLATE)} style={{...bS("#f0eee8","#555"),fontSize:13}}>איפוס</button>
               <button onClick={()=>setShowInquiry(false)} style={{...bS("#f0eee8","#555"),fontSize:13}}>סגור</button>
             </div>
