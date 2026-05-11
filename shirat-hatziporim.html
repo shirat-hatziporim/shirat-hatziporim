@@ -1094,7 +1094,7 @@ function App(){
     try{const s=localStorage.getItem("shirat_inquiry");return s||DEFAULT_INQUIRY_TEMPLATE;}catch{return DEFAULT_INQUIRY_TEMPLATE;}
   });
   const [inquiryEmail,setInquiryEmail]=useState("");
-  const [inquiryLinks,setInquiryLinks]=useState(()=>{try{return localStorage.getItem("shirat_inquiry_links")||"";}catch{return"";}});
+  const [inquiryLinks,setInquiryLinks]=useState(()=>{try{return localStorage.getItem("shirat_inquiry_links")||"https://639885bfa3564.site123.me/";}catch{return "https://639885bfa3564.site123.me/";}});
   const [inquiryPhone,setInquiryPhone]=useState("");
   const [showEmailEditor,setShowEmailEditor]=useState(false);
   const [emailEditorType,setEmailEditorType]=useState("confirm"); // confirm | review
