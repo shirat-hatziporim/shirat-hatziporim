@@ -8,33 +8,23 @@
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script>
-  (function(){
-    emailjs.init({publicKey:"vjxirKrtHb4jblDmc"});
+function sendConfirmationEmail(booking){
+  if(!booking.email) return;
+  if(booking.status!=="confirmed") return;
+  const fd=d=>d?new Date(d).toLocaleDateString("he-IL",{day:"numeric",month:"numeric",year:"numeric"}):"";
+  const nights=booking.nights||(()=>{
+    const a=new Date(booking.checkin),b=new Date(booking.checkout);
+    return Math.max(0,Math.round((b-a)/86400000));
   })();
-  function sendConfirmationEmail(booking){
-    if(!booking.email) return;
-    if(booking.status!=="confirmed") return;
-    const fd=d=>d?new Date(d).toLocaleDateString("he-IL",{day:"numeric",month:"numeric",year:"numeric"}):"";
-    const nights=booking.nights||(()=>{
-      const a=new Date(booking.checkin),b=new Date(booking.checkout);
-      return Math.max(0,Math.round((b-a)/86400000));
-    })();
-    emailjs.send("service_0on84wi","template_irjt5ad",{
-      guest_name: booking.name||"",
-      guest_email: booking.email,
-      stay_type: booking.stayType||booking.type||"לינה",
-      checkin_date: fd(booking.checkin),
-      checkout_date: fd(booking.checkout),
-      nights: nights,
-      total_price: (booking.total||0).toLocaleString("he-IL"),
-    }).then(()=>{
-      console.log("אישור הזמנה נשלח ל-"+booking.email);
-    }).catch(err=>{
-      console.error("שגיאה בשליחת מייל:",err);
-    });
-  }
+  const b={...booking, nights};
+  const url=SCRIPT_URL+"?action=sendConfirm&booking="+encodeURIComponent(JSON.stringify(b))+"&authuser=0";
+  const cb="cb_"+Math.random().toString(36).slice(2);
+  window[cb]=function(r){delete window[cb];console.log("אישור נשלח:",r);};
+  const s=document.createElement("script");
+  s.src=url+"&callback="+cb+"&t="+Date.now();
+  document.head.appendChild(s);
+}
 </script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -306,7 +296,7 @@ const MONTHS_HE=["ינואר","פברואר","מרץ","אפריל","מאי","י�
 const DAYS_HE=["א","ב","ג","ד","ה","ו","ש"];
 let nid=10;
 
-const SCRIPT_URL="https://script.google.com/macros/s/AKfycbyKUvfneAaQwRYiQ67xvzfBQH0CTnoUfOuX3QgfUpOXoEaKUCRhjx5jEytDCYAeLX1N/exec";
+const SCRIPT_URL="https://script.google.com/macros/s/AKfycbzE-yGmuW-icNlqcstdtG4REkEa_q7vQ0Ta0uFC1xahUGhwlO5FqbGVB4sI0-8Wg9zN/exec";
 
 function jsonp(url){
   return new Promise((resolve,reject)=>{
@@ -2832,15 +2822,16 @@ https://charedi.net/tzimar/25569/
             <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
               <button onClick={()=>{
                 if(!inquiryEmail){alert("הזן כתובת מייל");return;}
-                emailjs.send("service_0on84wi","template_43xo2sm",{
-                  guest_email: inquiryEmail,
-                }).then(()=>{
+                const cb="cb_"+Math.random().toString(36).slice(2);
+                window[cb]=function(r){
+                  delete window[cb];
                   addLead(inquiryEmail,inquiryPhone);
                   alert("מייל נשלח בהצלחה ל־"+inquiryEmail+" ✅");
-                  setInquiryEmail("");
-                }).catch(err=>{
-                  alert("שגיאה בשליחה: "+JSON.stringify(err));
-                });
+                  setInquiryEmail("");setInquiryPhone("");
+                };
+                const s=document.createElement("script");
+                s.src=SCRIPT_URL+"?action=sendInquiry&email="+encodeURIComponent(inquiryEmail)+"&authuser=0&callback="+cb+"&t="+Date.now();
+                document.head.appendChild(s);
               }} style={{...bS("#1a1a2e","#fff"),fontSize:13}}>📧 שלח מייל מעוצב</button>
               <button onClick={()=>{
                 if(!inquiryEmail){alert("הזן כתובת מייל");return;}
