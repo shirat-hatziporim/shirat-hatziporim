@@ -319,7 +319,7 @@ function jsonp(url){
       try{document.head.removeChild(s);}catch(e){}
     };
     const s=document.createElement("script");
-    s.src=url+(url.includes("?")?"&":"?")+"callback="+cb+"&t="+Date.now();
+    s.src=url+(url.includes("?")?"&":"?")+"callback="+cb+"&t="+Date.now()+"&authuser=0";
     s.onerror=()=>{
       if(done)return;done=true;
       reject(new Error("jsonp error"));
