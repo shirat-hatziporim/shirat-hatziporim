@@ -2784,14 +2784,14 @@ https://charedi.net/tzimar/25569/
               <button onClick={()=>{
                 if(!inquiryEmail){alert("הזן כתובת מייל");return;}
                 const sub=encodeURIComponent('מידע על צימר שירת הציפורים');
-                const fullMsg=inquiryTemplate+(inquiryLinks.trim()?"\n\n📎 קישורים:\n"+inquiryLinks.trim():"");
+                const fullMsg=inquiryTemplate+(inquiryLinks.trim()?"\n\n🌐 קישור לאתר הצימר:\n"+inquiryLinks.trim():"");
                 const body=encodeURIComponent(fullMsg);
                 openEmail(inquiryEmail,sub,body);
               }} style={{...bS("#1a1a2e","#fff"),fontSize:13}}>📧 שלח מייל</button>
               <button onClick={()=>{
                 if(!inquiryPhone){alert("הזן מספר טלפון");return;}
                 const phone="972"+(inquiryPhone||"").replace(/\D/g,"").replace(/^0/,"");
-                const fullMsg=inquiryTemplate+(inquiryLinks.trim()?"\n\n📎 קישורים:\n"+inquiryLinks.trim():"");
+                const fullMsg=inquiryTemplate+(inquiryLinks.trim()?"\n\n🌐 קישור לאתר הצימר:\n"+inquiryLinks.trim():"");
                 const msg=encodeURIComponent(fullMsg);
                 window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${msg}`,"_blank");
               }} style={{...bS("#25d366","#fff"),fontSize:13}}>💬 שלח WhatsApp</button>
