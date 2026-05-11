@@ -748,9 +748,8 @@ function buildConfirmEmail(b,customTemplate){
 
 function sendConfirmEmail(b){
   if(!b.email){alert("לא הוזן מייל ללקוח זה");return;}
-  const custom=localStorage.getItem("shirat_confirm_template")||"";
-  const {subject,body}=buildConfirmEmail(b,custom||null);
-  openEmail(b.email,subject,body);
+  sendConfirmationEmail(b);
+  alert("מייל אישור נשלח ל־"+b.email+" ✅");
 }
 
 // ── Styles ──
