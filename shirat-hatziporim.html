@@ -2848,7 +2848,7 @@ https://charedi.net/tzimar/25569/
                 const fullMsg=inquiryTemplate+(inquiryLinks.trim()?"\n\n🌐 קישור לאתר הצימר:\n"+inquiryLinks.trim():"");
                 const body=encodeURIComponent(fullMsg);
                 addLead(inquiryEmail,inquiryPhone);
-                openEmail(inquiryEmail,sub,body);
+                window.open("https://mail.google.com/mail/?view=cm&to="+encodeURIComponent(inquiryEmail)+"&su="+sub+"&body="+body,"_blank");
               }} style={{...bS("#3a3a6e","#fff"),fontSize:13}}>📧 שלח מייל רגיל</button>
               <button onClick={()=>{
                 if(!inquiryPhone){alert("הזן מספר טלפון");return;}
@@ -3078,7 +3078,7 @@ https://charedi.net/tzimar/25569/
                     sendNext(0);
                   } else {
                     const bcc=emails.join(",");
-                    window.location.href="mailto:?bcc="+encodeURIComponent(bcc)+"&subject="+encodeURIComponent("מידע על צימר שירת הציפורים");
+                    window.open("https://mail.google.com/mail/?view=cm&bcc="+encodeURIComponent(bcc)+"&su="+encodeURIComponent("מידע על צימר שירת הציפורים"),"_blank");
                   }
                 }} style={{...bS("#1a1a2e","#fff"),fontSize:13,width:"100%"}}>📤 שלח לכולם ({inquiryLeads.filter(l=>l.email).length} מתעניינים)</button>
               </div>
