@@ -565,6 +565,39 @@ function buildWelcomeEmail(b){
   return {subject,body};
 }
 
+function buildReviewEmail(b,customTemplate){
+  const subject=encodeURIComponent(`שמחנו לארח אתכם בצימר "שירת הציפורים"`);
+  if(customTemplate){
+    const body=encodeURIComponent(customTemplate.replace("{שם}",b.name));
+    return{subject,body};
+  }
+  const body=encodeURIComponent(
+`שלום וברכה ${b.name},
+
+רצינו להודות לכם מקרב לב על שבחרתם להתארח אצלנו בצימר "שירת הציפורים".
+שמחנו מאוד לארח אתכם, ומקווים שנהנתם מהשהות, מהאווירה הנעימה ומהשקט הייחודי של המקום.
+
+נשמח מאוד אם תמליצו עלינו לחברים ומכרים, וכן אם תוכלו להקדיש רגע קצר לשתף את חוויתכם ולהשאיר המלצה – הדבר מסייע לנו רבות בהמשך הדרך.
+
+מצורפים קישורים לאתרים בהם אנו מפרסמים, וניתן לכתוב את ההמלצה בתחתית המודעה:
+
+אתר מאמי מוש:
+https://mamimush.co.il/rooms/%D7%A6%D7%99%D7%9E%D7%A8%D7%99%D7%9D-308/
+
+אתר דירה לשבת:
+https://dira4shabat.co.il/listing/%D7%A6%D7%99%D7%9E%D7%A8-%D7%A9%D7%99%D7%A8%D7%AA-%D7%94%D7%A6%D7%99%D7%A4%D7%95%D7%A8%D7%99%D7%9D-%D7%9E%D7%99%D7%A6%D7%93/
+
+אתר הלוח החרדי:
+https://charedi.net/tzimar/25569/
+
+לכל צורך או ביקור נוסף בעתיד – נשמח לעמוד לשירותכם: 050-4103353
+
+בברכה ובהערכה,
+יעקב
+צימר שירת הציפורים`
+  );
+  return {subject,body};
+}
 
 function sendWelcomeEmail(b){
   if(!b.email){alert("לא הוזן מייל ללקוח זה");return;}
@@ -614,6 +647,14 @@ function openEmail(to,subject,body){
   }
 }
 
+function openEmailBcc(bcc,subject,body){
+  const isMobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if(isMobile){
+    window.location.href=`mailto:?bcc=${bcc}&subject=${subject}&body=${body}`;
+  } else {
+    window.open(`https://mail.google.com/mail/?view=cm&bcc=${encodeURIComponent(bcc)}&su=${subject}&body=${body}`,"_blank");
+  }
+}
 
 function checkReminders(bookings){
   const today=new Date().toISOString().split("T")[0];
@@ -635,6 +676,58 @@ function guestType(b){
   return `זוג + ${extra} + ${babies===1?"תינוק":"תינוקות"}`;
 }
 
+function buildConfirmEmail(b,customTemplate){
+  const nights=b.nights||calcNights(b.checkin,b.checkout);
+  const subject=encodeURIComponent(`צימר שירת הציפורים מיצד - אישור הזמנה`);
+  if(customTemplate){
+    const body=encodeURIComponent(customTemplate
+      .replace("{שם}",b.name)
+      .replace("{סוג}",guestType(b))
+      .replace("{כניסה}",fd(b.checkin))
+      .replace("{יציאה}",fd(b.checkout))
+      .replace("{לילות}",nights)
+      .replace("{סכום}",fm(b.total||0))
+    );
+    return{subject,body};
+  }
+  const body=encodeURIComponent(
+`שלום וברכה ${b.name},
+
+שמחים לאשר את הזמנתכם בצימר שירת הציפורים!
+
+פרטי ההזמנה:
+• סוג אירוח: ${guestType(b)}
+• תאריכים: ${fd(b.checkin)} עד ${fd(b.checkout)} (${nights} לילות)
+• עלות: ${fm(b.total||0)}
+
+נא להעביר מקדמה בסך 500 ₪ לצורך שמירת ההזמנה:
+
+אפשרויות תשלום:
+בנק לאומי
+סניף: 904
+מספר חשבון: 10765165
+ע"ש: יעקב גרזון
+
+ביט / פייבוקס: 0504103353
+
+נא לשלוח אסמכתא לאחר התשלום.
+
+מצורפת חוברת מידע על הצימר עם כל הפרטים החשובים לשהות נעימה.
+
+כתובת הצימר: נחל קדם 93, מיצד
+
+תחבורה למיצד:
+קו 364 מירושלים
+קו 411 מביתר
+מידע נוסף ניתן לקבל במוקד התחבורה *8787
+
+לכל שאלה אנחנו כאן: 050-4103353
+
+מחכים לבואכם!
+צימר "שירת הציפורים"`
+  );
+  return {subject,body};
+}
 
 function sendConfirmEmail(b){
   if(!b.email){alert("לא הוזן מייל ללקוח זה");return;}
@@ -651,7 +744,7 @@ function Lbl({children}){return <label style={{display:"block",fontSize:12,color
 function Sec({title,children}){return<div style={{marginBottom:18}}><div style={{fontSize:11,fontWeight:700,color:"#a0896e",letterSpacing:1,marginBottom:8}}>{title}</div>{children}</div>;}
 
 // ── Booking Form ──
-function BookingForm({booking,onSave,onCancel,existingBookings=[],blockedDates=[],isLoading=false}){
+function BookingForm({booking,onSave,onCancel,existingBookings=[],blockedDates=[]}){
   const empty={name:"",phone:"",checkin:"",checkout:"",guests:2,extraGuests:0,status:"confirmed",notes:"",paid:0};
   const [f,setF]=useState(booking||empty);
   const [err,setErr]=useState({});
@@ -690,8 +783,7 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[],blockedDates=[
     }
     setErr(e);return!Object.keys(e).length;
   }
-  const [saving,setSaving]=React.useState(false);
-  function save(){if(!validate()||saving||isLoading)return;setSaving(true);onSave({...f,total,nights,guestExtra,discount:discount||0,id:f.id||nid++});}
+  function save(){if(!validate())return;onSave({...f,total,nights,guestExtra,discount:discount||0,id:f.id||nid++});}
   const balance=Math.max(0,(parseInt(f.total)||total)-((parseInt(f.deposit)||0)+(parseInt(f.paid)||0)));
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -832,7 +924,7 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[],blockedDates=[
             </div>
           </div>
           <div style={{display:"flex",gap:10}}>
-            <button onClick={save} disabled={saving||isLoading} style={{...bS("#1a1a2e","#fff"),opacity:(saving||isLoading)?0.6:1}}>{saving?"שומר...":isLoading?"טוען...":"שמירה"}</button>
+            <button onClick={save} style={bS("#1a1a2e","#fff")}>שמירה</button>
             <button onClick={onCancel} style={bS("#f0eee8","#555")}>ביטול</button>
           </div>
         </div>
@@ -920,10 +1012,7 @@ function CalendarView({bookings,onEdit,blockedDates=[],onToggleBlock}){
 // ── Main App ──
 function App(){
   const [auth,setAuth]=useState(true);
-  const [bookings,setBookings]=useState(()=>{
-    try{const s=localStorage.getItem("shirat_bookings");return s?JSON.parse(s):[];}catch{return [];}
-  });
-  const [sheetsLoaded,setSheetsLoaded]=useState(false);
+  const [bookings,setBookings]=useState([]);
   const [loading,setLoading]=useState(true);
   const [syncing,setSyncing]=useState(false);
   const [lastSync,setLastSync]=useState(null);
@@ -1102,7 +1191,6 @@ function App(){
       try{localStorage.setItem("shirat_blocked",JSON.stringify(blocked));}catch(e){}
       try{localStorage.setItem("shirat_expenses",JSON.stringify(expenses));}catch(e){}
       try{localStorage.setItem("shirat_manual_guests",JSON.stringify(mGuests));}catch(e){}
-      setSheetsLoaded(true);
       setLoading(false);
       setLastSync(new Date());
       // בדוק אם יש פרמטר booking ב-URL
@@ -1129,9 +1217,8 @@ function App(){
 
   // שמירה לגוגל שיטס בכל שינוי
   async function syncSave(newBookings){
-    try{localStorage.setItem("shirat_bookings",JSON.stringify(newBookings));}catch(e){}
-    if(!sheetsLoaded) return; // אל תשמור ל-Sheets לפני שנטענו ממנו
     setSyncing(true);
+    try{localStorage.setItem("shirat_bookings",JSON.stringify(newBookings));}catch(e){}
     await saveToSheets(newBookings);
     setSyncing(false);
     setLastSync(new Date());
@@ -1358,11 +1445,8 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
   });
 
   function save(b){
-    if(!sheetsLoaded){alert("המערכת עדיין טוענת נתונים, אנא המתן...");return;}
     let updated;
     const isNew=!(b.id&&bookings.find(x=>x.id===b.id));
-    // מנע כפילות - אם ההזמנה קיימת כבר עם אותו ID אל תוסיף שוב
-    if(isNew&&bookings.find(x=>x.id===b.id)){return;}
     const prevStatus=!isNew?bookings.find(x=>x.id===b.id)?.status:null;
     if(!isNew) updated=bookings.map(x=>x.id===b.id?b:x);
     else updated=[...bookings,b];
@@ -1415,13 +1499,7 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
             <span style={{color:"#5a5878",fontSize:12,borderRight:"1px solid #3a3a5e",paddingRight:10}}>ניהול הזמנות</span>
             {syncing
               ? <span style={{fontSize:11,color:"#f4c26a",fontFamily:"'Heebo',sans-serif"}}>⏳ שומר...</span>
-              : lastSync && <span style={{fontSize:11,color:"#4a6a4a",fontFamily:"'Heebo',sans-serif"}}>✅ מסונכרן</span>}
-          <button onClick={()=>{
-            if(confirm("לנקות את המטמון המקומי ולטעון מחדש מהשרת?")){
-              localStorage.clear();
-              window.location.reload();
-            }
-          }} style={{fontSize:11,background:"none",border:"none",color:"#888",cursor:"pointer",fontFamily:"'Heebo',sans-serif",textDecoration:"underline"}}>נקה cache
+              : lastSync && <span style={{fontSize:11,color:"#4a6a4a",fontFamily:"'Heebo',sans-serif"}}>✅ מסונכרן</span>
             }
             <button onClick={()=>{
               setLoading(true);
@@ -1445,7 +1523,7 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
             style={{border:"none",background:"none",color:"#fff",fontSize:24,cursor:"pointer",display:"none",padding:"4px 8px"}}>
             ☰
           </button>
-          <button onClick={()=>{if(!sheetsLoaded){alert("המערכת עדיין טוענת נתונים מהשרת, אנא המתן...");return;}setEditB(null);setShowForm(true);}} style={{background:!sheetsLoaded?"#ccc":"#f4c26a",color:"#1a1a2e",border:"none",borderRadius:10,padding:"7px 12px",fontWeight:800,fontSize:14,cursor:!sheetsLoaded?"not-allowed":"pointer",fontFamily:"'Heebo',sans-serif",whiteSpace:"nowrap"}}>{!sheetsLoaded?"טוען...":"+ הזמנה"}</button>
+          <button onClick={()=>{setEditB(null);setShowForm(true);}} style={{background:"#f4c26a",color:"#1a1a2e",border:"none",borderRadius:10,padding:"7px 12px",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"'Heebo',sans-serif",whiteSpace:"nowrap"}}>+ הזמנה</button>
         </div>
       </div>
 
@@ -2346,7 +2424,7 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
         </div>
       )}
 
-      {showForm&&<BookingForm booking={editB} onSave={save} onCancel={()=>{setShowForm(false);setEditB(null);}} existingBookings={bookings} blockedDates={blockedDates} isLoading={!sheetsLoaded}/>}
+      {showForm&&<BookingForm booking={editB} onSave={save} onCancel={()=>{setShowForm(false);setEditB(null);}} existingBookings={bookings} blockedDates={blockedDates}/>}
 
       {/* פופאפ עריכת אורח */}
       {guestEditPopup&&(
