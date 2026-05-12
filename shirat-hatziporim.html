@@ -1104,6 +1104,22 @@ function App(){
   const [inquiryEmail,setInquiryEmail]=useState("");
   const [inquiryLinks,setInquiryLinks]=useState(()=>{try{return localStorage.getItem("shirat_inquiry_links")||"https://639885bfa3564.site123.me/";}catch{return "https://639885bfa3564.site123.me/";}});
   const [inquiryPhone,setInquiryPhone]=useState("");
+  const [trash,setTrash]=useState(()=>{try{const s=localStorage.getItem("shirat_trash");return s?JSON.parse(s):[];}catch{return [];}});
+  const [showTrash,setShowTrash]=useState(false);
+  function addToTrash(item,type){
+    const entry={...item,_type:type,_deletedAt:new Date().toLocaleDateString("he-IL")};
+    const updated=[entry,...trash];
+    setTrash(updated);
+    try{localStorage.setItem("shirat_trash",JSON.stringify(updated));}catch(e){}
+    syncTrashToSheets(updated);
+  }
+  function syncTrashToSheets(items){
+    const cb="cb_trash_"+Math.random().toString(36).slice(2);
+    window[cb]=function(){delete window[cb];};
+    const s=document.createElement("script");
+    s.src=SCRIPT_URL+"?action=saveTrash&trash="+encodeURIComponent(JSON.stringify(items))+"&authuser=0&callback="+cb+"&t="+Date.now();
+    document.head.appendChild(s);
+  }
   const [inquiryLeads,setInquiryLeads]=useState(()=>{try{const s=localStorage.getItem("shirat_leads");return s?JSON.parse(s):[];}catch{return [];}});
   // טען מתעניינים מ-Sheets
   React.useEffect(()=>{
@@ -1431,7 +1447,12 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
     }
   }
   function openEdit(b){setEditB(b);setShowForm(true);}
-  function deleteB(id){const updated=bookings.filter(b=>b.id!==id);setBookings(updated);syncSave(updated);setDelC(null);}
+  function deleteB(id){
+    const b=bookings.find(x=>x.id===id);
+    if(b) addToTrash(b,"booking");
+    const updated=bookings.filter(b=>b.id!==id);
+    setBookings(updated);syncSave(updated);setDelC(null);
+  }
 
   const confirmed=bookings.filter(b=>b.status==="confirmed");
   const totalRev=confirmed.reduce((s,b)=>s+(b.total||0),0);
@@ -1474,6 +1495,7 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
           <div className="desktop-btns" style={{display:"flex",gap:8}}>
             <button onClick={()=>setShowBlockedManager(true)} style={{background:"#252545",color:"#ff8a65",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>🔒 חסימות</button>
             <button onClick={()=>setShowExpenses(true)} style={{background:"#252545",color:"#a5d6a7",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>💸 הוצאות</button>
+            <button onClick={()=>setShowTrash(true)} style={{background:"#252545",color:"#ef9a9a",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>🗑️ סל מחזור ({trash.length})</button>
             <button onClick={()=>{setPriceTab('view');setShowPriceEditor(true);}} style={{background:"#252545",color:"#f4c26a",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}><span class="btn-text">📋 <span class="btn-text">מחירון</span></span><span style={{display:"none"}} className="btn-icon">📋</span></button>
             <button onClick={()=>setShowInquiry(true)} style={{background:"#252545",color:"#a5d6a7",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📨 <span class="btn-text">פנייה למתעניינים</span></button>
             <button onClick={()=>{setEmailEditorType("confirm");setShowEmailEditor(true);}} style={{background:"#252545",color:"#ce93d8",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📝 <span class="btn-text">עריכת תבניות</span></button>
@@ -2998,6 +3020,77 @@ https://charedi.net/tzimar/25569/
           </div>
         </div>
       )}
+
+      {showTrash&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.6)",zIndex:300,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <div style={{background:"#fff",borderRadius:20,width:"min(700px,96vw)",maxHeight:"85vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.25)",direction:"rtl",padding:"24px 28px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+              <h2 style={{margin:0,fontSize:18,fontFamily:"'Heebo',sans-serif",color:"#c62828",fontWeight:800}}>🗑️ סל מחזור ({trash.length})</h2>
+              <button onClick={()=>setShowTrash(false)} style={{border:"none",background:"none",fontSize:22,cursor:"pointer",color:"#aaa"}}>✕</button>
+            </div>
+            {trash.length===0?<p style={{color:"#aaa",textAlign:"center",fontFamily:"'Heebo',sans-serif"}}>סל המחזור ריק</p>:(
+              <>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,fontFamily:"'Heebo',sans-serif"}}>
+                <thead>
+                  <tr style={{background:"#fce4ec"}}>
+                    {["סוג","שם / מייל","טלפון","תאריך מחיקה",""].map(h=><th key={h} style={{padding:"8px 10px",textAlign:"right",fontWeight:700,color:"#c62828",borderBottom:"1.5px solid #f8bbd0"}}>{h}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {trash.map((item,i)=>(
+                    <tr key={i} style={{borderBottom:"1px solid #f4f0ea"}}>
+                      <td style={{padding:"8px 10px"}}>
+                        <span style={{background:item._type==="booking"?"#e8f5e9":"#e3f2fd",color:item._type==="booking"?"#2e7d32":"#1565c0",borderRadius:6,padding:"2px 8px",fontSize:12,fontWeight:700}}>
+                          {item._type==="booking"?"📋 הזמנה":"👤 מתעניין"}
+                        </span>
+                      </td>
+                      <td style={{padding:"8px 10px",color:"#1a1a2e"}}>{item.name||item.email||"—"}</td>
+                      <td style={{padding:"8px 10px",color:"#555",direction:"ltr"}}>{item.phone||"—"}</td>
+                      <td style={{padding:"8px 10px",color:"#888"}}>{item._deletedAt}</td>
+                      <td style={{padding:"8px 10px",display:"flex",gap:4}}>
+                        <button onClick={()=>{
+                          if(item._type==="booking"){
+                            const restored={...item};
+                            delete restored._type;delete restored._deletedAt;
+                            const updated=[...bookings,restored];
+                            setBookings(updated);syncSave(updated);
+                          } else {
+                            const restored={...item};
+                            delete restored._type;delete restored._deletedAt;
+                            const updated=[...inquiryLeads,restored];
+                            setInquiryLeads(updated);
+                            try{localStorage.setItem("shirat_leads",JSON.stringify(updated));}catch(e){}
+                          }
+                          const newTrash=trash.filter((_,j)=>j!==i);
+                          setTrash(newTrash);
+                          try{localStorage.setItem("shirat_trash",JSON.stringify(newTrash));}catch(e){}
+                          syncTrashToSheets(newTrash);
+                        }} style={{border:"none",background:"#e8f5e9",color:"#2e7d32",borderRadius:6,padding:"3px 8px",cursor:"pointer",fontSize:12}}>שחזר</button>
+                        <button onClick={()=>{
+                          if(!confirm("למחוק לצמיתות?")){return;}
+                          const newTrash=trash.filter((_,j)=>j!==i);
+                          setTrash(newTrash);
+                          try{localStorage.setItem("shirat_trash",JSON.stringify(newTrash));}catch(e){}
+                          syncTrashToSheets(newTrash);
+                        }} style={{border:"none",background:"#fce4ec",color:"#c62828",borderRadius:6,padding:"3px 8px",cursor:"pointer",fontSize:12}}>מחק</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div style={{marginTop:14,display:"flex",gap:8}}>
+                <button onClick={()=>{
+                  if(!confirm("לרוקן את סל המחזור לצמיתות?")){return;}
+                  setTrash([]);
+                  try{localStorage.removeItem("shirat_trash");}catch(e){}
+                  syncTrashToSheets([]);
+                }} style={{...bS("#fce4ec","#c62828"),fontSize:13}}>🗑️ רוקן סל</button>
+              </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
       {showLeads&&(
         <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center"}}>
           <div style={{background:"#fff",borderRadius:20,width:"min(500px,96vw)",maxHeight:"80vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.22)",direction:"rtl",padding:"24px 28px"}}>
@@ -3037,6 +3130,7 @@ https://charedi.net/tzimar/25569/
   const updated=inquiryLeads.filter((_,j)=>j!==i);
   setInquiryLeads(updated);
   try{localStorage.setItem("shirat_leads",JSON.stringify(updated));}catch(e){}
+  addToTrash(inquiryLeads[i],"lead");
   const cb="cb_dl_"+Math.random().toString(36).slice(2);
   window[cb]=function(){delete window[cb];};
   const s=document.createElement("script");
