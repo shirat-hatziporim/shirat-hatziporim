@@ -3007,15 +3007,28 @@ https://charedi.net/tzimar/25569/
             </div>
             {inquiryLeads.length===0?<p style={{color:"#aaa",textAlign:"center",fontFamily:"'Heebo',sans-serif"}}>אין מתעניינים עדיין</p>:(
               <>
+              <div style={{display:"flex",gap:8,marginBottom:8,fontSize:12,color:"#888",fontFamily:"'Heebo',sans-serif"}}>
+                <label style={{cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
+                  <input type="checkbox" onChange={e=>{
+                    const all=e.target.checked;
+                    setInquiryLeads(prev=>prev.map(l=>({...l,selected:all})));
+                  }}/> בחר הכל
+                </label>
+              </div>
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,fontFamily:"'Heebo',sans-serif"}}>
                 <thead>
                   <tr style={{background:"#f8f4ec"}}>
-                    {["מייל","טלפון","תאריך",""].map(h=><th key={h} style={{padding:"8px 10px",textAlign:"right",fontWeight:700,color:"#5a4e40",borderBottom:"1.5px solid #eee6d8"}}>{h}</th>)}
+                    {["","מייל","טלפון","תאריך",""].map((h,i)=><th key={i} style={{padding:"8px 10px",textAlign:"right",fontWeight:700,color:"#5a4e40",borderBottom:"1.5px solid #eee6d8"}}>{h}</th>)}
                   </tr>
                 </thead>
                 <tbody>
                   {inquiryLeads.map((l,i)=>(
-                    <tr key={i} style={{borderBottom:"1px solid #f4f0ea"}}>
+                    <tr key={i} style={{borderBottom:"1px solid #f4f0ea",background:l.selected?"#f0f7ee":"transparent"}}>
+                      <td style={{padding:"8px 6px",textAlign:"center"}}>
+                        <input type="checkbox" checked={!!l.selected} onChange={e=>{
+                          setInquiryLeads(prev=>prev.map((x,j)=>j===i?{...x,selected:e.target.checked}:x));
+                        }}/>
+                      </td>
                       <td style={{padding:"8px 10px",color:"#1a1a2e",direction:"ltr"}}>{l.email||"—"}</td>
                       <td style={{padding:"8px 10px",color:"#555",direction:"ltr"}}>{l.phone||"—"}</td>
                       <td style={{padding:"8px 10px",color:"#888"}}>{l.date}</td>
@@ -3042,25 +3055,27 @@ https://charedi.net/tzimar/25569/
                   style={{width:"100%",boxSizing:"border-box",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e0d8cc",fontSize:13,fontFamily:"'Heebo',sans-serif",minHeight:100,resize:"vertical",direction:"rtl",marginBottom:8}}/>
                 <div style={{display:"flex",gap:8}}>
                   <button onClick={()=>{
-                    const emails=inquiryLeads.filter(l=>l.email).map(l=>l.email);
-                    if(emails.length===0){alert("אין מיילים ברשימה");return;}
+                    const selected=inquiryLeads.filter(l=>l.selected&&l.email);
+                    const targets=selected.length>0?selected:inquiryLeads.filter(l=>l.email);
+                    if(targets.length===0){alert("אין מיילים לשליחה");return;}
                     const msg=document.getElementById("bulkFreeText").value;
                     if(!msg.trim()){alert("כתוב הודעה לשליחה");return;}
-                    const bcc=emails.join(",");
+                    const bcc=targets.map(l=>l.email).join(",");
                     window.open("https://mail.google.com/mail/?view=cm&bcc="+encodeURIComponent(bcc)+"&su="+encodeURIComponent("מידע על צימר שירת הציפורים")+"&body="+encodeURIComponent(msg),"_blank");
-                  }} style={{...bS("#1a1a2e","#fff"),fontSize:13,flex:1}}>📧 שלח מייל לכולם ({inquiryLeads.filter(l=>l.email).length})</button>
+                  }} style={{...bS("#1a1a2e","#fff"),fontSize:13,flex:1}}>📧 שלח מייל ({(()=>{const s=inquiryLeads.filter(l=>l.selected&&l.email);return s.length>0?s.length:inquiryLeads.filter(l=>l.email).length;})()} נמענים)</button>
                   <button onClick={()=>{
-                    const phones=inquiryLeads.filter(l=>l.phone).map(l=>l.phone);
-                    if(phones.length===0){alert("אין טלפונים ברשימה");return;}
+                    const selected=inquiryLeads.filter(l=>l.selected&&l.phone);
+                    const targets=selected.length>0?selected:inquiryLeads.filter(l=>l.phone);
+                    if(targets.length===0){alert("אין טלפונים לשליחה");return;}
                     const msg=document.getElementById("bulkFreeText").value;
                     if(!msg.trim()){alert("כתוב הודעה לשליחה");return;}
-                    phones.forEach((ph,i)=>{
+                    targets.forEach((l,i)=>{
                       setTimeout(()=>{
-                        const phone="972"+ph.replace(/\D/g,"").replace(/^0/,"");
+                        const phone="972"+l.phone.replace(/\D/g,"").replace(/^0/,"");
                         window.open("https://api.whatsapp.com/send?phone="+phone+"&text="+encodeURIComponent(msg),"_blank");
                       },i*500);
                     });
-                  }} style={{...bS("#25d366","#fff"),fontSize:13,flex:1}}>💬 שלח WhatsApp לכולם ({inquiryLeads.filter(l=>l.phone).length})</button>
+                  }} style={{...bS("#25d366","#fff"),fontSize:13,flex:1}}>💬 WhatsApp ({(()=>{const s=inquiryLeads.filter(l=>l.selected&&l.phone);return s.length>0?s.length:inquiryLeads.filter(l=>l.phone).length;})()} נמענים)</button>
                 </div>
               </div>
               <div style={{marginTop:10,display:"flex",gap:8,flexWrap:"wrap"}}>
