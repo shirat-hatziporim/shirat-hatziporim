@@ -2857,6 +2857,12 @@ https://charedi.net/tzimar/25569/
               }} style={{...bS("#25d366","#fff"),fontSize:13}}>💬 שלח WhatsApp</button>
             </div>
             <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              <button onClick={()=>{
+                if(!inquiryEmail&&!inquiryPhone){alert("הזן מייל או טלפון");return;}
+                addLead(inquiryEmail,inquiryPhone);
+                alert("מתעניין נוסף לרשימה ✅");
+                setInquiryEmail("");setInquiryPhone("");
+              }} style={{...bS("#f0f7ee","#2e7d32"),fontSize:13}}>➕ הוסף לרשימה</button>
               <button onClick={()=>{setShowInquiry(false);setTimeout(()=>setShowLeads(true),100);}} style={{...bS("#1565c0","#fff"),fontSize:13}}>📋 רשימת מתעניינים ({inquiryLeads.length})</button>
               <button onClick={()=>setShowInquiry(false)} style={{...bS("#f0eee8","#555"),fontSize:13}}>סגור</button>
             </div>
