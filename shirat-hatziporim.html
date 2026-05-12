@@ -690,7 +690,8 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[],blockedDates=[
     }
     setErr(e);return!Object.keys(e).length;
   }
-  function save(){if(!validate())return;onSave({...f,total,nights,guestExtra,discount:discount||0,id:f.id||nid++});}
+  const [saving,setSaving]=React.useState(false);
+  function save(){if(!validate()||saving)return;setSaving(true);onSave({...f,total,nights,guestExtra,discount:discount||0,id:f.id||nid++});}
   const balance=Math.max(0,(parseInt(f.total)||total)-((parseInt(f.deposit)||0)+(parseInt(f.paid)||0)));
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -831,7 +832,7 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[],blockedDates=[
             </div>
           </div>
           <div style={{display:"flex",gap:10}}>
-            <button onClick={save} style={bS("#1a1a2e","#fff")}>שמירה</button>
+            <button onClick={save} disabled={saving||loading} style={{...bS("#1a1a2e","#fff"),opacity:(saving||loading)?0.6:1}}>{ saving?"שומר...":loading?"טוען...":"שמירה"}</button>
             <button onClick={onCancel} style={bS("#f0eee8","#555")}>ביטול</button>
           </div>
         </div>
@@ -1124,6 +1125,11 @@ function App(){
 
   // שמירה לגוגל שיטס בכל שינוי
   async function syncSave(newBookings){
+    // אל תשמור ל-Sheets לפני שהנתונים נטענו - מונע דריסת נתונים
+    if(loading){
+      try{localStorage.setItem("shirat_bookings",JSON.stringify(newBookings));}catch(e){}
+      return;
+    }
     setSyncing(true);
     try{localStorage.setItem("shirat_bookings",JSON.stringify(newBookings));}catch(e){}
     await saveToSheets(newBookings);
@@ -1354,6 +1360,8 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
   function save(b){
     let updated;
     const isNew=!(b.id&&bookings.find(x=>x.id===b.id));
+    // מנע כפילות - אם ההזמנה קיימת כבר עם אותו ID אל תוסיף שוב
+    if(isNew&&bookings.find(x=>x.id===b.id)){return;}
     const prevStatus=!isNew?bookings.find(x=>x.id===b.id)?.status:null;
     if(!isNew) updated=bookings.map(x=>x.id===b.id?b:x);
     else updated=[...bookings,b];
