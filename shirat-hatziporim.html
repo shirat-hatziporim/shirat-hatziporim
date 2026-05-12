@@ -651,7 +651,7 @@ function Lbl({children}){return <label style={{display:"block",fontSize:12,color
 function Sec({title,children}){return<div style={{marginBottom:18}}><div style={{fontSize:11,fontWeight:700,color:"#a0896e",letterSpacing:1,marginBottom:8}}>{title}</div>{children}</div>;}
 
 // ── Booking Form ──
-function BookingForm({booking,onSave,onCancel,existingBookings=[],blockedDates=[]}){
+function BookingForm({booking,onSave,onCancel,existingBookings=[],blockedDates=[],isLoading=false}){
   const empty={name:"",phone:"",checkin:"",checkout:"",guests:2,extraGuests:0,status:"confirmed",notes:"",paid:0};
   const [f,setF]=useState(booking||empty);
   const [err,setErr]=useState({});
@@ -832,7 +832,7 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[],blockedDates=[
             </div>
           </div>
           <div style={{display:"flex",gap:10}}>
-            <button onClick={save} disabled={saving||loading} style={{...bS("#1a1a2e","#fff"),opacity:(saving||loading)?0.6:1}}>{ saving?"שומר...":loading?"טוען...":"שמירה"}</button>
+            <button onClick={save} disabled={saving||isLoading} style={{...bS("#1a1a2e","#fff"),opacity:(saving||isLoading)?0.6:1}}>{saving?"שומר...":isLoading?"טוען...":"שמירה"}</button>
             <button onClick={onCancel} style={bS("#f0eee8","#555")}>ביטול</button>
           </div>
         </div>
@@ -2339,7 +2339,7 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
         </div>
       )}
 
-      {showForm&&<BookingForm booking={editB} onSave={save} onCancel={()=>{setShowForm(false);setEditB(null);}} existingBookings={bookings} blockedDates={blockedDates}/>}
+      {showForm&&<BookingForm booking={editB} onSave={save} onCancel={()=>{setShowForm(false);setEditB(null);}} existingBookings={bookings} blockedDates={blockedDates} isLoading={loading}/>}
 
       {/* פופאפ עריכת אורח */}
       {guestEditPopup&&(
