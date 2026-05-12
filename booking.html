@@ -544,6 +544,22 @@ async function submitBooking(){
   if(!phone){alert("נא להזין טלפון");return;}
   if(!checkin||!checkout){alert("נא לבחור תאריכי כניסה ויציאה");return;}
   if(checkout<=checkin){alert("תאריך יציאה חייב להיות אחרי כניסה");return;}
+  // בדיקת כפילות תאריכים
+  const hasOverlap = bookedRanges.some(b=>{
+    return checkin < b.checkout && checkout > b.checkin;
+  });
+  if(hasOverlap){
+    alert("התאריכים שבחרת תפוסים. אנא בחר תאריכים אחרים.");
+    return;
+  }
+  // בדיקת תאריכים חסומים
+  const hasBlocked = blockedDates && blockedDates.some(d=>{
+    return d >= checkin && d < checkout;
+  });
+  if(hasBlocked){
+    alert("אחד מהתאריכים שבחרת חסום. אנא בחר תאריכים אחרים.");
+    return;
+  }
   const btn=document.getElementById("submitBtn");
   btn.disabled=true; btn.textContent="שולח...";
   const pb=document.getElementById("priceBox");
