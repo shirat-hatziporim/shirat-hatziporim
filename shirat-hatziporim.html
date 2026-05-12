@@ -40,6 +40,7 @@ input,select,textarea{font-family:'Heebo',sans-serif;}
 .desktop-actions{display:table-cell !important;}
 .hide-mobile{display:table-cell;}
 .btn-text{display:inline;}
+.nav-actions{display:flex;gap:8px;align-items:center;}
 @media(max-width:700px){
   .hamburger-btn{display:block !important;}
   .desktop-btns{display:none !important;}
@@ -1492,6 +1493,7 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
               });
             }} style={{border:"none",background:"none",color:"#6a6090",fontSize:14,cursor:"pointer",padding:"2px 6px"}} title="רענן נתונים">🔄</button>
           </div>
+          <div className="nav-actions">
           <button onClick={()=>{setEditB(null);setShowForm(true);}} style={{background:"#f4c26a",color:"#1a1a2e",border:"none",borderRadius:10,padding:"7px 12px",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"'Heebo',sans-serif",whiteSpace:"nowrap"}}>+ הזמנה</button>
           <div className="desktop-btns" style={{display:"flex",gap:8}}>
             <button onClick={()=>setShowBlockedManager(true)} style={{background:"#252545",color:"#ff8a65",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>🔒 חסימות</button>
@@ -1500,6 +1502,7 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
             <button onClick={()=>{setPriceTab('view');setShowPriceEditor(true);}} style={{background:"#252545",color:"#f4c26a",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}><span class="btn-text">📋 <span class="btn-text">מחירון</span></span><span style={{display:"none"}} className="btn-icon">📋</span></button>
             <button onClick={()=>setShowInquiry(true)} style={{background:"#252545",color:"#a5d6a7",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📨 <span class="btn-text">פנייה למתעניינים</span></button>
             <button onClick={()=>{setEmailEditorType("confirm");setShowEmailEditor(true);}} style={{background:"#252545",color:"#ce93d8",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📝 <span class="btn-text">עריכת תבניות</span></button>
+          </div>
           </div>
           {/* המבורגר - נייד בלבד */}
           <button className="hamburger-btn" onClick={()=>setHamburgerOpen(true)}
