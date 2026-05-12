@@ -1494,7 +1494,6 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
             }} style={{border:"none",background:"none",color:"#6a6090",fontSize:14,cursor:"pointer",padding:"2px 6px"}} title="רענן נתונים">🔄</button>
           </div>
           <div className="nav-actions">
-          <button onClick={()=>{setEditB(null);setShowForm(true);}} style={{background:"#f4c26a",color:"#1a1a2e",border:"none",borderRadius:10,padding:"7px 12px",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"'Heebo',sans-serif",whiteSpace:"nowrap"}}>+ הזמנה</button>
           <div className="desktop-btns" style={{display:"flex",gap:8}}>
             <button onClick={()=>setShowBlockedManager(true)} style={{background:"#252545",color:"#ff8a65",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>🔒 חסימות</button>
             <button onClick={()=>setShowExpenses(true)} style={{background:"#252545",color:"#a5d6a7",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>💸 הוצאות</button>
@@ -1509,33 +1508,11 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
             style={{border:"none",background:"none",color:"#fff",fontSize:24,cursor:"pointer",display:"none",padding:"4px 8px"}}>
             ☰
           </button>
+          <button onClick={()=>{setEditB(null);setShowForm(true);}} style={{background:"#f4c26a",color:"#1a1a2e",border:"none",borderRadius:10,padding:"7px 12px",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"'Heebo',sans-serif",whiteSpace:"nowrap"}}>+ הזמנה</button>
         </div>
       </div>
 
-      {/* תפריט המבורגר */}
-      {hamburgerOpen&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:300,display:"flex",justifyContent:"flex-start"}}
-          onClick={()=>setHamburgerOpen(false)}>
-          <div onClick={e=>e.stopPropagation()}
-            style={{background:"#1a1a2e",width:"75vw",maxWidth:280,height:"100%",padding:"24px 16px",direction:"rtl",display:"flex",flexDirection:"column",gap:12,overflowY:"auto"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-              <span style={{color:"#fff",fontSize:16,fontWeight:800,fontFamily:"'Heebo',sans-serif"}}>תפריט</span>
-              <button onClick={()=>setHamburgerOpen(false)} style={{border:"none",background:"none",color:"#aaa",fontSize:22,cursor:"pointer"}}>✕</button>
-            </div>
-            {[
-              {icon:"📋",label:"מחירון",action:()=>{setPriceTab("view");setShowPriceEditor(true);}},
-              {icon:"📨",label:"פנייה למתעניינים",action:()=>setShowInquiry(true)},
-              {icon:"📝",label:"עריכת תבניות",action:()=>{setEmailEditorType("confirm");setShowEmailEditor(true);}},
-              {icon:"🗑️",label:`סל מחזור (${trash.length})`,action:()=>setShowTrash(true)},
-            ].map(({icon,label,action})=>(
-              <button key={label} onClick={()=>{action();setHamburgerOpen(false);}}
-                style={{background:"#252545",color:"#f4c26a",border:"1px solid #3a3a6e",borderRadius:10,padding:"12px 16px",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer",textAlign:"right",display:"flex",alignItems:"center",gap:10}}>
-                <span>{icon}</span><span>{label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+
 
       {/* Price popup */}
       {showPrices&&(
@@ -2933,11 +2910,11 @@ https://charedi.net/tzimar/25569/
             </div>
             {[
               {icon:"📋",label:"מחירון",action:()=>{setPriceTab("view");setShowPriceEditor(true);}},
-
               {icon:"🔒",label:"חסימת תאריכים",action:()=>setShowBlockedManager(true)},
               {icon:"💸",label:"מעקב הוצאות",action:()=>setShowExpenses(true)},
               {icon:"📨",label:"פנייה למתעניינים",action:()=>setShowInquiry(true)},
               {icon:"📝",label:"עריכת תבניות",action:()=>{setEmailEditorType("confirm");setShowEmailEditor(true);}},
+              {icon:"🗑️",label:`סל מחזור (${trash.length})`,action:()=>setShowTrash(true)},
             ].map(({icon,label,action})=>(
               <button key={label} onClick={()=>{action();setHamburgerOpen(false);}}
                 style={{background:"#252545",color:"#f4c26a",border:"1px solid #3a3a6e",borderRadius:10,padding:"12px 16px",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer",textAlign:"right",display:"flex",alignItems:"center",gap:10}}>
