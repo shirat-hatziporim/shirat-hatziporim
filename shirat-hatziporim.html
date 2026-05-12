@@ -1495,8 +1495,6 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
           </div>
           <div className="nav-actions">
           <div className="desktop-btns" style={{display:"flex",gap:8}}>
-            <button onClick={()=>setShowBlockedManager(true)} style={{background:"#252545",color:"#ff8a65",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>🔒 חסימות</button>
-            <button onClick={()=>setShowExpenses(true)} style={{background:"#252545",color:"#a5d6a7",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>💸 הוצאות</button>
             <button onClick={()=>setShowTrash(true)} style={{background:"#252545",color:"#ef9a9a",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>🗑️ סל מחזור ({trash.length})</button>
             <button onClick={()=>{setPriceTab('view');setShowPriceEditor(true);}} style={{background:"#252545",color:"#f4c26a",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}><span class="btn-text">📋 <span class="btn-text">מחירון</span></span><span style={{display:"none"}} className="btn-icon">📋</span></button>
             <button onClick={()=>setShowInquiry(true)} style={{background:"#252545",color:"#a5d6a7",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📨 <span class="btn-text">פנייה למתעניינים</span></button>
@@ -1567,6 +1565,8 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
           {[["list","📋 רשימה"],["calendar","📅 יומן"],["reports","📊 דוחות"],["guests","👥 אורחים"],["household","🏠 משק בית"],["accounting","📄 חשבונות"]].map(([k,l])=>(
             <button key={k} onClick={()=>setView(k)} style={{padding:"7px 14px",borderRadius:10,border:"none",cursor:"pointer",background:view===k?"#1a1a2e":"#fff",color:view===k?"#fff":"#5a4e40",fontWeight:view===k?700:500,fontSize:14,fontFamily:"'Heebo',sans-serif",boxShadow:"0 2px 8px rgba(0,0,0,.07)"}}>{l}</button>
           ))}
+          <button onClick={()=>setShowBlockedManager(true)} style={{padding:"7px 14px",borderRadius:10,border:"none",cursor:"pointer",background:"#fff",color:"#ff8a65",fontWeight:500,fontSize:14,fontFamily:"'Heebo',sans-serif",boxShadow:"0 2px 8px rgba(0,0,0,.07)"}}>🔒 חסימות</button>
+          <button onClick={()=>setShowExpenses(true)} style={{padding:"7px 14px",borderRadius:10,border:"none",cursor:"pointer",background:"#fff",color:"#43a047",fontWeight:500,fontSize:14,fontFamily:"'Heebo',sans-serif",boxShadow:"0 2px 8px rgba(0,0,0,.07)"}}>💸 הוצאות</button>
         </div>
 
         {/* ── List ── */}
