@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>הזמנה — שירת הציפורים</title>
-<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;700;900&family=Heebo:wght@300;400;600;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 :root{
@@ -24,7 +24,7 @@ header{
   display:flex;align-items:center;justify-content:center;gap:14px;
 }
 .logo{width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);}
-.site-name{font-family:'Frank Ruhl Libre',serif;font-size:20px;color:#fff;font-weight:700;}
+.site-name{font-family:'Heebo',sans-serif;font-size:20px;color:#fff;font-weight:700;}
 .site-sub{font-size:12px;color:rgba(255,255,255,0.5);}
 
 .hero{
@@ -33,7 +33,7 @@ header{
   text-align:center;
   color:#fff;
 }
-.hero h1{font-family:'Frank Ruhl Libre',serif;font-size:clamp(1.6rem,4vw,2.5rem);font-weight:900;margin-bottom:.4rem;}
+.hero h1{font-family:'Heebo',sans-serif;font-size:clamp(1.6rem,4vw,2.5rem);font-weight:900;margin-bottom:.4rem;}
 .hero h1 span{color:var(--gold);}
 .hero p{color:rgba(255,255,255,0.55);font-size:14px;}
 
@@ -120,7 +120,7 @@ textarea{resize:vertical;min-height:70px;direction:rtl;}
 
 @media(max-width:480px){.grid2{grid-template-columns:1fr;}}
 </style>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+
 </head>
 <body>
 
@@ -244,7 +244,7 @@ textarea{resize:vertical;min-height:70px;direction:rtl;}
 </div>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyKUvfneAaQwRYiQ67xvzfBQH0CTnoUfOuX3QgfUpOXoEaKUCRhjx5jEytDCYAeLX1N/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwveXxNMnCffwHiVtA-haiHWm9OC4qA8KO6IJzOdOWFyuFD0qWwI7ubE5GJ3hbV8GOG/exec";
 const OWNER_PHONE = "972504103353";
 const EMAILJS_SERVICE = "service_0on84wi";
 const EMAILJS_TEMPLATE = "template_v5sfvff";
@@ -583,13 +583,24 @@ async function submitBooking(){
 ${notes?"הערות: "+notes:""}
 
 לאישור ההזמנה: https://shirat-hatziporim.github.io/shirat-hatziporim/shirat-hatziporim.html?booking=${b.id}`;
-    emailjs.init({publicKey: EMAILJS_KEY});
-    emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
+    // שלח התראה לבעל הצימר דרך Apps Script
+    const cbEmail = "cb_notify_" + Math.random().toString(36).slice(2);
+    const notifyData = encodeURIComponent(JSON.stringify({
       name: name,
-      message: emailMsg,
+      phone: phone,
       email: email||"לא הוזן",
-      title: "הזמנה חדשה"
-    }).then(()=>console.log("email sent")).catch(e=>console.log("email error",e));
+      checkin: checkin,
+      checkout: checkout,
+      nights: nights,
+      guests: guests,
+      total: total,
+      notes: notes||"",
+      bookingId: b.id
+    }));
+    window[cbEmail] = function(r){ delete window[cbEmail]; console.log("notification sent", r); };
+    const notifyScript = document.createElement("script");
+    notifyScript.src = SCRIPT_URL + "?action=notifyOwner&data=" + notifyData + "&callback=" + cbEmail + "&t=" + Date.now();
+    document.head.appendChild(notifyScript);
     const msg=encodeURIComponent(
 `🔔 בקשת הזמנה חדשה!
 שם: ${name}
