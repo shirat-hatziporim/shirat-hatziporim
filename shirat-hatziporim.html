@@ -1136,6 +1136,20 @@ function App(){
     s.src=SCRIPT_URL+"?action=getLeads&authuser=0&callback="+cb+"&t="+Date.now();
     document.head.appendChild(s);
   },[]);
+  // טען סל מחזור מ-Sheets
+  React.useEffect(()=>{
+    const cb="cb_gt_"+Math.random().toString(36).slice(2);
+    window[cb]=function(r){
+      delete window[cb];
+      if(Array.isArray(r)&&r.length>0){
+        setTrash(r);
+        try{localStorage.setItem("shirat_trash",JSON.stringify(r));}catch(e){}
+      }
+    };
+    const s=document.createElement("script");
+    s.src=SCRIPT_URL+"?action=getTrash&authuser=0&callback="+cb+"&t="+Date.now();
+    document.head.appendChild(s);
+  },[]);
   const [showLeads,setShowLeads]=useState(false);
   function addLead(email,phone){
     if(!email&&!phone) return;
