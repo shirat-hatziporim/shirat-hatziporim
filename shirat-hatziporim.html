@@ -691,7 +691,7 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[],blockedDates=[
     setErr(e);return!Object.keys(e).length;
   }
   const [saving,setSaving]=React.useState(false);
-  function save(){if(!validate()||saving)return;setSaving(true);onSave({...f,total,nights,guestExtra,discount:discount||0,id:f.id||nid++});}
+  function save(){if(!validate()||saving||isLoading)return;setSaving(true);onSave({...f,total,nights,guestExtra,discount:discount||0,id:f.id||nid++});}
   const balance=Math.max(0,(parseInt(f.total)||total)-((parseInt(f.deposit)||0)+(parseInt(f.paid)||0)));
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -1358,6 +1358,7 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
   });
 
   function save(b){
+    if(!sheetsLoaded){alert("המערכת עדיין טוענת נתונים, אנא המתן...");return;}
     let updated;
     const isNew=!(b.id&&bookings.find(x=>x.id===b.id));
     // מנע כפילות - אם ההזמנה קיימת כבר עם אותו ID אל תוסיף שוב
@@ -1414,7 +1415,13 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
             <span style={{color:"#5a5878",fontSize:12,borderRight:"1px solid #3a3a5e",paddingRight:10}}>ניהול הזמנות</span>
             {syncing
               ? <span style={{fontSize:11,color:"#f4c26a",fontFamily:"'Heebo',sans-serif"}}>⏳ שומר...</span>
-              : lastSync && <span style={{fontSize:11,color:"#4a6a4a",fontFamily:"'Heebo',sans-serif"}}>✅ מסונכרן</span>
+              : lastSync && <span style={{fontSize:11,color:"#4a6a4a",fontFamily:"'Heebo',sans-serif"}}>✅ מסונכרן</span>}
+          <button onClick={()=>{
+            if(confirm("לנקות את המטמון המקומי ולטעון מחדש מהשרת?")){
+              localStorage.clear();
+              window.location.reload();
+            }
+          }} style={{fontSize:11,background:"none",border:"none",color:"#888",cursor:"pointer",fontFamily:"'Heebo',sans-serif",textDecoration:"underline"}}>נקה cache
             }
             <button onClick={()=>{
               setLoading(true);
@@ -2339,7 +2346,7 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
         </div>
       )}
 
-      {showForm&&<BookingForm booking={editB} onSave={save} onCancel={()=>{setShowForm(false);setEditB(null);}} existingBookings={bookings} blockedDates={blockedDates} isLoading={loading}/>}
+      {showForm&&<BookingForm booking={editB} onSave={save} onCancel={()=>{setShowForm(false);setEditB(null);}} existingBookings={bookings} blockedDates={blockedDates} isLoading={!sheetsLoaded}/>}
 
       {/* פופאפ עריכת אורח */}
       {guestEditPopup&&(
