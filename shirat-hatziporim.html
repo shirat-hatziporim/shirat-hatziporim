@@ -1492,6 +1492,7 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
               });
             }} style={{border:"none",background:"none",color:"#6a6090",fontSize:14,cursor:"pointer",padding:"2px 6px"}} title="רענן נתונים">🔄</button>
           </div>
+          <button onClick={()=>{setEditB(null);setShowForm(true);}} style={{background:"#f4c26a",color:"#1a1a2e",border:"none",borderRadius:10,padding:"7px 12px",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"'Heebo',sans-serif",whiteSpace:"nowrap"}}>+ הזמנה</button>
           <div className="desktop-btns" style={{display:"flex",gap:8}}>
             <button onClick={()=>setShowBlockedManager(true)} style={{background:"#252545",color:"#ff8a65",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>🔒 חסימות</button>
             <button onClick={()=>setShowExpenses(true)} style={{background:"#252545",color:"#a5d6a7",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>💸 הוצאות</button>
@@ -1500,7 +1501,6 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
             <button onClick={()=>setShowInquiry(true)} style={{background:"#252545",color:"#a5d6a7",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📨 <span class="btn-text">פנייה למתעניינים</span></button>
             <button onClick={()=>{setEmailEditorType("confirm");setShowEmailEditor(true);}} style={{background:"#252545",color:"#ce93d8",border:"1px solid #3a3a6e",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>📝 <span class="btn-text">עריכת תבניות</span></button>
           </div>
-          <button onClick={()=>{setEditB(null);setShowForm(true);}} style={{background:"#f4c26a",color:"#1a1a2e",border:"none",borderRadius:10,padding:"7px 12px",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"'Heebo',sans-serif",whiteSpace:"nowrap"}}>+ הזמנה</button>
           {/* המבורגר - נייד בלבד */}
           <button className="hamburger-btn" onClick={()=>setHamburgerOpen(true)}
             style={{border:"none",background:"none",color:"#fff",fontSize:24,cursor:"pointer",display:"none",padding:"4px 8px"}}>
@@ -1523,6 +1523,7 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
               {icon:"📋",label:"מחירון",action:()=>{setPriceTab("view");setShowPriceEditor(true);}},
               {icon:"📨",label:"פנייה למתעניינים",action:()=>setShowInquiry(true)},
               {icon:"📝",label:"עריכת תבניות",action:()=>{setEmailEditorType("confirm");setShowEmailEditor(true);}},
+              {icon:"🗑️",label:`סל מחזור (${trash.length})`,action:()=>setShowTrash(true)},
             ].map(({icon,label,action})=>(
               <button key={label} onClick={()=>{action();setHamburgerOpen(false);}}
                 style={{background:"#252545",color:"#f4c26a",border:"1px solid #3a3a6e",borderRadius:10,padding:"12px 16px",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:14,cursor:"pointer",textAlign:"right",display:"flex",alignItems:"center",gap:10}}>
@@ -2014,6 +2015,7 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
                           style={{...bS("#f0eee8","#1a1a2e"),fontSize:12,padding:"5px 12px"}}>✏️ עריכה</button>
                         {g._manual&&<button onClick={()=>{
                           if(!window.confirm(`למחוק את ${g.name}?`)) return;
+                          addToTrash({...g},"guest");
                           const updated=manualGuests.filter(mg=>(mg.phone||mg.name)!==(g.phone||g.name));
                           saveManualGuests(updated);
                         }} style={{...bS("#fce4ec","#c62828"),fontSize:12,padding:"5px 12px"}}>🗑️</button>}
@@ -3040,8 +3042,8 @@ https://charedi.net/tzimar/25569/
                   {trash.map((item,i)=>(
                     <tr key={i} style={{borderBottom:"1px solid #f4f0ea"}}>
                       <td style={{padding:"8px 10px"}}>
-                        <span style={{background:item._type==="booking"?"#e8f5e9":"#e3f2fd",color:item._type==="booking"?"#2e7d32":"#1565c0",borderRadius:6,padding:"2px 8px",fontSize:12,fontWeight:700}}>
-                          {item._type==="booking"?"📋 הזמנה":"👤 מתעניין"}
+                        <span style={{background:item._type==="booking"?"#e8f5e9":item._type==="guest"?"#fff8e1":"#e3f2fd",color:item._type==="booking"?"#2e7d32":item._type==="guest"?"#f57f17":"#1565c0",borderRadius:6,padding:"2px 8px",fontSize:12,fontWeight:700}}>
+                          {item._type==="booking"?"📋 הזמנה":item._type==="guest"?"👤 אורח":"👤 מתעניין"}
                         </span>
                       </td>
                       <td style={{padding:"8px 10px",color:"#1a1a2e"}}>{item.name||item.email||"—"}</td>
@@ -3049,14 +3051,15 @@ https://charedi.net/tzimar/25569/
                       <td style={{padding:"8px 10px",color:"#888"}}>{item._deletedAt}</td>
                       <td style={{padding:"8px 10px",display:"flex",gap:4}}>
                         <button onClick={()=>{
+                          const restored={...item};
+                          delete restored._type;delete restored._deletedAt;
                           if(item._type==="booking"){
-                            const restored={...item};
-                            delete restored._type;delete restored._deletedAt;
                             const updated=[...bookings,restored];
                             setBookings(updated);syncSave(updated);
+                          } else if(item._type==="guest"){
+                            const updated=[...manualGuests,restored];
+                            saveManualGuests(updated);
                           } else {
-                            const restored={...item};
-                            delete restored._type;delete restored._deletedAt;
                             const updated=[...inquiryLeads,restored];
                             setInquiryLeads(updated);
                             try{localStorage.setItem("shirat_leads",JSON.stringify(updated));}catch(e){}
