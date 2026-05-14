@@ -1843,10 +1843,11 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
               })()}
             </div>
 
-            {/* 📅 הזמנות השבוע */}
+            {/* 📅 הזמנות - מוזג */}
             <div style={{background:"#fff",borderRadius:20,padding:20,boxShadow:"0 4px 24px rgba(0,0,0,.07)",gridColumn:"1/-1"}}>
-              <h3 style={{margin:"0 0 12px",color:"#1a1a2e",fontWeight:800,fontFamily:"'Heebo',sans-serif"}}>📅 הזמנות השבוע</h3>
-              {(()=>{
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}> 
+                <div>
+                  <h3 style={{margin:"0 0 12px",color:"#1a1a2e",fontWeight:800,fontFamily:"'Heebo',sans-serif"}}>📅 הזמנות השבוע</h3>
                 const today=new Date();const weekEnd=new Date(today);weekEnd.setDate(weekEnd.getDate()+7);
                 const todayStr=today.toISOString().split("T")[0];const weekStr=weekEnd.toISOString().split("T")[0];
                 const thisWeek=bookings.filter(b=>b.status!=="cancelled"&&((b.checkin>=todayStr&&b.checkin<=weekStr)||(b.checkout>=todayStr&&b.checkout<=weekStr)));
@@ -1866,6 +1867,22 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
                   </div>
                 ));
               })()}
+                </div>
+                <div>
+                  <h3 style={{margin:"0 0 14px",color:"#1a1a2e",fontWeight:800,fontFamily:"'Heebo',sans-serif"}}>🗓️ הזמנות קרובות</h3>
+              {bookings
+                .filter(b=>b.status!=="cancelled"&&b.checkin>=new Date().toISOString().split("T")[0])
+                .sort((a,b)=>a.checkin.localeCompare(b.checkin)).slice(0,6)
+                .map(b=>(
+                  <div key={b.id} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #f0eee8",cursor:"pointer"}}
+                    onClick={()=>{setView("list");openEdit(b);}}>
+                    <span style={{fontWeight:700,color:"#1a1a2e"}}>{b.name}</span>
+                    <span style={{color:"#8a7e6e",fontSize:13}}>{fd(b.checkin)} — {b.nights} לילות</span>
+                  </div>
+                ))}
+            </div>
+                </div>
+              </div>
             </div>
             {/* 💸 דוח רווח נקי */}
             <div style={{background:"#fff",borderRadius:20,padding:20,boxShadow:"0 4px 24px rgba(0,0,0,.07)",gridColumn:"1/-1"}}>
@@ -1885,20 +1902,7 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
                 );
               })()}
             </div>
-            <div style={{background:"#fff",borderRadius:20,padding:22,boxShadow:"0 4px 24px rgba(0,0,0,.07)"}}>
-              <h3 style={{margin:"0 0 14px",color:"#1a1a2e",fontWeight:800}}>הזמנות קרובות</h3>
-              {bookings
-                .filter(b=>b.status!=="cancelled"&&b.checkin>=new Date().toISOString().split("T")[0])
-                .sort((a,b)=>a.checkin.localeCompare(b.checkin)).slice(0,6)
-                .map(b=>(
-                  <div key={b.id} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #f0eee8",cursor:"pointer"}}
-                    onClick={()=>{setView("list");openEdit(b);}}>
-                    <span style={{fontWeight:700,color:"#1a1a2e"}}>{b.name}</span>
-                    <span style={{color:"#8a7e6e",fontSize:13}}>{fd(b.checkin)} — {b.nights} לילות</span>
-                  </div>
-                ))}
             </div>
-            <div style={{background:"#fff",borderRadius:20,padding:22,boxShadow:"0 4px 24px rgba(0,0,0,.07)"}}>
               <h3 style={{margin:"0 0 14px",color:"#1a1a2e",fontWeight:800}}>פעולות</h3>
               <button onClick={()=>{
                 const rows=[['שם','טלפון','כניסה','יציאה','לילות','אורחים','סטטוס','סה"כ','שולם','יתרה','הערות']];
