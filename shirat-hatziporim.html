@@ -1804,18 +1804,45 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
                 );
               })}
             </div>
-                        {/* ⚠️ התראת מקדמה */}
-            {bookings.filter(b=>b.status==="confirmed"&&(b.paid||0)<500&&b.checkin>=new Date().toISOString().split("T")[0]).length>0&&(
-              <div style={{background:"#fff3e0",borderRadius:20,padding:20,boxShadow:"0 4px 24px rgba(0,0,0,.07)",gridColumn:"1/-1",border:"2px solid #ff9800"}}>
-                <h3 style={{margin:"0 0 12px",color:"#e65100",fontWeight:800,fontFamily:"'Heebo',sans-serif"}}>⚠️ מקדמה לא שולמה</h3>
-                {bookings.filter(b=>b.status==="confirmed"&&(b.paid||0)<500&&b.checkin>=new Date().toISOString().split("T")[0]).map(b=>(
-                  <div key={b.id} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #ffe0b2",fontFamily:"'Heebo',sans-serif",cursor:"pointer"}} onClick={()=>openEdit(b)}>
-                    <span style={{fontWeight:700,color:"#1a1a2e"}}>{b.name}</span>
-                    <span style={{color:"#e65100",fontSize:13}}>כניסה: {fd(b.checkin)} · שולם: {fm(b.paid||0)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+            {/* 💳 מעקב מקדמות */}
+            <div style={{background:"#fff",borderRadius:20,padding:22,boxShadow:"0 4px 24px rgba(0,0,0,.07)",gridColumn:"1/-1"}}>
+              <h3 style={{margin:"0 0 14px",color:"#1a1a2e",fontWeight:800,fontFamily:"'Heebo',sans-serif"}}>💳 מעקב מקדמות</h3>
+              {(()=>{
+                const pending=bookings.filter(b=>b.status!=="cancelled"&&b.checkin>=new Date().toISOString().split("T")[0]&&(b.deposit||0)<500);
+                const paid=bookings.filter(b=>b.status!=="cancelled"&&b.checkin>=new Date().toISOString().split("T")[0]&&(b.deposit||0)>=500);
+                return(
+                  <>
+                    {pending.length>0&&(
+                      <div style={{marginBottom:16}}>
+                        <div style={{fontSize:12,fontWeight:700,color:"#c62828",marginBottom:8,fontFamily:"'Heebo',sans-serif"}}>⚠️ מקדמה לא שולמה ({pending.length})</div>
+                        {pending.sort((a,b)=>a.checkin.localeCompare(b.checkin)).map(b=>(
+                          <div key={b.id} onClick={()=>openEdit(b)} style={{display:"flex",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid #fce4ec",cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>
+                            <span style={{fontWeight:700,color:"#1a1a2e"}}>{b.name}</span>
+                            <span style={{fontSize:12,color:"#c62828"}}>כניסה: {fd(b.checkin)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {paid.length>0&&(
+                      <div>
+                        <div style={{fontSize:12,fontWeight:700,color:"#2e7d32",marginBottom:8,fontFamily:"'Heebo',sans-serif"}}>✅ מקדמה שולמה ({paid.length})</div>
+                        {paid.sort((a,b)=>a.checkin.localeCompare(b.checkin)).map(b=>(
+                          <div key={b.id} onClick={()=>openEdit(b)} style={{display:"flex",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid #e8f5e9",cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>
+                            <span style={{fontWeight:700,color:"#1a1a2e"}}>{b.name}</span>
+                            <div style={{textAlign:"left"}}>
+                              <div style={{fontSize:12,color:"#2e7d32"}}>₪{(b.deposit||0).toLocaleString()} · {b.depositMethod||"לא צוין"}</div>
+                              <div style={{fontSize:11,color:"#8a7e6e"}}>כניסה: {fd(b.checkin)}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {!pending.length&&!paid.length&&<p style={{color:"#a09080",fontFamily:"'Heebo',sans-serif",fontSize:14}}>אין הזמנות עתידיות</p>}
+                  </>
+                );
+              })()}
+            </div>
+
             {/* 📅 הזמנות השבוע */}
             <div style={{background:"#fff",borderRadius:20,padding:20,boxShadow:"0 4px 24px rgba(0,0,0,.07)",gridColumn:"1/-1"}}>
               <h3 style={{margin:"0 0 12px",color:"#1a1a2e",fontWeight:800,fontFamily:"'Heebo',sans-serif"}}>📅 הזמנות השבוע</h3>
@@ -1923,44 +1950,6 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
               })()}
             </div>
 
-            {/* 💳 מעקב מקדמות */}
-            <div style={{background:"#fff",borderRadius:20,padding:22,boxShadow:"0 4px 24px rgba(0,0,0,.07)",gridColumn:"1/-1"}}>
-              <h3 style={{margin:"0 0 14px",color:"#1a1a2e",fontWeight:800,fontFamily:"'Heebo',sans-serif"}}>💳 מעקב מקדמות</h3>
-              {(()=>{
-                const pending=bookings.filter(b=>b.status!=="cancelled"&&b.checkin>=new Date().toISOString().split("T")[0]&&(b.deposit||0)<500);
-                const paid=bookings.filter(b=>b.status!=="cancelled"&&b.checkin>=new Date().toISOString().split("T")[0]&&(b.deposit||0)>=500);
-                return(
-                  <>
-                    {pending.length>0&&(
-                      <div style={{marginBottom:16}}>
-                        <div style={{fontSize:12,fontWeight:700,color:"#c62828",marginBottom:8,fontFamily:"'Heebo',sans-serif"}}>⚠️ מקדמה לא שולמה ({pending.length})</div>
-                        {pending.sort((a,b)=>a.checkin.localeCompare(b.checkin)).map(b=>(
-                          <div key={b.id} onClick={()=>openEdit(b)} style={{display:"flex",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid #fce4ec",cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>
-                            <span style={{fontWeight:700,color:"#1a1a2e"}}>{b.name}</span>
-                            <span style={{fontSize:12,color:"#c62828"}}>כניסה: {fd(b.checkin)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {paid.length>0&&(
-                      <div>
-                        <div style={{fontSize:12,fontWeight:700,color:"#2e7d32",marginBottom:8,fontFamily:"'Heebo',sans-serif"}}>✅ מקדמה שולמה ({paid.length})</div>
-                        {paid.sort((a,b)=>a.checkin.localeCompare(b.checkin)).map(b=>(
-                          <div key={b.id} onClick={()=>openEdit(b)} style={{display:"flex",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid #e8f5e9",cursor:"pointer",fontFamily:"'Heebo',sans-serif"}}>
-                            <span style={{fontWeight:700,color:"#1a1a2e"}}>{b.name}</span>
-                            <div style={{textAlign:"left"}}>
-                              <div style={{fontSize:12,color:"#2e7d32"}}>₪{(b.deposit||0).toLocaleString()} · {b.depositMethod||"לא צוין"}</div>
-                              <div style={{fontSize:11,color:"#8a7e6e"}}>כניסה: {fd(b.checkin)}</div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {!pending.length&&!paid.length&&<p style={{color:"#a09080",fontFamily:"'Heebo',sans-serif",fontSize:14}}>אין הזמנות עתידיות</p>}
-                  </>
-                );
-              })()}
-            </div>
           </div>
         )}
 
