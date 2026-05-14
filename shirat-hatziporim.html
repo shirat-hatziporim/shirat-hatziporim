@@ -2416,11 +2416,11 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
             <h3 style={{margin:"0 0 4px",fontFamily:"'Heebo',sans-serif",color:"#1a1a2e",fontSize:17}}>בקשת ביקורת</h3>
             <p style={{margin:"0 0 20px",fontFamily:"'Heebo',sans-serif",color:"#8a7e6e",fontSize:13}}>{reviewPopup.name}</p>
             <div style={{display:"flex",gap:8,flexDirection:"column"}}>
-              <button onClick={()=>{sendReviewWhatsApp(reviewPopup);markSent(reviewPopup.id,"sentReview");setReviewPopup(null);}}
+              <button onClick={()=>{sendReviewWhatsApp(reviewPopup);markSent(reviewPopup.id,"sentAutoReview");setReviewPopup(null);}}
                 style={{...bS("#25d366","#fff"),width:"100%",fontSize:14}}>💬 WhatsApp</button>
-              <button onClick={()=>{sendReviewEmail(reviewPopup);markSent(reviewPopup.id,"sentReview");setReviewPopup(null);}}
+              <button onClick={()=>{sendReviewEmail(reviewPopup);markSent(reviewPopup.id,"sentAutoReview");setReviewPopup(null);}}
                 style={{...bS("#7b1fa2","#fff"),width:"100%",fontSize:14}}>📧 מייל</button>
-              <button onClick={()=>{sendReviewWhatsApp(reviewPopup);sendReviewEmail(reviewPopup);markSent(reviewPopup.id,"sentReview");setReviewPopup(null);}}
+              <button onClick={()=>{sendReviewWhatsApp(reviewPopup);sendReviewEmail(reviewPopup);markSent(reviewPopup.id,"sentAutoReview");setReviewPopup(null);}}
                 style={{...bS("#f0eee8","#1a1a2e"),width:"100%",fontSize:14}}>💬 + 📧 שניהם</button>
               <button onClick={()=>setReviewPopup(null)}
                 style={{...bS("#fce4ec","#c62828"),width:"100%",fontSize:13}}>ביטול</button>
@@ -2460,11 +2460,11 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
             <h3 style={{margin:"0 0 4px",fontFamily:"'Heebo',sans-serif",color:"#1a1a2e",fontSize:17}}>תזכורת יום לפני</h3>
             <p style={{margin:"0 0 20px",fontFamily:"'Heebo',sans-serif",color:"#8a7e6e",fontSize:13}}>{reminderPopup.name} · {fd(reminderPopup.checkin)}</p>
             <div style={{display:"flex",gap:8,flexDirection:"column"}}>
-              <button onClick={()=>{sendReminderWhatsApp(reminderPopup);markSent(reminderPopup.id,"sentReminder");setReminderPopup(null);}}
+              <button onClick={()=>{sendReminderWhatsApp(reminderPopup);markSent(reminderPopup.id,"sentAutoReminder");setReminderPopup(null);}}
                 style={{...bS("#25d366","#fff"),width:"100%",fontSize:14}}>💬 WhatsApp</button>
-              <button onClick={()=>{sendReminderEmail(reminderPopup);markSent(reminderPopup.id,"sentReminder");setReminderPopup(null);}}
+              <button onClick={()=>{sendReminderEmail(reminderPopup);markSent(reminderPopup.id,"sentAutoReminder");setReminderPopup(null);}}
                 style={{...bS("#1565c0","#fff"),width:"100%",fontSize:14}}>📧 מייל</button>
-              <button onClick={()=>{sendReminderWhatsApp(reminderPopup);sendReminderEmail(reminderPopup);markSent(reminderPopup.id,"sentReminder");setReminderPopup(null);}}
+              <button onClick={()=>{sendReminderWhatsApp(reminderPopup);sendReminderEmail(reminderPopup);markSent(reminderPopup.id,"sentAutoReminder");setReminderPopup(null);}}
                 style={{...bS("#f0eee8","#1a1a2e"),width:"100%",fontSize:14}}>💬 + 📧 שניהם</button>
               <button onClick={()=>setReminderPopup(null)}
                 style={{...bS("#fce4ec","#c62828"),width:"100%",fontSize:13}}>ביטול</button>
