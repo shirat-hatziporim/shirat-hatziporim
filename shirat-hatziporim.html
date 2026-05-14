@@ -1081,21 +1081,39 @@ function App(){
 
   // משק בית — צ'קליסט ניקיון
   const DEFAULT_CHECKLIST=[
-    {id:1,text:"שינוי מצעים",done:false},
-    {id:2,text:"החלפת מגבות",done:false},
-    {id:3,text:"ניקוי חדר אמבטיה",done:false},
-    {id:4,text:"שטיפת רצפות",done:false},
-    {id:5,text:"ניקוי מטבח",done:false},
-    {id:6,text:"רענון מוצרי ניקיון",done:false},
-    {id:7,text:"בדיקת ג'קוזי",done:false},
-    {id:8,text:"מילוי קפה וסוכר",done:false},
-    {id:9,text:"איסוף אשפה",done:false},
-    {id:10,text:"ניקוי חצר",done:false},
+    {id:1,text:"שטיפה",done:false},
+    {id:2,text:"כיבוס מצעים",done:false},
+    {id:3,text:"לשים מצעים",done:false},
+    {id:4,text:"חדר ג'קוזי",done:false},
+    {id:5,text:"מקלחון",done:false},
+    {id:6,text:"טישו ג'קוזי מקלחון חדר וסלון",done:false},
+    {id:7,text:"מקרר",done:false},
+    {id:8,text:"שיש וכיורים",done:false},
+    {id:9,text:"פחים",done:false},
+    {id:10,text:"סלון ספות וכורסה",done:false},
+    {id:11,text:"ניקוי מראות גם מראות ארון",done:false},
+    {id:12,text:"ניקוי אבק שידות, עציצים, צלחת מרכז שולחן, מתקן מגבת נייר",done:false},
+    {id:13,text:"לבדוק מגירות לנקות",done:false},
+    {id:14,text:"פינת קפה",done:false},
+    {id:15,text:"סבונים",done:false},
+    {id:16,text:"מגבות",done:false},
+    {id:17,text:"מגבת רגליים",done:false},
+    {id:18,text:"אביזרי ג'קוזי",done:false},
+    {id:19,text:"נרות שבת",done:false},
+    {id:20,text:"מצב שבת מקרר",done:false},
+    {id:21,text:"פלטה",done:false},
+    {id:22,text:"מגבת מטבח",done:false},
+    {id:23,text:"להדליק נרות",done:false},
+    {id:24,text:"להטעין מנורות לילה",done:false},
+    {id:25,text:"סדר וניקיון חצר",done:false},
+    {id:26,text:"להדליק אורות בחוץ",done:false},
   ];
   const [checklist,setChecklist]=useState(()=>{
     try{const s=localStorage.getItem("shirat_checklist");return s?JSON.parse(s):DEFAULT_CHECKLIST;}catch{return DEFAULT_CHECKLIST;}
   });
   const [newCheckItem,setNewCheckItem]=useState("");
+  const [dragItem,setDragItem]=useState(null);
+  const [editMode,setEditMode]=useState(false);
 
   // מלאי
   const DEFAULT_INVENTORY=[
@@ -2067,25 +2085,46 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
                     </div>
                   </div>
                   <div style={{display:"flex",gap:8}}>
-                    <button onClick={()=>saveChecklist(checklist.map(c=>({...c,done:false})))}
-                      style={{...bS("#f0eee8","#1a1a2e"),fontSize:12,padding:"6px 12px"}}>איפוס</button>
-                    <button onClick={()=>saveChecklist(checklist.map(c=>({...c,done:true})))}
-                      style={{...bS("#e8f5e9","#2e7d32"),fontSize:12,padding:"6px 12px"}}>סמן הכל</button>
+                    <button onClick={()=>setEditMode(!editMode)}
+                      style={{...bS(editMode?"#1a1a2e":"#f0eee8",editMode?"#fff":"#1a1a2e"),fontSize:12,padding:"6px 12px"}}>{editMode?"✅ סיום עריכה":"✏️ עריכת סדר"}</button>
+                    {!editMode&&<button onClick={()=>saveChecklist(checklist.map(c=>({...c,done:false})))}
+                      style={{...bS("#f0eee8","#1a1a2e"),fontSize:12,padding:"6px 12px"}}>איפוס</button>}
+                    {!editMode&&<button onClick={()=>saveChecklist(checklist.map(c=>({...c,done:true})))}
+                      style={{...bS("#e8f5e9","#2e7d32"),fontSize:12,padding:"6px 12px"}}>סמן הכל</button>}
+                    {!editMode&&<button onClick={()=>{if(confirm("לאפס לרשימה המקורית?"))saveChecklist(DEFAULT_CHECKLIST);}}
+                      style={{...bS("#fff3e0","#e65100"),fontSize:12,padding:"6px 12px"}}>↺ ברירת מחדל</button>}
                   </div>
                 </div>
                 <div style={{background:"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,.06)",marginBottom:12}}>
                   {checklist.map((item,i)=>(
-                    <div key={item.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",
-                      borderBottom:i<checklist.length-1?"1px solid #f0eee8":"none",
-                      background:item.done?"#f8fff8":"#fff"}}>
-                      <input type="checkbox" checked={item.done}
-                        onChange={e=>{saveChecklist(checklist.map(c=>c.id===item.id?{...c,done:e.target.checked}:c));}}
-                        style={{width:18,height:18,cursor:"pointer",accentColor:"#2e7d32"}}/>
+                    <div key={item.id}
+                      draggable={editMode}
+                      onDragStart={()=>setDragItem(i)}
+                      onDragOver={e=>{e.preventDefault();}}
+                      onDrop={()=>{
+                        if(dragItem===null||dragItem===i) return;
+                        const newList=[...checklist];
+                        const [moved]=newList.splice(dragItem,1);
+                        newList.splice(i,0,moved);
+                        saveChecklist(newList);
+                        setDragItem(null);
+                      }}
+                      style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",
+                        borderBottom:i<checklist.length-1?"1px solid #f0eee8":"none",
+                        background:item.done?"#f8fff8":"#fff",
+                        cursor:editMode?"grab":"default",
+                        opacity:dragItem===i?0.5:1}}>
+                      {editMode
+                        ? <span style={{color:"#ccc",fontSize:18,cursor:"grab"}}>☰</span>
+                        : <input type="checkbox" checked={item.done}
+                            onChange={e=>{saveChecklist(checklist.map(c=>c.id===item.id?{...c,done:e.target.checked}:c));}}
+                            style={{width:18,height:18,cursor:"pointer",accentColor:"#2e7d32"}}/>
+                      }
                       <span style={{flex:1,fontFamily:"'Heebo',sans-serif",fontSize:14,
-                        color:item.done?"#a09080":"#1a1a2e",
-                        textDecoration:item.done?"line-through":"none"}}>{item.text}</span>
-                      <button onClick={()=>saveChecklist(checklist.filter(c=>c.id!==item.id))}
-                        style={{border:"none",background:"none",cursor:"pointer",color:"#ccc",fontSize:16,padding:0}}>✕</button>
+                        color:editMode?"#1a1a2e":item.done?"#a09080":"#1a1a2e",
+                        textDecoration:!editMode&&item.done?"line-through":"none"}}>{item.text}</span>
+                      {editMode&&<button onClick={()=>saveChecklist(checklist.filter(c=>c.id!==item.id))}
+                        style={{border:"none",background:"none",cursor:"pointer",color:"#ccc",fontSize:16,padding:0}}>✕</button>}
                     </div>
                   ))}
                 </div>
