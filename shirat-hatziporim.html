@@ -160,7 +160,6 @@ function LoginScreen({onLogin}){
 }
 
 // ── מחירון ──
-function isSummer(ds){const md=ds.slice(5);return md>="06-01"&&md<="08-31";}
 function isWeekend(ds){const d=new Date(ds);return d.getDay()===5||d.getDay()===6;}
 const HOLIDAYS=[
   // 2025 — תשפ"ה/תשפ"ו
