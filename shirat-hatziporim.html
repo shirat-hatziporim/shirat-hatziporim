@@ -315,7 +315,7 @@ const SC={confirmed:{bg:"#e8f5e9",text:"#2e7d32",dot:"#43a047"},pending:{bg:"#ff
 function getDisplayStatus(b){const today=new Date().toISOString().split("T")[0];if(b.status!=="cancelled"&&b.checkout&&b.checkout<today) return "completed";return b.status;}
 const MONTHS_HE=["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
 const DAYS_HE=["א","ב","ג","ד","ה","ו","ש"];
-let nid=10;
+function genId(){return Date.now()*1000+Math.floor(Math.random()*1000);}
 
 const SCRIPT_URL="https://script.google.com/macros/s/AKfycbwveXxNMnCffwHiVtA-haiHWm9OC4qA8KO6IJzOdOWFyuFD0qWwI7ubE5GJ3hbV8GOG/exec";
 
@@ -800,7 +800,7 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[],blockedDates=[
     }
     setErr(e);return!Object.keys(e).length;
   }
-  function save(){if(!validate())return;onSave({...f,total,nights,guestExtra,discount:discount||0,id:f.id||nid++});}
+  function save(){if(!validate())return;onSave({...f,total,nights,guestExtra,discount:discount||0,id:f.id||genId()});}
   const balance=Math.max(0,(parseInt(f.total)||total)-((parseInt(f.deposit)||0)+(parseInt(f.paid)||0)));
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}}>
