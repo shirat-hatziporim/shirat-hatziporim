@@ -761,7 +761,7 @@ function Lbl({children}){return <label style={{display:"block",fontSize:12,color
 function Sec({title,children}){return<div style={{marginBottom:18}}><div style={{fontSize:11,fontWeight:700,color:"#a0896e",letterSpacing:1,marginBottom:8}}>{title}</div>{children}</div>;}
 
 // ── Booking Form ──
-function BookingForm({booking,onSave,onCancel,existingBookings=[],blockedDates=[]}){
+function BookingForm({booking,onSave,onCancel,existingBookings=[],blockedDates=[],nextId=1}){
   const empty={name:"",phone:"",checkin:"",checkout:"",guests:2,extraGuests:0,status:"confirmed",notes:"",paid:0};
   const [f,setF]=useState(booking||empty);
   const [err,setErr]=useState({});
@@ -800,7 +800,7 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[],blockedDates=[
     }
     setErr(e);return!Object.keys(e).length;
   }
-  function save(){if(!validate())return;onSave({...f,total,nights,guestExtra,discount:discount||0,id:f.id||genId()});}
+  function save(){if(!validate())return;onSave({...f,total,nights,guestExtra,discount:discount||0,id:f.id||nextId});}
   const balance=Math.max(0,(parseInt(f.total)||total)-((parseInt(f.deposit)||0)+(parseInt(f.paid)||0)));
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(20,20,35,.55)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -1480,7 +1480,6 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
     return((b.name||"").includes(search)||(b.phone||"").includes(search))&&(fStatus==="all"||getDisplayStatus(b)===fStatus);
   });
 
-  function genId(){const ids=bookings.map(x=>Number(x.id)||0);return ids.length?Math.max(...ids)+1:1;}
   function save(b){
     if(!sheetsLoaded){alert("המערכת עדיין טוענת נתונים, אנא המתן...");return;}
     let updated;
@@ -2491,7 +2490,7 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
         </div>
       )}
 
-      {showForm&&<BookingForm booking={editB} onSave={save} onCancel={()=>{setShowForm(false);setEditB(null);}} existingBookings={bookings} blockedDates={blockedDates}/>}
+      {showForm&&<BookingForm booking={editB} onSave={save} onCancel={()=>{setShowForm(false);setEditB(null);}} existingBookings={bookings} blockedDates={blockedDates} nextId={bookings.length?Math.max(...bookings.map(x=>Number(x.id)||0))+1:1}/>}
 
       {/* פופאפ עריכת אורח */}
       {guestEditPopup&&(
