@@ -1902,8 +1902,8 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
                 );
               })()}
             </div>
-            </div>
-              <h3 style={{margin:"0 0 14px",color:"#1a1a2e",fontWeight:800}}>פעולות</h3>
+            <div style={{background:"#fff",borderRadius:20,padding:22,boxShadow:"0 4px 24px rgba(0,0,0,.07)",gridColumn:"1/-1"}}>
+              <h3 style={{margin:"0 0 14px",color:"#1a1a2e",fontWeight:800,fontFamily:"'Heebo',sans-serif"}}>פעולות</h3>
               <button onClick={()=>{
                 const rows=[['שם','טלפון','כניסה','יציאה','לילות','אורחים','סטטוס','סה"כ','שולם','יתרה','הערות']];
                 bookings.forEach(b=>rows.push([b.name,b.phone,fd(b.checkin),fd(b.checkout),b.nights||(calcNights(b.checkin,b.checkout)),(b.guests||2)+(b.extraGuests||0),STATUS[b.status],b.total||0,b.paid||0,Math.max(0,(b.total||0)-(b.paid||0)),b.notes||""]));
