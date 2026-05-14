@@ -1859,7 +1859,9 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
                     </div>
                     <div style={{textAlign:"left"}}>
                       <div style={{fontWeight:700,color:"#1a1a2e"}}>{fm(b.total||0)}</div>
-                      <div style={{fontSize:12,color:(b.paid||0)>=(b.total||0)?"#2e7d32":"#e65100"}}>{(b.paid||0)>=(b.total||0)?"✅ שולם":"⚠️ "+fm(Math.max(0,(b.total||0)-(b.paid||0)))+" חסר"}</div>
+                      <div style={{fontSize:12,color:(b.paid||0)>=(b.total||0)?"#2e7d32":(b.deposit||0)>=500?"#1565c0":"#e65100"}}>
+                        {(b.paid||0)>=(b.total||0)?"✅ שולם במלואו":(b.deposit||0)>=500?"💳 מקדמה שולמה · יתרה: "+fm(Math.max(0,(b.total||0)-(b.paid||0))):"⚠️ ללא מקדמה · חסר: "+fm(b.total||0)}
+                      </div>
                     </div>
                   </div>
                 ));
