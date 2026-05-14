@@ -421,6 +421,18 @@ function selectDay(ds){
 function onDateInput(){
   selStart=document.getElementById("checkin").value||null;
   selEnd=document.getElementById("checkout").value||null;
+  // עדכן תאריך מינימום ליציאה
+  if(selStart){
+    const minCheckout=new Date(selStart+"T12:00:00");
+    minCheckout.setDate(minCheckout.getDate()+1);
+    const minStr=minCheckout.toISOString().split("T")[0];
+    document.getElementById("checkout").min=minStr;
+    // אם יציאה לפני כניסה — אפס
+    if(selEnd&&selEnd<=selStart){
+      document.getElementById("checkout").value="";
+      selEnd=null;
+    }
+  }
   if(selStart&&selEnd){
     const ciDate=new Date(selStart+"T12:00:00");
     const coDate=new Date(selEnd+"T12:00:00");
