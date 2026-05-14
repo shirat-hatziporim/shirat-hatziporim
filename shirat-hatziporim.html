@@ -2877,11 +2877,19 @@ https://charedi.net/tzimar/25569/
                 <button onClick={()=>setShowEmailEditor(false)} style={{border:"none",background:"none",fontSize:22,cursor:"pointer",color:"#aaa"}}>✕</button>
               </div>
               <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
-                <button onClick={()=>setEmailEditorType("confirm")} style={{padding:"7px 14px",borderRadius:10,border:"none",cursor:"pointer",background:isConfirm?"#1a1a2e":"#f0eee8",color:isConfirm?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>📧 אישור הזמנה</button>
-                <button onClick={()=>setEmailEditorType("reminder")} style={{padding:"7px 14px",borderRadius:10,border:"none",cursor:"pointer",background:isReminder?"#f57f17":"#f0eee8",color:isReminder?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>⏰ תזכורת יום לפני</button>
-                <button onClick={()=>setEmailEditorType("review")} style={{padding:"7px 14px",borderRadius:10,border:"none",cursor:"pointer",background:isReview?"#1a1a2e":"#f0eee8",color:isReview?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>⭐ בקשת ביקורת</button>
+                <button onClick={()=>setEmailEditorType("confirm")} style={{padding:"7px 14px",borderRadius:10,border:"none",cursor:"pointer",background:isConfirm?"#1a1a2e":"#f0eee8",color:isConfirm?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>
+                  📧 אישור הזמנה {confirmTemplate.trim()?"🟢":"⚪"}
+                </button>
+                <button onClick={()=>setEmailEditorType("reminder")} style={{padding:"7px 14px",borderRadius:10,border:"none",cursor:"pointer",background:isReminder?"#f57f17":"#f0eee8",color:isReminder?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>
+                  ⏰ תזכורת יום לפני {reminderTemplate.trim()?"🟢":"⚪"}
+                </button>
+                <button onClick={()=>setEmailEditorType("review")} style={{padding:"7px 14px",borderRadius:10,border:"none",cursor:"pointer",background:isReview?"#1a1a2e":"#f0eee8",color:isReview?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>
+                  ⭐ בקשת ביקורת {reviewTemplate.trim()?"🟢":"⚪"}
+                </button>
               </div>
               {isConfirm&&<div style={{background:"#f0f4ff",borderRadius:8,padding:"8px 12px",marginBottom:12,fontSize:12,color:"#3a4a8a",fontFamily:"'Heebo',sans-serif"}}>
+                <span style={{color:"#2e7d32",fontWeight:700}}>🟢 נוסח מותאם אישית</span> — App Script ישלח את הטקסט שכתבת &nbsp;|&nbsp; <span style={{color:"#888"}}>⚪ ריק</span> — ישלח מייל מעוצב אוטומטי
+                <br/><br/>
                 משתנים: <b>{"{שם}"}</b> שם לקוח, <b>{"{סוג}"}</b> סוג אירוח, <b>{"{כניסה}"}</b> <b>{"{יציאה}"}</b> תאריכים, <b>{"{לילות}"}</b> לילות, <b>{"{סכום}"}</b> מחיר
               </div>}
               {isReview&&<div style={{background:"#f0f4ff",borderRadius:8,padding:"8px 12px",marginBottom:12,fontSize:12,color:"#3a4a8a",fontFamily:"'Heebo',sans-serif"}}>
