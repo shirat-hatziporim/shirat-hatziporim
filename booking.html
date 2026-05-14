@@ -447,6 +447,16 @@ function getDayType(ds){
   if(dow===5||dow===6) return "weekend";
   return "weekday";
 }
+function isSummer(ds){
+  if(!ds) return false;
+  const d=new Date(ds+"T12:00:00");
+  const y=d.getFullYear();
+  const start=new Date(y+"-07-02");
+  const end=new Date(y+"-08-30");
+  end.setHours(23,59,59);
+  return d>=start&&d<=end;
+}
+function summerMult(ds){ return isSummer(ds)?1.4:1; }
 
 function calcPrice(){
   const ci=document.getElementById("checkin").value;
@@ -493,30 +503,41 @@ function calcPrice(){
   let rows=[], total=0;
 
   if(roomType==="package_thu"){
-    total=PRICES.packageDeal;
-    rows.push({label:"חבילת חמישי+שישי+שבת",val:"₪"+PRICES.packageDeal.toLocaleString()});
+    const mult=summerMult(ci);
+    total=Math.round(PRICES.packageDeal*mult);
+    const label=mult>1?"חבילת חמישי+שישי+שבת (תעריף חופש)":"חבילת חמישי+שישי+שבת";
+    rows.push({label,val:"₪"+total.toLocaleString()});
   } else if(roomType==="package_sun"){
-    total=PRICES.packageDeal+PRICES.sundayExtra;
-    rows.push({label:"חבילת חמישי+שישי+שבת",val:"₪"+PRICES.packageDeal.toLocaleString()});
-    rows.push({label:"תוספת יציאה ראשון",val:"₪"+PRICES.sundayExtra.toLocaleString()});
+    const mult=summerMult(ci);
+    const pkgPrice=Math.round(PRICES.packageDeal*mult);
+    const sundayExtra=Math.round(PRICES.sundayExtra*mult);
+    total=pkgPrice+sundayExtra;
+    const label=mult>1?"חבילת חמישי+שישי+שבת (תעריף חופש)":"חבילת חמישי+שישי+שבת";
+    rows.push({label,val:"₪"+pkgPrice.toLocaleString()});
+    rows.push({label:"תוספת יציאה ראשון"+(mult>1?" (קיץ)":""),val:"₪"+sundayExtra.toLocaleString()});
   } else {
     // חישוב רגיל לפי לילות
     let cur=new Date(ci+"T12:00:00");
     const end=new Date(co+"T12:00:00");
     while(cur<end){
+      const ds=cur.toISOString().split("T")[0];
       const dow=cur.getDay();
-      const price=(dow===5||dow===6)?PRICES.weekend:PRICES.weekday;
+      const basePrice=(dow===5||dow===6)?PRICES.weekend:PRICES.weekday;
+      const price=Math.round(basePrice*summerMult(ds));
       total+=price;
       cur.setDate(cur.getDate()+1);
     }
-    rows.push({label:`${nights} לילות`,val:"₪"+total.toLocaleString()});
+    const summerNote=isSummer(ci)?" (תעריף חופש)":"";
+    rows.push({label:`${nights} לילות${summerNote}`,val:"₪"+total.toLocaleString()});
   }
 
   const extraGuests=Math.max(0,guests-2);
   if(extraGuests>0){
-    const ex=extraGuests*PRICES.extraGuest*nights;
+    const extraGuestPrice=Math.round(PRICES.extraGuest*summerMult(ci));
+    const ex=extraGuests*extraGuestPrice*nights;
     total+=ex;
-    rows.push({label:`${extraGuests} אורחים נוספים × ${nights} לילות`,val:"₪"+ex.toLocaleString()});
+    const summerNote2=isSummer(ci)?" (קיץ)":"";
+    rows.push({label:`${extraGuests} אורחים נוספים × ${nights} לילות${summerNote2}`,val:"₪"+ex.toLocaleString()});
   }
 
   let html=rows.map(r=>`<div class="price-row"><span class="price-label">${r.label}</span><span>${r.val}</span></div>`).join("");
