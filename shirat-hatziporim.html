@@ -2712,9 +2712,10 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
               <h2 style={{margin:0,fontSize:19,fontFamily:"'Heebo',sans-serif",color:"#1a1a2e",fontWeight:800}}>📋 מחירון</h2>
               <button onClick={()=>setShowPriceEditor(false)} style={{border:"none",background:"none",fontSize:22,cursor:"pointer",color:"#aaa"}}>✕</button>
             </div>
-            <div style={{display:"flex",gap:8,marginBottom:16}}>
-              <button onClick={()=>setPriceTab("view")} style={{padding:"7px 16px",borderRadius:10,border:"none",cursor:"pointer",background:priceTab==="view"?"#1a1a2e":"#f0eee8",color:priceTab==="view"?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>צפייה</button>
-              <button onClick={()=>setPriceTab("edit")} style={{padding:"7px 16px",borderRadius:10,border:"none",cursor:"pointer",background:priceTab==="edit"?"#1a1a2e":"#f0eee8",color:priceTab==="edit"?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>עריכה</button>
+            <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
+              <button onClick={()=>setPriceTab("view")} style={{padding:"7px 16px",borderRadius:10,border:"none",cursor:"pointer",background:priceTab==="view"?"#1a1a2e":"#f0eee8",color:priceTab==="view"?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>📋 רגיל</button>
+              <button onClick={()=>setPriceTab("summer")} style={{padding:"7px 16px",borderRadius:10,border:"none",cursor:"pointer",background:priceTab==="summer"?"#e65100":"#fff3e0",color:priceTab==="summer"?"#fff":"#e65100",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>☀️ נופש יולי-אוגוסט</button>
+              <button onClick={()=>setPriceTab("edit")} style={{padding:"7px 16px",borderRadius:10,border:"none",cursor:"pointer",background:priceTab==="edit"?"#1a1a2e":"#f0eee8",color:priceTab==="edit"?"#fff":"#555",fontFamily:"'Heebo',sans-serif",fontWeight:700,fontSize:13}}>✏️ עריכה</button>
             </div>
             {priceTab==="view"&&(
               <div>
@@ -2735,6 +2736,29 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
                   <div style={{fontSize:13,color:"#7a6a58",fontFamily:"'Heebo',sans-serif"}}>⏰ כניסה: 13:00 · יציאה: 11:00</div>
                   <div style={{fontSize:13,color:"#7a6a58",fontFamily:"'Heebo',sans-serif",marginTop:3}}>📞 050-410-3353 יעקב</div>
                   <div style={{fontSize:13,color:"#7a6a58",fontFamily:"'Heebo',sans-serif",marginTop:3}}>📍 נחל קדם 93, מיצד (אספר)</div>
+                </div>
+              </div>
+            )}
+            {priceTab==="summer"&&(
+              <div>
+                <div style={{background:"#fff3e0",borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:13,color:"#e65100",fontFamily:"'Heebo',sans-serif",fontWeight:700}}>
+                  ☀️ מחירי חופשות בין הזמנים — 2 יולי עד 30 אוגוסט (×1.4)
+                </div>
+                {[
+                  {l:"אמצע שבוע",p:fm(Math.round(getActivePrices().weekday*1.4))},
+                  {l:"שישי–שבת / חג",p:fm(Math.round(getActivePrices().weekend*1.4))},
+                  {l:"חבילה חמישי+שישי+שבת",p:fm(Math.round(getActivePrices().packageDeal*1.4))},
+                  {l:"תוספת יציאה ראשון",p:fm(Math.round(getActivePrices().sundayExtra*1.4))},
+                  {l:"אורח נוסף (מעל 2)",p:`${fm(Math.round(getActivePrices().extraGuest*1.4))} / אדם`},
+                  {l:"תינוק",p:"ללא תשלום"},
+                ].map(r=>(
+                  <div key={r.l} style={{display:"flex",justifyContent:"space-between",padding:"10px 0",borderBottom:"1px solid #ffe0b2",fontFamily:"'Heebo',sans-serif"}}>
+                    <span style={{color:"#5a4e40",fontSize:14}}>{r.l}</span>
+                    <span style={{fontWeight:800,color:"#e65100",fontSize:14}}>{r.p}</span>
+                  </div>
+                ))}
+                <div style={{marginTop:12,fontSize:12,color:"#a09080",fontFamily:"'Heebo',sans-serif"}}>
+                  * המחירים מחושבים אוטומטית מהמחירון הרגיל × 1.4
                 </div>
               </div>
             )}
