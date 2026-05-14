@@ -311,7 +311,7 @@ function fd(ds){
 function fm(n){return`₪${Number(n).toLocaleString("he-IL")}`;}
 
 const STATUS={confirmed:"מאושר",pending:"ממתין",cancelled:"מבוטל",completed:"הסתיים"};
-const SC={confirmed:{bg:"#e8f5e9",text:"#2e7d32",dot:"#43a047"},pending:{bg:"#fff8e1",text:"#f57f17",dot:"#ffc107"},cancelled:{bg:"#fce4ec",text:"#c62828",dot:"#e53935"},completed:{bg:"#f0f0f0",text:"#757575",dot:"#9e9e9e"}};
+const SC={confirmed:{bg:"#e8f5e9",text:"#2e7d32",dot:"#43a047"},pending:{bg:"#fff8e1",text:"#f57f17",dot:"#ffc107"},cancelled:{bg:"#fce4ec",text:"#c62828",dot:"#e53935"},completed:{bg:"#d6d6d6",text:"#424242",dot:"#616161"}};
 function getDisplayStatus(b){const today=new Date().toISOString().split("T")[0];if(b.status!=="cancelled"&&b.checkout&&b.checkout<today) return "completed";return b.status;}
 const MONTHS_HE=["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
 const DAYS_HE=["א","ב","ג","ד","ה","ו","ש"];
@@ -1662,9 +1662,9 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
                     {filtered.sort((a,b)=>a.checkin.localeCompare(b.checkin)).map(b=>{
                       const sc=SC[getDisplayStatus(b)]||SC[b.status],bal=Math.max(0,(b.total||0)-((b.paid||0)+(b.deposit||0)));
                       return(
-                        <tr key={b.id} style={{borderBottom:"1px solid #f4f0ea",transition:"background .1s",cursor:"pointer",background:b.checkin===new Date().toISOString().split("T")[0]?"#e3f2fd":getDisplayStatus(b)==="completed"?"#f5f5f5":"transparent",opacity:getDisplayStatus(b)==="completed"?0.7:1}}
-                          onMouseEnter={e=>e.currentTarget.style.background=b.checkin===new Date().toISOString().split("T")[0]?"#bbdefb":getDisplayStatus(b)==="completed"?"#eeeeee":"#fdfaf6"}
-                          onMouseLeave={e=>e.currentTarget.style.background=b.checkin===new Date().toISOString().split("T")[0]?"#e3f2fd":getDisplayStatus(b)==="completed"?"#f5f5f5":"transparent"}
+                        <tr key={b.id} style={{borderBottom:"1px solid #f4f0ea",transition:"background .1s",cursor:"pointer",background:b.checkin===new Date().toISOString().split("T")[0]?"#e3f2fd":getDisplayStatus(b)==="completed"?"#dcdcdc":"transparent",opacity:getDisplayStatus(b)==="completed"?0.85:1}}
+                          onMouseEnter={e=>e.currentTarget.style.background=b.checkin===new Date().toISOString().split("T")[0]?"#bbdefb":getDisplayStatus(b)==="completed"?"#c8c8c8":"#fdfaf6"}
+                          onMouseLeave={e=>e.currentTarget.style.background=b.checkin===new Date().toISOString().split("T")[0]?"#e3f2fd":getDisplayStatus(b)==="completed"?"#dcdcdc":"transparent"}
                           onClick={()=>{if(window.innerWidth<700)setMobileActionMenu(b); else openEdit(b);}}>
                           <td style={{padding:"8px 12px"}}>
                             <div style={{fontWeight:700,color:"#1a1a2e",display:"flex",alignItems:"center",gap:5,flexWrap:"nowrap"}}>
