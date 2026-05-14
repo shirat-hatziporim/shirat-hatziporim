@@ -1499,10 +1499,23 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
   }
   function openEdit(b){setEditB(b);setShowForm(true);}
   function deleteB(id){
-    const b=bookings.find(x=>x.id===id);
-    if(b) addToTrash(b,"booking");
-    const updated=bookings.filter(b=>b.id!==id);
-    setBookings(updated);syncSave(updated);setDelC(null);
+    const matches=bookings.filter(x=>x.id===id);
+    if(matches.length>1){
+      // כפילות ID - מחק רק פריט אחד
+      const b=matches[0];
+      if(b) addToTrash(b,"booking");
+      let deleted=false;
+      const updated=bookings.filter(x=>{
+        if(x.id===id&&!deleted){deleted=true;return false;}
+        return true;
+      });
+      setBookings(updated);syncSave(updated);setDelC(null);
+    } else {
+      const b=matches[0];
+      if(b) addToTrash(b,"booking");
+      const updated=bookings.filter(b=>b.id!==id);
+      setBookings(updated);syncSave(updated);setDelC(null);
+    }
   }
 
   const confirmed=bookings.filter(b=>b.status==="confirmed");
