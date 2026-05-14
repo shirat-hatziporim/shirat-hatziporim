@@ -1029,6 +1029,7 @@ function App(){
   const [auth,setAuth]=useState(true);
   const [bookings,setBookings]=useState([]);
   const [loading,setLoading]=useState(true);
+  const [sheetsLoaded,setSheetsLoaded]=useState(false);
   const [syncing,setSyncing]=useState(false);
   const [lastSync,setLastSync]=useState(null);
   const [view,setView]=useState("list");
@@ -1224,6 +1225,7 @@ function App(){
       try{localStorage.setItem("shirat_blocked",JSON.stringify(blocked));}catch(e){}
       try{localStorage.setItem("shirat_expenses",JSON.stringify(expenses));}catch(e){}
       try{localStorage.setItem("shirat_manual_guests",JSON.stringify(mGuests));}catch(e){}
+      setSheetsLoaded(true);
       setLoading(false);
       setLastSync(new Date());
       // בדוק אם יש פרמטר booking ב-URL
@@ -1250,8 +1252,9 @@ function App(){
 
   // שמירה לגוגל שיטס בכל שינוי
   async function syncSave(newBookings){
-    setSyncing(true);
     try{localStorage.setItem("shirat_bookings",JSON.stringify(newBookings));}catch(e){}
+    if(!sheetsLoaded) return; // חסום שמירה עד שהנתונים נטענו מ-Sheets
+    setSyncing(true);
     await saveToSheets(newBookings);
     setSyncing(false);
     setLastSync(new Date());
@@ -1478,6 +1481,7 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
   });
 
   function save(b){
+    if(!sheetsLoaded){alert("המערכת עדיין טוענת נתונים, אנא המתן...");return;}
     let updated;
     const isNew=!(b.id&&bookings.find(x=>x.id===b.id));
     const prevStatus=!isNew?bookings.find(x=>x.id===b.id)?.status:null;
@@ -1569,7 +1573,7 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
             style={{border:"none",background:"none",color:"#fff",fontSize:24,cursor:"pointer",display:"none",padding:"4px 8px"}}>
             ☰
           </button>
-          <button onClick={()=>{setEditB(null);setShowForm(true);}} style={{background:"#f4c26a",color:"#1a1a2e",border:"none",borderRadius:10,padding:"7px 12px",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"'Heebo',sans-serif",whiteSpace:"nowrap"}}>+ הזמנה</button>
+          <button onClick={()=>{if(!sheetsLoaded){alert("המערכת עדיין טוענת נתונים, אנא המתן...");return;}setEditB(null);setShowForm(true);}} style={{background:sheetsLoaded?"#f4c26a":"#ccc",color:"#1a1a2e",border:"none",borderRadius:10,padding:"7px 12px",fontWeight:800,fontSize:14,cursor:sheetsLoaded?"pointer":"not-allowed",fontFamily:"'Heebo',sans-serif",whiteSpace:"nowrap"}}>{sheetsLoaded?"+ הזמנה":"טוען..."}</button>
         </div>
       </div>
 
