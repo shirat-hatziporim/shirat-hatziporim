@@ -843,8 +843,8 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[],blockedDates=[
           </Sec>
           <Sec title="תאריכים">
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              <div><Lbl>כניסה (13:00){err.checkin&&<span style={{color:"#e53935"}}> — {err.checkin}</span>}</Lbl><input style={iS(err.checkin)} type="date" value={f.checkin} onChange={e=>set("checkin",e.target.value)}/></div>
-              <div><Lbl>יציאה (11:00){err.checkout&&<span style={{color:"#e53935"}}> — {err.checkout}</span>}</Lbl><input style={iS(err.checkout)} type="date" value={f.checkout} onChange={e=>set("checkout",e.target.value)}/></div>
+              <div><Lbl>כניסה (13:00){err.checkin&&<span style={{color:"#e53935"}}> — {err.checkin}</span>}</Lbl><input style={iS(err.checkin)} type="date" value={f.checkin} onChange={e=>{set("checkin",e.target.value);if(f.checkout&&f.checkout<=e.target.value){set("checkout","");}}}/></div>
+              <div><Lbl>יציאה (11:00){err.checkout&&<span style={{color:"#e53935"}}> — {err.checkout}</span>}</Lbl><input style={iS(err.checkout)} type="date" min={f.checkin?(() => { const d=new Date(f.checkin); d.setDate(d.getDate()+1); return d.toISOString().split("T")[0]; })():""} value={f.checkout} onChange={e=>set("checkout",e.target.value)}/></div>
             </div>
           </Sec>
           {nights>0&&(
@@ -860,7 +860,7 @@ function BookingForm({booking,onSave,onCancel,existingBookings=[],blockedDates=[
                   </span>
                 ))}
               </div>
-              {packageDeal&&<div style={{fontSize:12,color:"#2e7d32",marginBottom:4,fontWeight:700}}>✅ חבילת חמישי+שישי+שבת: ₪1,700</div>}
+              {packageDeal&&<div style={{fontSize:12,color:"#2e7d32",marginBottom:4,fontWeight:700}}>✅ חבילת חמישי+שישי+שבת: ₪{Math.round(getActivePrices().packageDeal*(isSummer(f.checkin)?1.4:1)).toLocaleString()}{isSummer(f.checkin)?" (תעריף חופש)":""}</div>}
               {sundayExtra>0&&<div style={{fontSize:12,color:"#7a6040",marginBottom:4}}>תוספת יציאה ראשון: {fm(sundayExtra)}</div>}
               {guestExtra>0&&<div style={{fontSize:12,color:"#7a6040",marginBottom:4}}>תוספת {f.extraGuests} אורחים נוספים: {fm(guestExtra)}</div>}
               {discount>0&&<div style={{fontSize:12,color:"#c62828",marginBottom:4}}>הנחה: -{fm(discount)}</div>}
