@@ -198,9 +198,21 @@ function getActivePrices(){
 function getDailyPrice(ds){
   const p=getActivePrices();
   const w=isWeekend(ds)||isHoliday(ds);
-  return w?p.weekend:p.weekday;
+  const base=w?p.weekend:p.weekday;
+  return Math.round(base*getSummerMultiplier(ds));
 }
 function getDayType(ds){if(isHoliday(ds))return"חג";if(isWeekend(ds))return'סופ"ש';return"חול";}
+function isSummer(ds){
+  // תוספת קיץ 40%: 2 יולי עד 30 אוגוסט
+  if(!ds) return false;
+  const d=new Date(ds);
+  const y=d.getFullYear();
+  const start=new Date(y+"-07-02");
+  const end=new Date(y+"-08-30");
+  end.setHours(23,59,59);
+  return d>=start&&d<=end;
+}
+function getSummerMultiplier(ds){return isSummer(ds)?1.4:1;}
 function calcNights(a,b){
   a=parseDate(a);b=parseDate(b);
   return Math.max(0,Math.round((new Date(b)-new Date(a))/86400000));
@@ -227,7 +239,8 @@ function calcTotal(checkin,checkout,extra=0){
   const cout=new Date(checkout);
   const coutDay=cout.getDay(); // 0=ראשון
   const activePrices=getActivePrices();
-  const sundayExtra=coutDay===0?activePrices.sundayExtra:0; // תוספת יציאה ראשון
+  const _sundayBase=coutDay===0?activePrices.sundayExtra:0;
+  const sundayExtra=_sundayBase>0?Math.round(_sundayBase*getSummerMultiplier(checkout)):0; // תוספת יציאה ראשון
 
   // בדוק חבילת חמישי+שישי+שבת
   const pkg=hasPackageDeal(checkin,checkout);
@@ -262,7 +275,10 @@ function calcTotal(checkin,checkout,extra=0){
       bd.unshift({date:ds,price:Math.round(1700/3),type:"חבילה"});
       cur2.setDate(cur2.getDate()+1);
     }
-    base+=activePrices.packageDeal;
+    // בדוק אם תקופת הקיץ
+    const pkgStart=new Date(checkin);
+    const summerMult=isSummer(pkgStart.toISOString().split("T")[0])?1.4:1;
+    base+=Math.round(activePrices.packageDeal*summerMult);
   } else {
     const cur=new Date(checkin);
     for(let i=0;i<nights;i++){
@@ -274,7 +290,9 @@ function calcTotal(checkin,checkout,extra=0){
     }
   }
 
-  const guestExtra=Math.max(0,extra)*(activePrices.extraGuest||300);
+  const _extraBase=activePrices.extraGuest||300;
+  const _extraMult=getSummerMultiplier(checkin);
+  const guestExtra=Math.max(0,extra)*Math.round(_extraBase*_extraMult);
   const total=base+guestExtra+sundayExtra;
   return{total,nights,breakdown:bd,guestExtra,packageDeal:pkg,sundayExtra};
 }
@@ -298,7 +316,7 @@ const SC={confirmed:{bg:"#e8f5e9",text:"#2e7d32",dot:"#43a047"},pending:{bg:"#ff
 function getDisplayStatus(b){const today=new Date().toISOString().split("T")[0];if(b.status!=="cancelled"&&b.checkout&&b.checkout<today) return "completed";return b.status;}
 const MONTHS_HE=["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
 const DAYS_HE=["א","ב","ג","ד","ה","ו","ש"];
-let nid=Date.now(); // ID ייחודי מבוסס זמן
+let nid=10;
 
 const SCRIPT_URL="https://script.google.com/macros/s/AKfycbwveXxNMnCffwHiVtA-haiHWm9OC4qA8KO6IJzOdOWFyuFD0qWwI7ubE5GJ3hbV8GOG/exec";
 
