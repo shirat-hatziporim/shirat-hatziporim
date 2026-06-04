@@ -1036,7 +1036,7 @@ function App(){
   const [showForm,setShowForm]=useState(false);
   const [editB,setEditB]=useState(null);
   const [search,setSearch]=useState("");
-  const [fStatus,setFStatus]=useState("all");
+  const [fStatus,setFStatus]=useState("confirmed");
   const [delC,setDelC]=useState(null);
   const [blockedDates,setBlockedDates]=useState(()=>{try{const s=localStorage.getItem("shirat_blocked");return s?JSON.parse(s):[];}catch{return[];}});
   const [showBlockedManager,setShowBlockedManager]=useState(false);
@@ -1569,6 +1569,10 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
           </div>
           </div>
           {/* המבורגר - נייד בלבד */}
+          <button className="hamburger-btn" onClick={()=>setShowInquiry(true)}
+            style={{border:"none",background:"#252545",color:"#a5d6a7",borderRadius:8,padding:"6px 10px",fontWeight:700,fontSize:13,cursor:"pointer",display:"none",border:"1px solid #3a3a6e"}}>
+            📨
+          </button>
           <button className="hamburger-btn" onClick={()=>setHamburgerOpen(true)}
             style={{border:"none",background:"none",color:"#fff",fontSize:24,cursor:"pointer",display:"none",padding:"4px 8px"}}>
             ☰
@@ -3033,7 +3037,6 @@ https://charedi.net/tzimar/25569/
               {icon:"📋",label:"מחירון",action:()=>{setPriceTab("view");setShowPriceEditor(true);}},
               {icon:"🔒",label:"חסימת תאריכים",action:()=>setShowBlockedManager(true)},
               {icon:"💸",label:"מעקב הוצאות",action:()=>setShowExpenses(true)},
-              {icon:"📨",label:"פנייה למתעניינים",action:()=>setShowInquiry(true)},
               {icon:"📝",label:"עריכת תבניות",action:()=>{setEmailEditorType("confirm");setShowEmailEditor(true);}},
               {icon:"🗑️",label:`סל מחזור (${trash.length})`,action:()=>setShowTrash(true)},
             ].map(({icon,label,action})=>(
