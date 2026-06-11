@@ -296,7 +296,7 @@ function calcTotal(checkin,checkout,extra=0){
 
   const _extraBase=activePrices.extraGuest||300;
   const _extraMult=getSummerMultiplier(checkin);
-  const guestExtra=Math.max(0,extra)*Math.round(_extraBase*_extraMult);
+  const guestExtra=Math.max(0,extra)*Math.round(_extraBase*_extraMult)*nights;
   const total=base+guestExtra+sundayExtra;
   return{total,nights,breakdown:bd,guestExtra,packageDeal:pkg,sundayExtra};
 }
