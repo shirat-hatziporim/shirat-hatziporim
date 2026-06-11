@@ -1041,7 +1041,7 @@ function App(){
   const [showForm,setShowForm]=useState(false);
   const [editB,setEditB]=useState(null);
   const [search,setSearch]=useState("");
-  const [fStatus,setFStatus]=useState("confirmed");
+  const [fStatus,setFStatus]=useState("active");
   const [delC,setDelC]=useState(null);
   const [blockedDates,setBlockedDates]=useState(()=>{try{const s=localStorage.getItem("shirat_blocked");return s?JSON.parse(s):[];}catch{return[];}});
   const [showBlockedManager,setShowBlockedManager]=useState(false);
@@ -1482,7 +1482,7 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
   }
 
   const filtered=bookings.filter(b=>{
-    return((b.name||"").includes(search)||(b.phone||"").includes(search))&&(fStatus==="all"||getDisplayStatus(b)===fStatus);
+    return((b.name||"").includes(search)||(b.phone||"").includes(search))&&(fStatus==="all"||fStatus==="active"?(getDisplayStatus(b)==="confirmed"||getDisplayStatus(b)==="pending"):getDisplayStatus(b)===fStatus);
   });
 
   function save(b){
@@ -1653,7 +1653,7 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
                 style={{padding:"7px 12px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:14,fontFamily:"'Heebo',sans-serif",width:190,background:"#fff",direction:"rtl"}}/>
               <select value={fStatus} onChange={e=>setFStatus(e.target.value)}
                 style={{padding:"7px 12px",borderRadius:10,border:"1.5px solid #e0d8cc",fontSize:14,fontFamily:"'Heebo',sans-serif",background:"#fff"}}>
-                <option value="all">כל הסטטוסים</option><option value="confirmed">מאושר</option><option value="pending">ממתין</option><option value="cancelled">מבוטל</option><option value="completed">הסתיים</option>
+                <option value="active">מאושר + ממתין</option><option value="all">כל הסטטוסים</option><option value="confirmed">מאושר</option><option value="pending">ממתין</option><option value="cancelled">מבוטל</option><option value="completed">הסתיים</option>
               </select>
             </div>
             <div style={{background:"#fff",borderRadius:20,overflow:"hidden",boxShadow:"0 4px 24px rgba(0,0,0,.07)"}}>
