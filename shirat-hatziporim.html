@@ -1482,7 +1482,7 @@ ${isDraft?`<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,
   }
 
   const filtered=bookings.filter(b=>{
-    return((b.name||"").includes(search)||(b.phone||"").includes(search))&&(fStatus==="all"||fStatus==="active"?(getDisplayStatus(b)==="confirmed"||getDisplayStatus(b)==="pending"):getDisplayStatus(b)===fStatus);
+    const ds=getDisplayStatus(b);return((b.name||"").includes(search)||(b.phone||"").includes(search))&&(fStatus==="all"||(fStatus==="active"?(ds==="confirmed"||ds==="pending"):ds===fStatus));
   });
 
   function save(b){
