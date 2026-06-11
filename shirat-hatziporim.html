@@ -1222,7 +1222,13 @@ function App(){
   // טעינה ראשונית — תמיד מגוגל שיטס (המקור האמיתי)
   useEffect(()=>{
     Promise.all([loadFromSheets(),loadBlocked(),loadExpenses(),loadManualGuests(),loadTemplates()]).then(([data,blocked,expenses,mGuests])=>{
-      setBookings(data);
+      const normalized=data.map(b=>{
+        if(b.source==="online"&&Number(b.guests)>2&&Number(b.extraGuests||0)===Number(b.guests)-2){
+          return{...b,guests:2,extraGuests:Number(b.guests)-2};
+        }
+        return b;
+      });
+      setBookings(normalized);
       setBlockedDates(blocked);
       setExpenses(expenses);
       if(mGuests.length>0) setManualGuests(mGuests);
