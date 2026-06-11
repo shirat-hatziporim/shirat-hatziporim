@@ -1258,7 +1258,7 @@ function App(){
   // שמירה לגוגל שיטס בכל שינוי
   async function syncSave(newBookings){
     try{localStorage.setItem("shirat_bookings",JSON.stringify(newBookings));}catch(e){}
-    if(!sheetsLoaded) return; // חסום שמירה עד שהנתונים נטענו מ-Sheets
+    if(!sheetsLoaded){ console.warn('Sheets not loaded yet, saving anyway'); }
     setSyncing(true);
     await saveToSheets(newBookings);
     setSyncing(false);
