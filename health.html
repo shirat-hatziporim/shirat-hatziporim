@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>בדיקת תקינות — שירת הציפורים</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+body{font-family:'Heebo',Arial,sans-serif;background:#0D1117;color:#F0EDE8;padding:16px;max-width:760px;margin:0 auto;font-size:14px}
+h1{font-size:20px;color:#C9A84C}
+.sub{color:#8fa3bd;font-size:13px;margin:-6px 0 10px}
+#summary{border-radius:12px;padding:14px 18px;margin:14px 0;font-size:16px;font-weight:700}
+#summary.allok{background:rgba(80,200,120,0.15);border:1px solid #4c8}
+#summary.haserr{background:rgba(220,80,80,0.15);border:1px solid #c55}
+#summary.running{background:rgba(201,168,76,0.12);border:1px solid #C9A84C}
+.group{border:1px solid #2a3a50;border-radius:12px;margin:14px 0;overflow:hidden}
+.group>h2{font-size:15px;background:#112240;margin:0;padding:10px 14px;color:#C9A84C}
+.row{display:flex;align-items:center;gap:10px;padding:8px 14px;border-top:1px solid #1c2a3e;flex-wrap:wrap}
+.st{width:22px;flex-shrink:0;text-align:center}
+.ok{color:#5fd38a}.bad{color:#ff7b7b}.warn{color:#ffc94d}.info{color:#8fa3bd}
+.lbl{flex:1;min-width:160px}
+.det{color:#8fa3bd;font-size:12px;direction:ltr;text-align:left;word-break:break-all}
+.note{padding:8px 14px;border-top:1px solid #1c2a3e;color:#8fa3bd;font-size:12px;line-height:1.6}
+.framewrap{padding:10px 14px;border-top:1px solid #1c2a3e}
+iframe{width:100%;max-width:380px;height:280px;border:1px solid #2a3a50;border-radius:8px;background:#fff}
+button{background:#C9A84C;color:#0A1628;border:none;border-radius:8px;padding:10px 22px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+button:disabled{opacity:.5;cursor:default}
+#actions{display:flex;gap:10px;margin:16px 0;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<h1>🩺 בדיקת תקינות — שירת הציפורים</h1>
+<div class="sub">מערכת ניהול ההזמנות · בדיקות קריאה בלבד (לא כותב/מוחק נתונים אמיתיים)</div>
+<div id="summary" class="running">מריץ בדיקות…</div>
+<div id="groups"></div>
+<div id="actions">
+  <button onclick="location.reload()">↻ הרץ שוב</button>
+  <button onclick="copyReport()">📋 העתק דוח</button>
+</div>
+<script>
+const APP   = "shirat-hatziporim.html";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby9elcqlGzqijWnXWUYFo3QeW-wWwIt9pj4XmQSsN8RkgkRCwI7eRlRv9AvMLxVC1rTZg/exec";
+
+const report = [];
+let failCount = 0, warnCount = 0, testCount = 0;
+const $groups = document.getElementById("groups");
+
+function group(title){
+  const g = document.createElement("div");
+  g.className = "group";
+  g.innerHTML = "<h2>" + title + "</h2>";
+  $groups.appendChild(g);
+  return g;
+}
+function row(g, status, label, detail){
+  testCount++;
+  const icon = status==="ok" ? "✓" : status==="warn" ? "⚠" : status==="info" ? "•" : "✗";
+  if (status==="bad")  failCount++;
+  if (status==="warn") warnCount++;
+  const d = document.createElement("div");
+  d.className = "row";
+  d.innerHTML = "<span class='st "+status+"'>"+icon+"</span><span class='lbl'>"+label+"</span><span class='det'>"+(detail||"")+"</span>";
+  g.appendChild(d);
+  report.push(icon + " " + label + (detail ? " | " + detail : ""));
+}
+function chk(g, label, ok, detail){ row(g, ok ? "ok" : "bad", label, detail); }
+function note(g, text){ const d=document.createElement("div"); d.className="note"; d.textContent="ℹ️ "+text; g.appendChild(d); }
+
+async function req(path){
+  const t0 = performance.now();
+  const r = await fetch(path, { cache: "no-store" });
+  const text = await r.text();
+  return { code: r.status, headers: r.headers, text, ms: Math.round(performance.now()-t0) };
+}
+function loadImg(url, timeoutMs){
+  return new Promise(res=>{
+    const im = new Image();
+    const to = setTimeout(()=>res({ok:false,why:"timeout"}), timeoutMs||12000);
+    const t0 = performance.now();
+    im.onload  = ()=>{ clearTimeout(to); res({ok:true, ms:Math.round(performance.now()-t0), im}); };
+    im.onerror = ()=>{ clearTimeout(to); res({ok:false, why:"שגיאת טעינה"}); };
+    im.src = url;
+  });
+}
+// JSONP — מדבר עם Apps Script בדיוק כמו האפליקציה
+function jsonp(url, timeoutMs){
+  return new Promise((resolve,reject)=>{
+    const cb = "hcb_" + Math.random().toString(36).slice(2);
+    let done = false;
+    const s = document.createElement("script");
+    const t0 = performance.now();
+    function cleanup(){ delete window[cb]; try{ document.head.removeChild(s); }catch(e){} }
+    window[cb] = function(data){ if(done) return; done=true; resolve({data, ms:Math.round(performance.now()-t0)}); cleanup(); };
+    s.onerror = ()=>{ if(done) return; done=true; reject(new Error("jsonp error")); cleanup(); };
+    setTimeout(()=>{ if(!done){ done=true; reject(new Error("timeout")); cleanup(); } }, timeoutMs||12000);
+    s.src = url + (url.includes("?") ? "&" : "?") + "callback=" + cb + "&t=" + Date.now() + "&authuser=0";
+    document.head.appendChild(s);
+  });
+}
+function loadScript(url, timeoutMs){
+  return new Promise(res=>{
+    const s = document.createElement("script");
+    const to = setTimeout(()=>res({ok:false}), timeoutMs||10000);
+    s.onload  = ()=>{ clearTimeout(to); res({ok:true}); };
+    s.onerror = ()=>{ clearTimeout(to); res({ok:false}); };
+    s.src = url;
+    document.head.appendChild(s);
+  });
+}
+
+// ════════ 1. שלמות הדף — קוד צד לקוח ════════
+async function checkPage(g){
+  let src = "";
+  try {
+    const r = await req(APP);
+    src = r.text;
+    chk(g, "הדף נטען", r.code===200, "HTTP "+r.code+" | "+r.ms+"ms | "+Math.round(src.length/1024)+"KB");
+  } catch(e){ chk(g, "הדף נטען", false, e.message); return ""; }
+
+  chk(g, "React (UMD) נטען", src.indexOf("react.production.min.js")!==-1);
+  chk(g, "ReactDOM (UMD) נטען", src.indexOf("react-dom.production.min.js")!==-1);
+  chk(g, "אלמנט #root קיים", /id=["']root["']/.test(src));
+  chk(g, "RTL ועברית (lang=he, dir=rtl)", /lang=["']he["']/.test(src) && /dir=["']rtl["']/.test(src));
+
+  // ── שמירה מפני באג ה-Babel (מסך לבן) ──
+  chk(g, "אין Babel בדפדפן (לא נטען @babel/standalone)",
+      src.indexOf("babel.min.js")===-1 && src.indexOf("@babel/standalone")===-1,
+      "JSX מקומפל מראש — התקלה שהייתה לא יכולה לחזור");
+  chk(g, 'אין <script type="text/babel"> (קוד מקומפל)', src.indexOf('type="text/babel"')===-1);
+  chk(g, 'אין import שבור מ-"react/jsx-runtime"', src.indexOf('from "react/jsx-runtime"')===-1 && src.indexOf("from 'react/jsx-runtime'")===-1);
+  chk(g, "shim ל-JSX מוגדר (_jsx / React.Fragment)",
+      /const\s+_jsx\s*=/.test(src) && src.indexOf("React.Fragment")!==-1);
+  chk(g, "fallback של שגיאת טעינה קיים (try/catch על render)",
+      /getElementById\(["']root["']\)\.innerHTML/.test(src) && src.indexOf("createRoot")!==-1);
+
+  // ── אבטחה — אסור שטוקנים סודיים יחשפו בקוד הלקוח ──
+  chk(g, "אין GitHub PAT בקוד", !/ghp_[A-Za-z0-9]{20,}/.test(src));
+  chk(g, "אין טוקן Airtable בקוד", !/pat[A-Za-z0-9]{14}\.[a-f0-9]{40,}/.test(src) && src.indexOf("AIRTABLE_TOKEN")===-1);
+  chk(g, "כתובת ה-Apps Script מוגדרת", src.indexOf("script.google.com/macros/")!==-1);
+  return src;
+}
+
+// ════════ 2. שרת הנתונים — Apps Script (JSONP) ════════
+async function checkBackend(g){
+  let bookings = null;
+  const reads = [
+    ["get",            "הזמנות (get)",            true ],
+    ["getBlocked",     "תאריכים חסומים (getBlocked)", false],
+    ["getExpenses",    "הוצאות (getExpenses)",    false],
+    ["getManualGuests","אורחים ידניים (getManualGuests)", false],
+    ["getTemplates",   "תבניות (getTemplates)",   false],
+    ["getLeads",       "לידים (getLeads)",        false],
+    ["getTrash",       "סל מיחזור (getTrash)",    false],
+  ];
+  for (const [action, label, isMain] of reads){
+    try {
+      const { data, ms } = await jsonp(SCRIPT_URL + "?action=" + action, 12000);
+      const arr = Array.isArray(data);
+      const cnt = arr ? data.length : (data && typeof data==="object" ? Object.keys(data).length : 0);
+      chk(g, label + " — מגיע מהשרת", data!=null, (arr?cnt+" רשומות":"אובייקט") + " | " + ms + "ms");
+      if (ms > 8000) row(g, "warn", label + " — תגובה איטית", ms + "ms");
+      if (isMain) bookings = arr ? data : null;
+    } catch(e){
+      chk(g, label + " — מגיע מהשרת", false, e.message + " (ייתכן שה-deployment של Apps Script נפל)");
+    }
+  }
+  // מבנה הזמנה
+  if (Array.isArray(bookings)){
+    if (bookings.length === 0){
+      row(g, "info", "מבנה הזמנה", "אין הזמנות כרגע — דילוג על בדיקת שדות");
+    } else {
+      const b = bookings[0];
+      const has = f => b && Object.prototype.hasOwnProperty.call(b, f);
+      chk(g, "להזמנה יש מזהה (id)", has("id"), has("id") ? "id="+b.id : "");
+      chk(g, "להזמנה יש תאריכי כניסה/יציאה", has("checkin") && has("checkout"), has("checkin") ? (b.checkin+" → "+b.checkout) : "");
+      chk(g, "להזמנה יש סטטוס", has("status"), has("status") ? "status="+b.status : "");
+    }
+  }
+  return bookings;
+}
+
+// ════════ 3. לוגיקה עסקית ומחירון ════════
+function checkBusiness(g, src){
+  if (!src){ chk(g, "קוד זמין לבדיקה", false); return; }
+  chk(g, "מחירון מוגדר (DEFAULT_PRICES)", src.indexOf("DEFAULT_PRICES")!==-1);
+  const price = (key, val) => {
+    const re = new RegExp(key + "\\s*:\\s*" + val + "\\b");
+    chk(g, "מחיר " + key + " = ₪" + val, re.test(src));
+  };
+  price("weekday", 800);
+  price("weekend", 1200);
+  price("packageDeal", 1700);
+  price("sundayExtra", 350);
+  price("extraGuest", 300);
+  chk(g, "חישוב מספר לילות (הפרש תאריכים)", src.indexOf("86400000")!==-1);
+  chk(g, "סטטוסים: מאושר/ממתין/בוטל", src.indexOf('"confirmed"')!==-1 && src.indexOf('"pending"')!==-1 && src.indexOf('"cancelled"')!==-1);
+}
+
+// ════════ 4. זמן ריצה — האפליקציה באמת עולה (לא מסך לבן) ════════
+function checkRuntime(g){
+  return new Promise(resolve=>{
+    const wrap = document.createElement("div");
+    wrap.className = "framewrap";
+    const iframe = document.createElement("iframe");
+    iframe.title = "תצוגת בדיקה חיה";
+    let settled = false;
+    function evaluate(){
+      if (settled) return; settled = true;
+      try {
+        const doc  = iframe.contentDocument;
+        const win  = iframe.contentWindow;
+        const root = doc && doc.getElementById("root");
+        const mounted = !!root && root.children.length > 0;
+        chk(g, "האפליקציה עולה (#root מכיל תוכן — לא מסך לבן)", mounted,
+            mounted ? (root.children.length + " אלמנטים מרונדרים") : "#root ריק — מסך לבן!");
+        const failedFallback = !!root && /שגיאה בטעינת המערכת|שגיאה בטעינה/.test(root.innerHTML || "");
+        chk(g, "מסך שגיאת הטעינה לא הופעל (try/catch לא נתפס)", !failedFallback);
+        chk(g, "כותרת הדף תקינה", !!doc && /שירת הציפורים/.test(doc.title || ""), doc ? doc.title : "");
+        chk(g, "RTL פעיל בתצוגה", !!doc && doc.documentElement.getAttribute("dir")==="rtl");
+        const errs = (win && win.__healthErrors) || [];
+        chk(g, "אין שגיאות JS בקונסול בזמן טעינה", errs.length===0, errs.slice(0,2).join(" | "));
+      } catch(e){
+        chk(g, "גישה לתצוגה החיה", false, e.message);
+      }
+      resolve();
+    }
+    iframe.onload = ()=>{
+      // לכידת שגיאות ריצה אחרי טעינת ה-iframe
+      try {
+        const win = iframe.contentWindow;
+        win.__healthErrors = win.__healthErrors || [];
+        win.addEventListener("error", ev => win.__healthErrors.push(ev.message || "error"));
+        win.addEventListener("unhandledrejection", ev => win.__healthErrors.push("promise: " + (ev.reason && ev.reason.message || ev.reason)));
+      } catch(e){}
+      // מחכים ל-React + קריאת ה-JSONP הראשונית לפני שמודדים
+      setTimeout(evaluate, 4500);
+    };
+    iframe.onerror = ()=>{ chk(g, "טעינת התצוגה החיה", false, "iframe error"); resolve(); };
+    setTimeout(()=>{ if(!settled){ chk(g, "התצוגה החיה הסתיימה בזמן", false, "timeout"); settled=true; resolve(); } }, 14000);
+    iframe.src = APP + "?healthcheck=1";
+    wrap.appendChild(iframe);
+    g.appendChild(wrap);
+  });
+}
+
+// ════════ 5. קבצים נלווים ════════
+async function checkAssets(g){
+  try {
+    const r = await req("booking.html");
+    chk(g, "טופס ההזמנה הציבורי (booking.html) נטען", r.code===200, "HTTP "+r.code);
+  } catch(e){ chk(g, "booking.html נטען", false, e.message); }
+  const lg = await loadImg("logo.jpeg", 10000);
+  chk(g, "הלוגו (logo.jpeg) נטען", lg.ok, lg.ok ? lg.ms+"ms" : (lg.why||""));
+}
+
+// ════════ 6. ספקים חיצוניים ════════
+async function checkExternal(g){
+  const react = await loadScript("https://unpkg.com/react@18/umd/react.production.min.js", 10000);
+  chk(g, "unpkg — React זמין", react.ok);
+  const dom = await loadScript("https://unpkg.com/react-dom@18/umd/react-dom.production.min.js", 10000);
+  chk(g, "unpkg — ReactDOM זמין", dom.ok);
+  try {
+    const { ms } = await jsonp(SCRIPT_URL + "?action=get", 12000);
+    chk(g, "Google Apps Script מגיב", true, ms + "ms");
+  } catch(e){ chk(g, "Google Apps Script מגיב", false, e.message); }
+}
+
+function finishSummary(){
+  const s = document.getElementById("summary");
+  if (failCount===0 && warnCount===0){ s.className="allok";  s.textContent = "✓ הכל תקין — " + testCount + " בדיקות עברו"; }
+  else if (failCount===0){            s.className="allok";  s.textContent = "✓ תקין — " + testCount + " בדיקות, " + warnCount + " אזהרות (⚠)"; }
+  else {                              s.className="haserr"; s.textContent = "✗ נמצאו " + failCount + " בעיות מתוך " + testCount + " בדיקות"; }
+}
+function copyReport(){
+  const head = "דוח תקינות שירת הציפורים — " + new Date().toLocaleString("he-IL") + " — " + document.getElementById("summary").textContent;
+  navigator.clipboard.writeText([head].concat(report).join("\n")).then(()=>alert("הדוח הועתק — אפשר להדביק בצ'אט"));
+}
+
+(async ()=>{
+  const src = await checkPage(group("🩺 שלמות הדף — קוד צד לקוח"));
+  await checkBackend(group("🗄️ שרת הנתונים — Google Apps Script"));
+  checkBusiness(group("🧮 לוגיקה עסקית ומחירון"), src);
+  await checkRuntime(group("🐞 זמן ריצה — תצוגה חיה (תופס מסך לבן)"));
+  await checkAssets(group("🔗 קבצים נלווים"));
+  await checkExternal(group("🌐 ספקים חיצוניים"));
+  finishSummary();
+})();
+</script>
+</body>
+</html>
