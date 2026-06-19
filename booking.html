@@ -471,7 +471,7 @@ function isSummer(ds){
   end.setHours(23,59,59);
   return d>=start&&d<=end;
 }
-function summerMult(ds){ return isSummer(ds)?1.4:1; }
+function summerMult(ds){ return isSummer(ds)?1.2:1; }
 
 function calcPrice(){
   const ci=document.getElementById("checkin").value;
