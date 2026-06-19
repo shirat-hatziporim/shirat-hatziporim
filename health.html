@@ -194,6 +194,11 @@ function checkBusiness(g, src){
   price("sundayExtra", 350);
   price("extraGuest", 300);
   chk(g, "חישוב מספר לילות (הפרש תאריכים)", src.indexOf("86400000")!==-1);
+  chk(g, "תוספת תקופת החופש = 20% (×1.2, לא 40%)",
+      src.indexOf("getSummerMultiplier")!==-1 && /isSummer\(ds\)\s*\?\s*1\.2/.test(src) && src.indexOf("? 1.4 :")===-1,
+      src.indexOf("? 1.4 :")!==-1 ? "נמצא עדיין 1.4 בקוד" : "");
+  chk(g, "תוספת החופש מצוינת במידע ללקוחות (מחירון)",
+      src.indexOf("תקופת החופש")!==-1 && /החופש[^\n]*20%/.test(src));
   chk(g, "סטטוסים: מאושר/ממתין/בוטל", src.indexOf('"confirmed"')!==-1 && src.indexOf('"pending"')!==-1 && src.indexOf('"cancelled"')!==-1);
 }
 

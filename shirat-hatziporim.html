@@ -120,6 +120,7 @@ const DEFAULT_INQUIRY_TEMPLATE = `שלום וברכה,
 • חבילת חמישי+שישי+שבת: ₪1,700
 • תוספת יציאה ראשון: ₪350
 • תוספת מיטות (עד 3): ₪300 לאדם
+• תקופת החופש (2 ביולי–30 באוגוסט): תוספת 20% על המחירון
 
 🕒 שעת כניסה: 14:00 | שעת יציאה: 11:00
 
@@ -325,7 +326,7 @@ function getDayType(ds) {
   return "חול";
 }
 function isSummer(ds) {
-  // תוספת קיץ 40%: 2 יולי עד 30 אוגוסט
+  // תוספת קיץ 20%: 2 יולי עד 30 אוגוסט
   if (!ds) return false;
   const d = new Date(ds);
   const y = d.getFullYear();
@@ -335,7 +336,7 @@ function isSummer(ds) {
   return d >= start && d <= end;
 }
 function getSummerMultiplier(ds) {
-  return isSummer(ds) ? 1.4 : 1;
+  return isSummer(ds) ? 1.2 : 1;
 }
 function calcNights(a, b) {
   a = parseDate(a);
@@ -414,7 +415,7 @@ function calcTotal(checkin, checkout, extra = 0) {
     }
     // בדוק אם תקופת הקיץ
     const pkgStart = new Date(checkin);
-    const summerMult = isSummer(pkgStart.toISOString().split("T")[0]) ? 1.4 : 1;
+    const summerMult = isSummer(pkgStart.toISOString().split("T")[0]) ? 1.2 : 1;
     base += Math.round(activePrices.packageDeal * summerMult);
   } else {
     const cur = new Date(checkin);
@@ -1443,7 +1444,7 @@ function BookingForm({
               marginBottom: 4,
               fontWeight: 700
             },
-            children: ["✅ חבילת חמישי+שישי+שבת: ₪", Math.round(getActivePrices().packageDeal * (isSummer(f.checkin) ? 1.4 : 1)).toLocaleString(), isSummer(f.checkin) ? " (תעריף חופש)" : ""]
+            children: ["✅ חבילת חמישי+שישי+שבת: ₪", Math.round(getActivePrices().packageDeal * (isSummer(f.checkin) ? 1.2 : 1)).toLocaleString(), isSummer(f.checkin) ? " (תעריף חופש)" : ""]
           }), sundayExtra > 0 && /*#__PURE__*/_jsxs("div", {
             style: {
               fontSize: 12,
@@ -7266,22 +7267,22 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
               fontFamily: "'Heebo',sans-serif",
               fontWeight: 700
             },
-            children: "☀️ מחירי חופשות בין הזמנים — 2 יולי עד 30 אוגוסט (×1.4)"
+            children: "☀️ מחירי חופשות בין הזמנים — 2 יולי עד 30 אוגוסט (×1.2)"
           }), [{
             l: "אמצע שבוע",
-            p: fm(Math.round(getActivePrices().weekday * 1.4))
+            p: fm(Math.round(getActivePrices().weekday * 1.2))
           }, {
             l: "שישי–שבת / חג",
-            p: fm(Math.round(getActivePrices().weekend * 1.4))
+            p: fm(Math.round(getActivePrices().weekend * 1.2))
           }, {
             l: "חבילה חמישי+שישי+שבת",
-            p: fm(Math.round(getActivePrices().packageDeal * 1.4))
+            p: fm(Math.round(getActivePrices().packageDeal * 1.2))
           }, {
             l: "תוספת יציאה ראשון",
-            p: fm(Math.round(getActivePrices().sundayExtra * 1.4))
+            p: fm(Math.round(getActivePrices().sundayExtra * 1.2))
           }, {
             l: "אורח נוסף (מעל 2)",
-            p: `${fm(Math.round(getActivePrices().extraGuest * 1.4))} / אדם`
+            p: `${fm(Math.round(getActivePrices().extraGuest * 1.2))} / אדם`
           }, {
             l: "תינוק",
             p: "ללא תשלום"
@@ -7314,7 +7315,7 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
               color: "#a09080",
               fontFamily: "'Heebo',sans-serif"
             },
-            children: "* המחירים מחושבים אוטומטית מהמחירון הרגיל × 1.4"
+            children: "* המחירים מחושבים אוטומטית מהמחירון הרגיל × 1.2"
           })]
         }), priceTab === "edit" && /*#__PURE__*/_jsxs("div", {
           children: [[{
