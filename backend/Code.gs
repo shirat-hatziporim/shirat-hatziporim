@@ -1,0 +1,649 @@
+// ═══════════════════════════════════════════════════════════════════════════
+//  שירת הציפורים — Google Apps Script Backend (Code.gs)
+//  שוחזר מהפרויקט החי ב-Drive (file id: 1HMsnNpkXVNmzXo5fHn4za7hLCcx7OtG0cF_R3aMc6HWCvQk0ySzhSAWS)
+//  הדבק ב: הגיליון → תוספות/Extensions → Apps Script → Code.gs
+//  פריסה: Deploy → Manage deployments → (ערוך את הפריסה הקיימת, גרסה חדשה)
+//  Execute as: Me  |  Who has access: Anyone
+//  manifest (appsscript.json): timeZone Asia/Jerusalem, runtimeVersion V8,
+//                              webapp.executeAs USER_DEPLOYING, access ANYONE_ANONYMOUS
+//  ⚠ אחרי redeploy — לעדכן את SCRIPT_URL החדש בשני הקבצים: shirat-hatziporim.html + booking.html
+// ═══════════════════════════════════════════════════════════════════════════
+
+const SHEET_ID = "1b_40U_bCUs-MXz0K5XuLuEmD-HjYhh9TivMTEkerMdk";
+const SHEET_NAME = "גיליון1";
+const BLOCKED_SHEET = "חסימות";
+const EXPENSES_SHEET = "הוצאות";
+const GUESTS_SHEET = "אורחים";
+const TEMPLATES_SHEET = "תבניות";
+const FROM_EMAIL = "shirathatziporim@gmail.com";
+const FROM_NAME = "צימר שירת הציפורים";
+const HOST_PHONE = "050-4103353";
+const PDF_URL = "https://raw.githubusercontent.com/shirat-hatziporim/shirat-hatziporim/main/חוברת מידע צימר שירת הציפורים.pdf";
+
+// ───────────────────────────────────────────────────────────────────────────
+//  doGet — נתב JSONP יחיד (כל הבקשות הן GET עם action=... ו-callback=...)
+// ───────────────────────────────────────────────────────────────────────────
+function doGet(e) {
+  const action = e.parameter.action;
+  const callback = e.parameter.callback || "";
+  let result;
+  try {
+    if (action === "get") result = getBookings();
+    else if (action === "save") {
+      const bookings = JSON.parse(decodeURIComponent(e.parameter.bookings));
+      saveAll(bookings); result = "ok";
+    } else if (action === "getBlocked") result = getBlocked();
+    else if (action === "saveBlocked") {
+      const blocked = JSON.parse(decodeURIComponent(e.parameter.blocked));
+      saveBlocked(blocked); result = "ok";
+    } else if (action === "getExpenses") result = getExpenses();
+    else if (action === "saveExpenses") {
+      const expenses = JSON.parse(decodeURIComponent(e.parameter.expenses));
+      saveExpenses(expenses); result = "ok";
+    } else if (action === "getManualGuests") result = getManualGuests();
+    else if (action === "saveManualGuests") {
+      const guests = JSON.parse(decodeURIComponent(e.parameter.guests));
+      saveManualGuests(guests); result = "ok";
+    } else if (action === "getTemplates") result = getTemplates();
+    else if (action === "addBooking") {
+      const booking = JSON.parse(decodeURIComponent(e.parameter.booking));
+      addBooking(booking); result = "ok";
+    } else if (action === "saveTemplate") {
+      const key = decodeURIComponent(e.parameter.key);
+      const value = decodeURIComponent(e.parameter.value);
+      saveTemplate(key, value); result = "ok";
+    } else if (action === "sendConfirm") {
+      const b = JSON.parse(decodeURIComponent(e.parameter.booking));
+      sendConfirmEmail(b); result = "ok";
+    } else if (action === "sendInquiry") {
+      const email = decodeURIComponent(e.parameter.email);
+      sendInquiryEmail(email); result = "ok";
+    } else if (action === "sendReminder") {
+      const b = JSON.parse(decodeURIComponent(e.parameter.booking));
+      sendReminderEmail(b); result = "ok";
+    } else if (action === "sendReview") {
+      const b = JSON.parse(decodeURIComponent(e.parameter.booking));
+      sendReviewEmail(b); result = "ok";
+    } else if (action === "saveLeads") {
+      const leads = JSON.parse(decodeURIComponent(e.parameter.leads));
+      saveLeads(leads); result = "ok";
+    } else if (action === "getLeads") {
+      result = getLeads();
+    } else if (action === "saveTrash") {
+      const trash = JSON.parse(decodeURIComponent(e.parameter.trash));
+      saveTrash(trash); result = "ok";
+    } else if (action === "getTrash") {
+      result = getTrash();
+    } else if (action === "notifyOwner") {
+      const data = JSON.parse(decodeURIComponent(e.parameter.data));
+      notifyOwner(data); result = "ok";
+    } else if (action === "chunk") {
+      const cache = CacheService.getScriptCache();
+      cache.put("chunk_" + e.parameter.index, decodeURIComponent(e.parameter.data), 300);
+      cache.put("chunk_total", e.parameter.total, 300);
+      result = "ok";
+    } else if (action === "commitChunks") {
+      const cache = CacheService.getScriptCache();
+      const total = parseInt(cache.get("chunk_total") || "0");
+      let str = "";
+      for (let i = 0; i < total; i++) str += (cache.get("chunk_" + i) || "");
+      saveAll(JSON.parse(str)); result = "ok";
+    } else result = "ok";
+  } catch (err) { result = { error: err.toString() }; }
+
+  const json = JSON.stringify(result);
+  if (callback) return ContentService.createTextOutput(callback + "(" + json + ");").setMimeType(ContentService.MimeType.JAVASCRIPT);
+  return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+//  עזרי HTML למיילים (letterhead/footer/box/row/date)
+// ───────────────────────────────────────────────────────────────────────────
+function hdr(subtitle) {
+  return "<table width='100%' cellpadding='0' cellspacing='0' style='background:#f0ece3;'><tr><td style='padding:28px 32px;text-align:center;'>"
+    + "<h1 style='color:#3a3a3a;margin:0;font-size:22px;font-weight:700;font-family:Arial,sans-serif;'>צימר שירת הציפורים</h1>"
+    + "<p style='color:#7a7a7a;margin:6px 0 0;font-size:13px;font-family:Arial,sans-serif;'>" + subtitle + "</p>"
+    + "</td></tr></table>";
+}
+
+function ftr() {
+  return "<table width='100%' cellpadding='0' cellspacing='0' style='background:#f5f2ec;border-top:1px solid #e0dbd0;'><tr><td style='padding:18px 32px;text-align:center;'>"
+    + "<p style='font-size:13px;color:#888;margin:0;font-family:Arial,sans-serif;'>צימר שירת הציפורים</p>"
+    + "<p style='font-size:12px;color:#aaa;margin:4px 0 0;font-family:Arial,sans-serif;'>" + FROM_EMAIL + " | " + HOST_PHONE + "</p>"
+    + "</td></tr></table>";
+}
+
+function wrap(content) {
+  return "<!DOCTYPE html><html dir='rtl' lang='he'><head><meta charset='UTF-8'>"
+    + "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+    + "<style>@media only screen and (max-width:620px){"
+    + "table[class=outer]{width:100%!important;}"
+    + "td{padding-left:12px!important;padding-right:12px!important;}"
+    + "h1{font-size:18px!important;}"
+    + "p{font-size:13px!important;}"
+    + "}"
+    + "</style>"
+    + "</head>"
+    + "<body style='margin:0;padding:0;background:#f5f5f5;font-family:Arial,sans-serif;direction:rtl;'>"
+    + "<table width='100%' cellpadding='0' cellspacing='0' style='background:#f5f5f5;padding:20px 0;'><tr><td align='center' style='padding:0 8px;'>"
+    + "<table class='outer' width='600' cellpadding='0' cellspacing='0' style='max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e0dbd0;'>"
+    + content
+    + "</table></td></tr></table></body></html>";
+}
+
+function bx(content, color) {
+  return "<table width='100%' cellpadding='0' cellspacing='0' style='background:#f9f7f3;border-radius:8px;border-right:4px solid " + color + ";margin-bottom:24px;'><tr><td style='padding:16px 20px;'>" + content + "</td></tr></table>";
+}
+
+function rw(label, value) {
+  return "<p style='margin:0 0 8px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&bull; " + label + ": <strong>" + value + "</strong></p>";
+}
+
+function fd(ds) {
+  if (!ds) return "";
+  const d = new Date(ds);
+  return d.getDate() + "." + (d.getMonth() + 1) + "." + d.getFullYear();
+}
+
+function sendMail(to, subject, htmlBody) {
+  GmailApp.sendEmail(to, subject, "", {
+    htmlBody: htmlBody,
+    name: FROM_NAME,
+    replyTo: FROM_EMAIL
+  });
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+//  מיילים אוטומטיים — אם קיימת תבנית מותאמת בגיליון "תבניות" היא גוברת על ה-HTML
+//  הברירת־מחדל. תומך פלייסהולדרים: {שם} {כניסה} {יציאה} {לילות} {סכום} {סוג} {יתרה}
+// ───────────────────────────────────────────────────────────────────────────
+function sendConfirmEmail(b) {
+  if (!b.email) return;
+  const templates = getTemplates();
+  if (templates.confirm && templates.confirm.trim()) {
+    const text = templates.confirm
+      .replace(/{שם}/g, b.name || "")
+      .replace(/{כניסה}/g, fd(b.checkin))
+      .replace(/{יציאה}/g, fd(b.checkout))
+      .replace(/{לילות}/g, b.nights || "")
+      .replace(/{סכום}/g, Number(b.total || 0).toLocaleString())
+      .replace(/{סוג}/g, b.roomLabel || "");
+    GmailApp.sendEmail(b.email, "אישור הזמנה - שירת הציפורים", text, { name: FROM_NAME, replyTo: FROM_EMAIL });
+    return;
+  }
+  const body = "<tr><td style='padding:28px 24px;font-family:Arial,sans-serif;'>"
+    + "<p style='font-size:16px;color:#222;margin:0 0 8px;line-height:1.8;'>שלום וברכה <strong>" + b.name + "</strong>,</p>"
+    + "<p style='font-size:15px;color:#444;margin:0 0 24px;line-height:1.8;'>שמחים לאשר את הזמנתכם בצימר שירת הציפורים!</p>"
+    + "<p style='font-size:15px;color:#222;font-weight:700;margin:0 0 12px;'>&#x1F4C5; פרטי ההזמנה:</p>"
+    + bx(
+        rw("&#x1F4C5; תאריך הגעה", fd(b.checkin))
+        + rw("&#x1F4C5; תאריך יציאה", fd(b.checkout))
+        + rw("&#x1F319; מספר לילות", b.nights || "")
+        + rw("&#x1F46A; מספר אורחים", ((b.guests || 2) + (b.extraGuests || 0)) + " נפשות")
+        + (b.babies > 0 ? rw("&#x1F476; תינוקות", b.babies) : "")
+        + "<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&bull; עלות: <strong style='color:#5a9e4f;'>&#8362;" + Number(b.total || 0).toLocaleString() + "</strong></p>",
+        "#5a9e4f"
+      )
+    + "<p style='font-size:15px;color:#222;font-weight:700;margin:0 0 10px;'>&#x1F4B3; נא להעביר מקדמה בסך 500 ש\"ח:</p>"
+    + bx(
+        "<p style='margin:0 0 8px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F4B8; בנק לאומי, סניף 904, חשבון 10765165 על שם יעקב גרזון</p>"
+        + "<p style='margin:0 0 10px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F4F1; ביט / פייבוקס: <strong>" + HOST_PHONE + "</strong></p>"
+        + "<p style='margin:0;font-size:14px;color:#8b6000;font-weight:700;font-family:Arial,sans-serif;'>&#x1F449; נא לשלוח אסמכתא לאחר התשלום</p>",
+        "#c8860a"
+      )
+    + bx(
+        "<p style='margin:0 0 10px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F4C4; מצורפת חוברת מידע על הצימר</p>"
+        + "<a href='" + PDF_URL + "' style='display:inline-block;background:#5a9e4f;color:#fff;text-decoration:none;padding:10px 20px;border-radius:6px;font-size:14px;font-weight:700;font-family:Arial,sans-serif;'>לחץ לפתיחת חוברת המידע</a>",
+        "#5a9e4f"
+      )
+    + bx(
+        "<p style='margin:0 0 6px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F4CD; כתובת: <strong>נחל קדם 93, מיצד</strong></p>"
+        + "<p style='margin:0 0 6px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F68C; תחבורה: קו 364 מירושלים | קו 411 מביתר</p>"
+        + "<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x2139; מידע תחבורה: <strong>*8787</strong></p>",
+        "#aaa"
+      )
+    + "<p style='font-size:14px;color:#666;margin:0 0 4px;font-family:Arial,sans-serif;'>לכל שאלה: <strong>" + HOST_PHONE + "</strong></p>"
+    + "<p style='font-size:16px;color:#5a9e4f;font-weight:700;margin:24px 0 0;text-align:center;font-family:Arial,sans-serif;'>&#x1F426; מחכים לבואכם!</p>"
+    + "</td></tr>";
+  sendMail(b.email, "אישור הזמנה - שירת הציפורים", wrap(hdr("&#x2705; אישור הזמנה") + body + ftr()));
+}
+
+function sendReminderEmail(b) {
+  if (!b.email) return;
+  const templates = getTemplates();
+  if (templates.reminder && templates.reminder.trim()) {
+    const balance = Math.max(0, (b.total || 0) - (b.paid || 0));
+    const text = templates.reminder
+      .replace(/{שם}/g, b.name || "")
+      .replace(/{כניסה}/g, fd(b.checkin))
+      .replace(/{יציאה}/g, fd(b.checkout))
+      .replace(/{לילות}/g, b.nights || "")
+      .replace(/{יתרה}/g, balance > 0 ? Number(balance).toLocaleString() + ' ש"ח' : 'שולם במלואו');
+    GmailApp.sendEmail(b.email, "מחר אתם מגיעים! תזכורת - שירת הציפורים", text, { name: FROM_NAME, replyTo: FROM_EMAIL });
+    return;
+  }
+  const body = "<tr><td style='padding:28px 24px;font-family:Arial,sans-serif;'>"
+    + "<p style='font-size:16px;color:#222;margin:0 0 8px;line-height:1.8;'>שלום וברכה <strong>" + b.name + "</strong>,</p>"
+    + "<p style='font-size:15px;color:#444;margin:0 0 24px;line-height:1.8;'>מזכירים לכם שמחר אתם מגיעים אלינו! מחכים לכם ומתרגשים לארח אתכם.</p>"
+    + "<p style='font-size:15px;color:#222;font-weight:700;margin:0 0 12px;'>&#x1F4C5; פרטי ההזמנה:</p>"
+    + bx(
+        rw("&#x1F4C5; תאריך הגעה", fd(b.checkin))
+        + rw("&#x1F4C5; תאריך יציאה", fd(b.checkout))
+        + "<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&bull; מספר לילות: <strong>" + (b.nights || "") + "</strong></p>",
+        "#5a9e4f"
+      )
+    + bx(
+        "<p style='margin:0 0 6px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F4CD; כתובת: <strong>נחל קדם 93, מיצד</strong></p>"
+        + "<p style='margin:0 0 6px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F552; כניסה החל מ: <strong>15:00</strong></p>"
+        + "<p style='margin:0 0 6px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F68C; תחבורה: קו 364 מירושלים | קו 411 מביתר</p>"
+        + "<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x2139; מידע תחבורה: <strong>*8787</strong></p>",
+        "#aaa"
+      )
+    + bx(
+        "<p style='margin:0 0 8px;font-size:14px;color:#2d5a27;font-family:Arial,sans-serif;'>&#x1F4C4; חוברת המידע עם כל הפרטים לשהייה:</p>"
+        + "<a href='" + PDF_URL + "' style='display:inline-block;background:#5a9e4f;color:#fff;text-decoration:none;padding:10px 20px;border-radius:6px;font-size:14px;font-weight:700;font-family:Arial,sans-serif;'>חוברת מידע</a>",
+        "#5a9e4f"
+      )
+    + "<p style='font-size:14px;color:#666;margin:0 0 4px;font-family:Arial,sans-serif;'>לכל שאלה: <strong>" + HOST_PHONE + "</strong></p>"
+    + "<p style='font-size:16px;color:#5a9e4f;font-weight:700;margin:24px 0 0;text-align:center;font-family:Arial,sans-serif;'>&#x1F426; מחכים לכם!</p>"
+    + "</td></tr>";
+  sendMail(b.email, "מחר אתם מגיעים! תזכורת - שירת הציפורים", wrap(hdr("&#x23F0; תזכורת להגעה מחר") + body + ftr()));
+}
+
+function sendReviewEmail(b) {
+  if (!b.email) return;
+  const templates = getTemplates();
+  if (templates.review && templates.review.trim()) {
+    const text = templates.review
+      .replace(/{שם}/g, b.name || "")
+      .replace(/{כניסה}/g, fd(b.checkin))
+      .replace(/{יציאה}/g, fd(b.checkout));
+    GmailApp.sendEmail(b.email, "תודה שהתארחתם - שירת הציפורים", text, { name: FROM_NAME, replyTo: FROM_EMAIL });
+    return;
+  }
+  const body = "<tr><td style='padding:28px 24px;font-family:Arial,sans-serif;'>"
+    + "<p style='font-size:16px;color:#222;margin:0 0 8px;line-height:1.8;'>שלום וברכה <strong>" + b.name + "</strong>,</p>"
+    + "<p style='font-size:15px;color:#444;margin:0 0 16px;line-height:1.8;'>רצינו להודות לכם מקרב לב על שבחרתם להתארח אצלנו בצימר &quot;שירת הציפורים&quot;.</p>"
+    + "<p style='font-size:15px;color:#444;margin:0 0 24px;line-height:1.8;'>שמחנו מאוד לארח אתכם, ומקווים שנהנתם מהשהות, מהאווירה הנעימה ומהשקט הייחודי של המקום.</p>"
+    + bx(
+        "<p style='margin:0 0 14px;font-size:14px;color:#444;font-family:Arial,sans-serif;line-height:1.8;'>נשמח מאוד אם תמלאו עלינו לחברים ומכרים, וכן אם תוכלו להקדיש רגע קצר לשתף את חוויתכם ולהשאיר המלצה &ndash; הדבר מסייע לנו רבות בהמשך הדרך.</p>"
+        + "<p style='margin:0 0 12px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>מצורפים קישורים לאתרים בהם אנו מפרסמים, וניתן לכתוב את ההמלצה באתרי המודעה:</p>"
+        + "<p style='margin:0 0 8px;font-size:14px;font-family:Arial,sans-serif;'>&#9654; <a href='https://mamimush.co.il/rooms/%D7%A6%D7%99%D7%9E%D7%A8%D7%99%D7%9D-308/' style='color:#2d5a27;font-weight:700;'>אתר מאמימוש</a></p>"
+        + "<p style='margin:0 0 8px;font-size:14px;font-family:Arial,sans-serif;'>&#9654; <a href='https://dira4shabat.co.il/listing/%D7%A6%D7%99%D7%9E%D7%A8-%D7%A9%D7%99%D7%A8%D7%AA-%D7%94%D7%A6%D7%99%D7%A4%D7%95%D7%A8%D7%99%D7%9D-%D7%9E%D7%99%D7%A6%D7%93/' style='color:#2d5a27;font-weight:700;'>אתר דירה לשבת</a></p>"
+        + "<p style='margin:0;font-size:14px;font-family:Arial,sans-serif;'>&#9654; <a href='https://charedi.net/tzimar/25569/' style='color:#2d5a27;font-weight:700;'>אתר הלוח החרדי</a></p>",
+        "#5a9e4f"
+      )
+    + "<p style='font-size:14px;color:#666;margin:0 0 4px;font-family:Arial,sans-serif;'>לכל צורך או ביקור נוסף בעתיד &ndash; נשמח לעמוד לשירותכם: <strong>" + HOST_PHONE + "</strong></p>"
+    + "<p style='font-size:15px;color:#5a9e4f;font-weight:700;margin:24px 0 0;text-align:center;font-family:Arial,sans-serif;'>&#x1F426; בברכה ובהערכה, יעקב | צימר שירת הציפורים</p>"
+    + "</td></tr>";
+  sendMail(b.email, "תודה שהתארחתם - שירת הציפורים", wrap(hdr("&#x2B50; שמחנו לארח אתכם!") + body + ftr()));
+}
+
+function sendInquiryEmail(toEmail) {
+  const features = "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F6C1; חדר שינה מרווח עם ג&#39;קוזי זוגי מפנק</p>"
+    + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F6BF; חדר רחצה נוסף עם מקלחון מסאז&#39; יוקרתי</p>"
+    + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F6CB; סלון גדול, נעים ומעוצב לישיבה רגועה</p>"
+    + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x2615; מטבח מאובזר במלואו לכל הצרכים</p>"
+    + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F333; חצר פרטית גדולה עם פינת ישיבה, ערסל ומנגל גז</p>"
+    + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F304; נוף פתוח ועוצר נשימה לכיוון ים המלח</p>"
+    + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F46A; מתאים לזוגות ולמשפחות עד 5 נופשים</p>"
+    + "<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F54D; בית כנסת סמוך (קבלת שבת בסגנון קרליבך)</p>";
+
+  const prices = "<p style='margin:0 0 6px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F319; אמצע שבוע: <strong>800 ש&#34;ח ללילה</strong></p>"
+    + "<p style='margin:0 0 6px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F4C5; סוף שבוע (שישי-שבת): <strong>1,200 ש&#34;ח</strong></p>"
+    + "<p style='margin:0 0 6px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F381; חבילת חמישי+שישי+שבת: <strong>1,700 ש&#34;ח</strong></p>"
+    + "<p style='margin:0 0 6px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x279C; תוספת יציאה ראשון: <strong>350 ש&#34;ח</strong></p>"
+    + "<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x279C; תוספת מיטות (עד 3): <strong>300 ש&#34;ח לאדם</strong></p>"
+    + "<p style='margin:8px 0 0;font-size:13px;color:#c8860a;font-weight:700;font-family:Arial,sans-serif;'>&#x2600; תוספת 20% על חופשות בין הזמנים (2/7-30/8)</p>";
+
+  const body = "<tr><td style='padding:28px 24px;font-family:Arial,sans-serif;'>"
+    + "<p style='font-size:16px;color:#222;margin:0 0 8px;line-height:1.8;'>שלום וברכה,</p>"
+    + "<p style='font-size:15px;color:#444;margin:0 0 24px;line-height:1.8;'>תודה רבה על פנייתכם. מצרף לכם פרטים על הצימר שלנו:</p>"
+    + bx(
+        "<p style='margin:0 0 8px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F4CD; <a href='https://waze.com/ul?q=%D7%9E%D7%99%D7%A6%D7%93' style='color:#2d5a27;font-weight:700;'>מיצד, הרי יהודה</a> &#8212; כ-35 דקות מירושלים</p>"
+        + "<p style='margin:0 0 8px;font-size:14px;font-weight:700;color:#2d5a27;font-family:Arial,sans-serif;'>&#x1F3D8; יישוב מיצד &#8212; יישוב חרדי עם אווירה שקטה ופסטורלית</p>"
+        + "<p style='margin:0 0 6px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x26EA; בתי כנסיות ומקווה</p>"
+        + "<p style='margin:0 0 6px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F6D2; סופרמרקט מורחב וחנות מאכלי שבת ופיצוחים</p>"
+        + "<p style='margin:0 0 6px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F355; חנות פיצה</p>"
+        + "<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F9C6; חנות פלאפל ושווארמה</p>",
+        "#aaa"
+      )
+    + "<p style='font-size:15px;color:#222;font-weight:700;margin:0 0 12px;font-family:Arial,sans-serif;'>&#x2728; מה מחכה לכם בצימר:</p>"
+    + bx(features, "#5a9e4f")
+    + "<p style='font-size:15px;color:#222;font-weight:700;margin:0 0 12px;font-family:Arial,sans-serif;'>&#x1F4B0; מחירון לזוג:</p>"
+    + bx(prices, "#c8860a")
+    + bx(
+        "<p style='margin:0 0 12px;font-size:14px;color:#2d5a27;font-weight:700;font-family:Arial,sans-serif;line-height:1.8;'>&#x1F4AC; נשאר רק לדעת כמה אנשים אתם ולמתי תרצו להגיע - ונשריין לכם את התאריך המתאים!</p>"
+        + "<a href='https://shirat-hatziporim.github.io/shirat-hatziporim/booking.html' style='display:inline-block;background:#2d5a27;color:#fff;text-decoration:none;padding:10px 22px;border-radius:6px;font-size:14px;font-weight:700;font-family:Arial,sans-serif;'>לחץ כאן לשליחת בקשת הזמנה</a>",
+        "#5a9e4f"
+      )
+    + bx(
+        "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F4CD; כתובת: <strong>נחל קדם 93, מיצד</strong></p>"
+        + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F552; שעת כניסה: <strong>14:00</strong> | שעת יציאה: <strong>11:00</strong></p>"
+        + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F3DE; <a href='" + PDF_URL.replace("חוברת מידע צימר שירת הציפורים.pdf", "%D7%90%D7%98%D7%A8%D7%A7%D7%A6%D7%99%D7%95%D7%AA%20%D7%92%D7%95%D7%A9%20%D7%A2%D7%A6%D7%99%D7%95%D7%9F.pdf") + "' style='color:#2d5a27;font-weight:700;'>קובץ אטרקציות במיצד ובסביבה - לחץ להורדה</a></p>"
+        + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x2139; אתר: <a href='https://639885bfa3564.site123.me/' style='color:#1565c0;'>לחץ לצפייה באתר</a></p>"
+        + "<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F4DE; טלפון: <strong>" + HOST_PHONE + "</strong></p>",
+        "#aaa"
+      )
+    + "<p style='font-size:15px;color:#5a9e4f;font-weight:700;margin:0;text-align:center;font-family:Arial,sans-serif;'>&#x1F426; נשמח לארח אתכם לחוויה מיוחדת ובלתי נשכחת!</p>"
+    + "</td></tr>";
+  sendMail(toEmail, "מידע על צימר שירת הציפורים", wrap(hdr("&#x1F426; חוויית נופש רגועה, פרטית ומפנקת") + body + ftr()));
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+//  Shabbat-aware scheduling — אין שליחות בשבת; טריגר מוצ"ש לימי שישי/ראשון
+// ───────────────────────────────────────────────────────────────────────────
+function getIsraelDate() {
+  const now = new Date();
+  return now.toLocaleDateString("en-US", { timeZone: "Asia/Jerusalem", weekday: "short" });
+}
+
+function isShabat() {
+  return getIsraelDate() === "Sat";
+}
+
+function dailyEmailTrigger() {
+  if (isShabat()) { Logger.log("שבת - לא שולחים הודעות"); return; }
+  const bookings = getBookings();
+  const today = new Date();
+  const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = Utilities.formatDate(tomorrow, "Asia/Jerusalem", "yyyy-MM-dd");
+  const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = Utilities.formatDate(yesterday, "Asia/Jerusalem", "yyyy-MM-dd");
+  let updated = false;
+  bookings.forEach(function (b) {
+    if (b.status === "cancelled") return;
+    if (!b.email) return;
+    if (b.checkin === tomorrowStr && !b.sentAutoReminder) {
+      try { sendReminderEmail(b); b.sentAutoReminder = true; updated = true; Logger.log("תזכורת: " + b.name); }
+      catch (err) { Logger.log("שגיאה תזכורת: " + err); }
+    }
+    if (b.checkout === yesterdayStr && !b.sentAutoReview) {
+      try { sendReviewEmail(b); b.sentAutoReview = true; updated = true; Logger.log("ביקורת: " + b.name); }
+      catch (err) { Logger.log("שגיאה ביקורת: " + err); }
+    }
+  });
+  if (updated) saveAll(bookings);
+}
+
+function motzeiShabatTrigger() {
+  const bookings = getBookings();
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = Utilities.formatDate(tomorrow, "Asia/Jerusalem", "yyyy-MM-dd");
+  const friday = new Date(); friday.setDate(friday.getDate() - 2);
+  const fridayStr = Utilities.formatDate(friday, "Asia/Jerusalem", "yyyy-MM-dd");
+  const saturday = new Date(); saturday.setDate(saturday.getDate() - 1);
+  const saturdayStr = Utilities.formatDate(saturday, "Asia/Jerusalem", "yyyy-MM-dd");
+  let updated = false;
+  bookings.forEach(function (b) {
+    if (b.status === "cancelled") return;
+    if (!b.email) return;
+    if (b.checkin === tomorrowStr && !b.sentAutoReminder) {
+      try { sendReminderEmail(b); b.sentAutoReminder = true; updated = true; Logger.log("מוצ\"ש תזכורת ליום ראשון: " + b.name); }
+      catch (err) { Logger.log("שגיאה: " + err); }
+    }
+    if (b.checkout === fridayStr && !b.sentAutoReview) {
+      try { sendReviewEmail(b); b.sentAutoReview = true; updated = true; Logger.log("מוצ\"ש ביקורת יום שישי: " + b.name); }
+      catch (err) { Logger.log("שגיאה: " + err); }
+    }
+    if (b.checkout === saturdayStr && !b.sentAutoReview) {
+      try { sendReviewEmail(b); b.sentAutoReview = true; updated = true; Logger.log("מוצ\"ש ביקורת שבת: " + b.name); }
+      catch (err) { Logger.log("שגיאה: " + err); }
+    }
+  });
+  if (updated) saveAll(bookings);
+}
+
+function createMotzeiShabatTrigger() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === "motzeiShabatTrigger") ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger("motzeiShabatTrigger").timeBased().onWeekDay(ScriptApp.WeekDay.SUNDAY).atHour(21).create();
+  Logger.log("טריגר מוצאי שבת נוצר ✅");
+}
+
+function createDailyTrigger() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === "dailyEmailTrigger") ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger("dailyEmailTrigger").timeBased().everyDays(1).atHour(9).create();
+  Logger.log("טריגר יומי נוצר בהצלחה");
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+//  קריאה/כתיבה לגיליונות
+// ───────────────────────────────────────────────────────────────────────────
+function getOrCreateSheet(name) {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  return ss.getSheetByName(name) || ss.insertSheet(name);
+}
+
+const BOOKING_HEADERS = ["id","name","phone","email","checkin","checkout","guests","extraGuests","babies","babyCrib","status","notes","paid","total","nights","guestExtra","discount","deposit","depositMethod","rating","receiptIssued","source","balanceMethod","sentConfirm","sentReminder","sentReview","sentAutoReminder","sentAutoReview"];
+
+function getBookings() {
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length <= 1) return [];
+  const headers = rows[0];
+  return rows.slice(1).map(function (r) {
+    const obj = {};
+    headers.forEach(function (h, i) {
+      let val = r[i];
+      // ⚠ Sheets שומר תאריכים כ-Date ב-UTC → פורמט מפורש למניעת היסט יום
+      if ((h === "checkin" || h === "checkout") && val instanceof Date) {
+        val = val.getFullYear() + "-" + String(val.getMonth() + 1).padStart(2, "0") + "-" + String(val.getDate()).padStart(2, "0");
+      }
+      obj[h] = val;
+    });
+    return obj;
+  });
+}
+
+function saveAll(bookings) {
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
+  sheet.clearContents();
+  if (!bookings.length) return;
+  sheet.appendRow(BOOKING_HEADERS);
+  bookings.forEach(function (b) {
+    sheet.appendRow(BOOKING_HEADERS.map(function (h) {
+      if (h === "phone" && b[h]) return String(b[h]); // שמירת אפס מוביל בטלפון
+      return b[h] !== undefined ? b[h] : "";
+    }));
+  });
+}
+
+function addBooking(b) {
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
+  if (sheet.getLastRow() === 0) sheet.appendRow(BOOKING_HEADERS);
+  sheet.appendRow(BOOKING_HEADERS.map(function (h) {
+    if (h === "phone" && b[h]) return String(b[h]);
+    return b[h] !== undefined ? b[h] : "";
+  }));
+}
+
+function getBlocked() {
+  const sheet = getOrCreateSheet(BLOCKED_SHEET);
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length <= 1) return [];
+  return rows.slice(1).map(function (r) {
+    let date = r[0];
+    if (date instanceof Date) {
+      date = date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
+    }
+    return { date: String(date), note: r[1] || "" };
+  });
+}
+
+function saveBlocked(blocked) {
+  const sheet = getOrCreateSheet(BLOCKED_SHEET);
+  sheet.clearContents();
+  sheet.appendRow(["date", "note"]);
+  blocked.forEach(function (b) { sheet.appendRow([b.date, b.note || ""]); });
+}
+
+function getExpenses() {
+  const sheet = getOrCreateSheet(EXPENSES_SHEET);
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length <= 1) return [];
+  return rows.slice(1).map(function (r) {
+    let date = r[0];
+    if (date instanceof Date) {
+      date = date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
+    }
+    return { date: String(date), desc: r[1] || "", amount: Number(r[2] || 0) };
+  });
+}
+
+function saveExpenses(expenses) {
+  const sheet = getOrCreateSheet(EXPENSES_SHEET);
+  sheet.clearContents();
+  sheet.appendRow(["date", "desc", "amount"]);
+  expenses.forEach(function (e) { sheet.appendRow([e.date, e.desc, e.amount]); });
+}
+
+function getManualGuests() {
+  const sheet = getOrCreateSheet(GUESTS_SHEET);
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length <= 1) return [];
+  const headers = rows[0];
+  return rows.slice(1).map(function (r) {
+    const obj = {};
+    headers.forEach(function (h, i) { obj[h] = r[i] !== undefined ? r[i] : ""; });
+    return obj;
+  });
+}
+
+function saveManualGuests(guests) {
+  const sheet = getOrCreateSheet(GUESTS_SHEET);
+  sheet.clearContents();
+  const headers = ["name", "phone", "email", "rating", "notes"];
+  if (!guests.length) { sheet.appendRow(headers); return; }
+  sheet.appendRow(headers);
+  guests.forEach(function (g) { sheet.appendRow(headers.map(function (h) { return g[h] !== undefined ? g[h] : ""; })); });
+}
+
+function getTemplates() {
+  const sheet = getOrCreateSheet(TEMPLATES_SHEET);
+  const rows = sheet.getDataRange().getValues();
+  const result = {};
+  rows.forEach(function (r) { if (r[0] && r[1] !== undefined) result[r[0]] = r[1]; });
+  return result;
+}
+
+function saveTemplate(key, value) {
+  const sheet = getOrCreateSheet(TEMPLATES_SHEET);
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i][0] === key) { sheet.getRange(i + 1, 2).setValue(value); return; }
+  }
+  sheet.appendRow([key, value]);
+}
+
+const LEADS_SHEET = "מתענינים";
+
+function saveLeads(leads) {
+  const sheet = getOrCreateSheet(LEADS_SHEET);
+  sheet.clearContents();
+  sheet.appendRow(["email", "phone", "date"]);
+  leads.forEach(function (l) { sheet.appendRow([l.email || "", l.phone || "", l.date || ""]); });
+}
+
+function getLeads() {
+  const sheet = getOrCreateSheet(LEADS_SHEET);
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length <= 1) return [];
+  return rows.slice(1).map(function (r) { return { email: r[0] || "", phone: r[1] || "", date: r[2] || "" }; });
+}
+
+const TRASH_SHEET = "סל מחזור";
+
+function saveTrash(items) {
+  const sheet = getOrCreateSheet(TRASH_SHEET);
+  sheet.clearContents();
+  sheet.appendRow(["סוג", "שם", "מייל", "טלפון", "תאריך כניסה", "תאריך יציאה", "סטטוס", "תאריך מחיקה", "נתונים מלאים"]);
+  items.forEach(function (item) {
+    sheet.appendRow([
+      item._type === "booking" ? "הזמנה" : "מתעניין",
+      item.name || "", item.email || "", item.phone || "",
+      item.checkin || "", item.checkout || "", item.status || "",
+      item._deletedAt || "", JSON.stringify(item)
+    ]);
+  });
+}
+
+function getTrash() {
+  const sheet = getOrCreateSheet(TRASH_SHEET);
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length <= 1) return [];
+  return rows.slice(1).map(function (r) {
+    try { return JSON.parse(r[8] || "{}"); }
+    catch (e) {
+      return { name: r[1] || "", email: r[2] || "", phone: r[3] || "", _type: r[0] === "הזמנה" ? "booking" : r[0] === "אורח" ? "guest" : "lead", _deletedAt: r[7] || "" };
+    }
+  }).filter(function (x) { return x && Object.keys(x).length > 0; });
+}
+
+function notifyOwner(d) {
+  var fd = function (ds) { if (!ds) return ""; var dt = new Date(ds); return dt.getDate() + "." + (dt.getMonth() + 1) + "." + dt.getFullYear(); };
+  var html = wrap(
+    hdr("&#x1F514; בקשת הזמנה חדשה!")
+    + "<tr><td style='padding:28px 24px;font-family:Arial,sans-serif;'>"
+    + "<p style='font-size:16px;color:#222;margin:0 0 16px;line-height:1.8;'>התקבלה בקשת הזמנה חדשה דרך אתר הבוקינג:</p>"
+    + bx(
+        "<p style='margin:0 0 8px;font-size:15px;font-weight:700;color:#1a1a2e;font-family:Arial,sans-serif;'>" + (d.name || "") + "</p>"
+        + "<p style='margin:0 0 6px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F4DE; " + (d.phone || "") + "</p>"
+        + "<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x2709; " + (d.email || "לא הוזן") + "</p>",
+        "#1565c0"
+      )
+    + bx(
+        "<p style='margin:0 0 8px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F4C5; כניסה: <strong>" + fd(d.checkin) + "</strong> | יציאה: <strong>" + fd(d.checkout) + "</strong></p>"
+        + "<p style='margin:0 0 8px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F319; לילות: <strong>" + (d.nights || "") + "</strong> | אורחים: <strong>" + (d.guests || "") + "</strong></p>"
+        + "<p style='margin:0;font-size:15px;color:#2d5a27;font-weight:700;font-family:Arial,sans-serif;'>&#x20AA;" + Number(d.total || 0).toLocaleString() + " סה\"כ</p>",
+        "#5a9e4f"
+      )
+    + (d.notes ? bx("<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'><strong>הערות:</strong> " + d.notes + "</p>", "#c8860a") : "")
+    + "<p style='margin:0 0 10px;font-size:14px;color:#666;font-family:Arial,sans-serif;'>לאישור ההזמנה:</p>"
+    + "<a href='https://shirat-hatziporim.github.io/shirat-hatziporim/shirat-hatziporim.html' style='display:inline-block;background:#1a1a2e;color:#fff;text-decoration:none;padding:10px 20px;border-radius:6px;font-size:14px;font-weight:700;font-family:Arial,sans-serif;'>&#x1F4CB; פתח מערכת ההזמנות</a>"
+    + "</td></tr>"
+    + ftr()
+  );
+  GmailApp.sendEmail(FROM_EMAIL, "בקשת הזמנה חדשה — " + (d.name || "") + " | " + fd(d.checkin), "", { htmlBody: html, name: "אתר הבוקינג" });
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+//  גיבוי יומי אוטומטי ל-Drive (תיקייה "גיבויים - שירת הציפורים", שמירת 30 אחרונים)
+// ───────────────────────────────────────────────────────────────────────────
+function dailyBackup() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const backupName = "גיבוי שירת הציפורים - " + Utilities.formatDate(new Date(), "Asia/Jerusalem", "dd.MM.yyyy HH:mm");
+  const backup = SpreadsheetApp.create(backupName);
+  const sheets = ss.getSheets();
+  const defaultSheet = backup.getSheets()[0];
+  sheets.forEach(function (sheet) {
+    const newSheet = sheet.copyTo(backup);
+    newSheet.setName("_" + sheet.getName());
+  });
+  backup.deleteSheet(defaultSheet);
+  backup.getSheets().forEach(function (sheet) {
+    if (sheet.getName().indexOf("_") === 0) sheet.setName(sheet.getName().substring(1));
+  });
+  const backupFile = DriveApp.getFileById(backup.getId());
+  const folders = DriveApp.getFoldersByName("גיבויים - שירת הציפורים");
+  const folder = folders.hasNext() ? folders.next() : DriveApp.createFolder("גיבויים - שירת הציפורים");
+  folder.addFile(backupFile);
+  DriveApp.getRootFolder().removeFile(backupFile);
+  const files = folder.getFiles();
+  const allFiles = [];
+  while (files.hasNext()) allFiles.push(files.next());
+  allFiles.sort(function (a, b) { return b.getDateCreated() - a.getDateCreated(); });
+  if (allFiles.length > 30) allFiles.slice(30).forEach(function (f) { f.setTrashed(true); });
+  Logger.log("גיבוי נוצר בהצלחה: " + backupName);
+}
+
+function createBackupTrigger() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === "dailyBackup") ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger("dailyBackup").timeBased().everyDays(1).atHour(2).create();
+  Logger.log("טריגר גיבוי יומי נוצר בהצלחה ✅");
+}
