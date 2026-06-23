@@ -419,8 +419,27 @@ function calcTotal(checkin, checkout, extra = 0) {
     base += Math.round(activePrices.packageDeal * summerMult);
   } else {
     const cur = new Date(checkin);
-    for (let i = 0; i < nights; i++) {
+    let i = 0;
+    while (i < nights) {
       const ds = cur.toISOString().split("T")[0];
+      const day = cur.getDay();
+      // שישי+שבת = תעריף סופ"ש אחד (1200) לזוג הלילות יחד — לא לכל לילה בנפרד
+      if (day === 5 && i + 1 < nights) {
+        const next = new Date(cur);
+        next.setDate(next.getDate() + 1);
+        if (next.getDay() === 6) {
+          const wknd = Math.round(activePrices.weekend * getSummerMultiplier(ds));
+          bd.push({
+            date: ds,
+            price: wknd,
+            type: 'סופ"ש (שישי-שבת)'
+          });
+          base += wknd;
+          cur.setDate(cur.getDate() + 2);
+          i += 2;
+          continue;
+        }
+      }
       const p = getDailyPrice(ds);
       bd.push({
         date: ds,
@@ -429,6 +448,7 @@ function calcTotal(checkin, checkout, extra = 0) {
       });
       base += p;
       cur.setDate(cur.getDate() + 1);
+      i++;
     }
   }
   const _extraBase = activePrices.extraGuest || 300;

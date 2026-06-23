@@ -204,6 +204,9 @@ function checkBusiness(g, src){
   price("sundayExtra", 350);
   price("extraGuest", 300);
   chk(g, "חישוב מספר לילות (הפרש תאריכים)", src.indexOf("86400000")!==-1);
+  chk(g, 'סופ"ש שישי+שבת = תעריף אחד (₪1200, לא כפול)',
+      src.indexOf('סופ"ש (שישי-שבת)')!==-1 && /next\.getDay\(\)\s*===\s*6/.test(src),
+      (src.indexOf('סופ"ש (שישי-שבת)')===-1) ? 'חסר איחוד שישי+שבת — ייתכן חיוב כפול של ₪1200' : '');
   chk(g, "תוספת תקופת החופש = 20% (×1.2, לא 40%)",
       src.indexOf("getSummerMultiplier")!==-1 && /isSummer\(ds\)\s*\?\s*1\.2/.test(src) && src.indexOf("? 1.4 :")===-1,
       src.indexOf("? 1.4 :")!==-1 ? "נמצא עדיין 1.4 בקוד" : "");
