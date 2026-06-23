@@ -138,6 +138,9 @@ async function checkPage(g){
   chk(g, "אין GitHub PAT בקוד", !/ghp_[A-Za-z0-9]{20,}/.test(src));
   chk(g, "אין טוקן Airtable בקוד", !/pat[A-Za-z0-9]{14}\.[a-f0-9]{40,}/.test(src) && src.indexOf("AIRTABLE_TOKEN")===-1);
   chk(g, "כתובת ה-Apps Script מוגדרת", src.indexOf("script.google.com/macros/")!==-1);
+  chk(g, "מייל אישור — SCRIPT_URL נגיש (window.SCRIPT_URL)",
+      src.indexOf("window.SCRIPT_URL = SCRIPT_URL")!==-1 && src.indexOf('window.SCRIPT_URL+"?action=sendConfirm')!==-1,
+      'sendConfirmationEmail בסקריפט נפרד — חייב window.SCRIPT_URL, אחרת ReferenceError ושליחת מייל האישור נכשלת');
   return src;
 }
 

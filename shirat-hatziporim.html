@@ -17,7 +17,7 @@ function sendConfirmationEmail(booking){
     return Math.max(0,Math.round((b-a)/86400000));
   })();
   const b={...booking, nights};
-  const url=SCRIPT_URL+"?action=sendConfirm&booking="+encodeURIComponent(JSON.stringify(b))+"&authuser=0";
+  const url=window.SCRIPT_URL+"?action=sendConfirm&booking="+encodeURIComponent(JSON.stringify(b))+"&authuser=0";
   const cb="cb_"+Math.random().toString(36).slice(2);
   window[cb]=function(r){delete window[cb];console.log("אישור נשלח:",r);};
   const s=document.createElement("script");
@@ -516,6 +516,7 @@ function getDisplayStatus(b) {
 const MONTHS_HE = ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"];
 const DAYS_HE = ["א", "ב", "ג", "ד", "ה", "ו", "ש"];
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby9elcqlGzqijWnXWUYFo3QeW-wWwIt9pj4XmQSsN8RkgkRCwI7eRlRv9AvMLxVC1rTZg/exec";
+window.SCRIPT_URL = SCRIPT_URL; // נגיש גם ל-sendConfirmationEmail שבסקריפט הנפרד בראש הקובץ
 function jsonp(url) {
   return new Promise((resolve, reject) => {
     const cb = "cb_" + Math.random().toString(36).slice(2);
