@@ -178,6 +178,17 @@ async function checkBackend(g){
   } catch(e){
     chk(g, "מייל מתעניינים — preview (action=previewInquiry)", false, e.message + " (ייתכן שצריך לפרוס מחדש את Code.gs עם previewInquiry)");
   }
+  // ── בדיקת רגרסיה: מייל האישור — שעת כניסה 15:00 ושעת יציאה 11:00 ──
+  try {
+    const { data, ms } = await jsonp(SCRIPT_URL + "?action=previewConfirm", 12000);
+    const html = (data && data.html) || "";
+    chk(g, "מייל אישור — שעת כניסה 15:00 ושעת יציאה 11:00",
+        html.indexOf("15:00")!==-1 && html.indexOf("11:00")!==-1,
+        html.indexOf("15:00")===-1 ? "חסרה 15:00 במייל האישור — צריך לתקן ב-Code.gs ולפרוס מחדש"
+          : (html.indexOf("11:00")===-1 ? "חסרה 11:00 במייל האישור — צריך לתקן ב-Code.gs ולפרוס מחדש" : ms+"ms"));
+  } catch(e){
+    chk(g, "מייל אישור — preview (action=previewConfirm)", false, e.message + " (ייתכן שצריך לפרוס מחדש את Code.gs עם previewConfirm)");
+  }
   // מבנה הזמנה
   if (Array.isArray(bookings)){
     if (bookings.length === 0){
