@@ -120,6 +120,7 @@ const DEFAULT_INQUIRY_TEMPLATE = `שלום וברכה,
 • חבילת חמישי+שישי+שבת: ₪1,700
 • תוספת יציאה ראשון: ₪350
 • תוספת מיטות (עד 3): ₪300 לאדם
+• תקופת החופש (23 ביולי–16 באוגוסט): תוספת 20% על המחירון
 
 🕒 שעת כניסה: 15:00 | שעת יציאה: 11:00
 
@@ -325,13 +326,12 @@ function getDayType(ds) {
   return "חול";
 }
 function isSummer(ds) {
-  return false; // ⛔ תוספת חופש 20% בוטלה לבקשת יעקב (28.6.2026). להחזרה: מחק שורה זו בלבד.
-  // תוספת קיץ 20%: 2 יולי עד 30 אוגוסט
+  // תוספת חופש 20%: ט' באב (23/7) עד ג' אלול (16/8)
   if (!ds) return false;
   const d = new Date(ds);
   const y = d.getFullYear();
-  const start = new Date(y + "-07-02");
-  const end = new Date(y + "-08-30");
+  const start = new Date(y + "-07-23");
+  const end = new Date(y + "-08-16");
   end.setHours(23, 59, 59);
   return d >= start && d <= end;
 }
@@ -7175,7 +7175,21 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
               fontSize: 13
             },
             children: "📋 רגיל"
-          }), null /* ⛔ טאב נופש הוסתר עם ביטול תוספת 20% (28.6.2026). להחזרה: ראו גיבוי/היסטוריית git */, /*#__PURE__*/_jsx("button", {
+          }), /*#__PURE__*/_jsx("button", {
+            onClick: () => setPriceTab("summer"),
+            style: {
+              padding: "7px 16px",
+              borderRadius: 10,
+              border: "none",
+              cursor: "pointer",
+              background: priceTab === "summer" ? "#e65100" : "#fff3e0",
+              color: priceTab === "summer" ? "#fff" : "#e65100",
+              fontFamily: "'Heebo',sans-serif",
+              fontWeight: 700,
+              fontSize: 13
+            },
+            children: "☀️ נופש יולי-אוגוסט"
+          }), /*#__PURE__*/_jsx("button", {
             onClick: () => setPriceTab("edit"),
             style: {
               padding: "7px 16px",
@@ -7262,7 +7276,7 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
               children: "📍 נחל קדם 93, מיצד (אספר)"
             })]
           })]
-        }), false /* ⛔ טאב נופש מבוטל (28.6.2026) */ && /*#__PURE__*/_jsxs("div", {
+        }), priceTab === "summer" && /*#__PURE__*/_jsxs("div", {
           children: [/*#__PURE__*/_jsx("div", {
             style: {
               background: "#fff3e0",
@@ -7274,7 +7288,7 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
               fontFamily: "'Heebo',sans-serif",
               fontWeight: 700
             },
-            children: "☀️ מחירי חופשות בין הזמנים — 2 יולי עד 30 אוגוסט (×1.2)"
+            children: "☀️ מחירי חופשות בין הזמנים — 23 יולי עד 16 אוגוסט (×1.2)"
           }), [{
             l: "אמצע שבוע",
             p: fm(Math.round(getActivePrices().weekday * 1.2))
