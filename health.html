@@ -168,13 +168,13 @@ async function checkBackend(g){
       chk(g, label + " — מגיע מהשרת", false, e.message + " (ייתכן שה-deployment של Apps Script נפל)");
     }
   }
-  // ── בדיקת רגרסיה: מייל המתעניינים — תוספת החופש מבוטלת (28.6.2026). להחזרה: לצפות שוב ל-"תוספת 20%" ──
+  // ── בדיקת רגרסיה: מייל המתעניינים (HTML קשיח בשרת) — תוספת החופש 20% ולא 40% ──
   try {
     const { data, ms } = await jsonp(SCRIPT_URL + "?action=previewInquiry", 12000);
     const html = (data && data.html) || "";
-    chk(g, "מייל מתעניינים — תוספת החופש מבוטלת (אין 20%/40%)",
-        html.indexOf("תוספת 20%")===-1 && html.indexOf("תוספת 40%")===-1 && html.indexOf("בין הזמנים")===-1,
-        (html.indexOf("תוספת 20%")!==-1 || html.indexOf("תוספת 40%")!==-1 || html.indexOf("בין הזמנים")!==-1) ? "עדיין מופיעה תוספת חופש במייל — להסיר ב-Code.gs ולפרוס מחדש" : ms+"ms");
+    chk(g, "מייל מתעניינים — תוספת החופש = 20% (לא 40%)",
+        html.indexOf("תוספת 20%")!==-1 && html.indexOf("תוספת 40%")===-1,
+        html.indexOf("תוספת 40%")!==-1 ? "נמצא עדיין 40% במייל — צריך לתקן ב-Code.gs ולפרוס מחדש" : ms+"ms");
   } catch(e){
     chk(g, "מייל מתעניינים — preview (action=previewInquiry)", false, e.message + " (ייתכן שצריך לפרוס מחדש את Code.gs עם previewInquiry)");
   }
