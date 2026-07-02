@@ -462,15 +462,35 @@ function getDayType(ds){
   if(dow===5||dow===6) return "weekend";
   return "weekday";
 }
+function hebToGreg(gregYear,hebMonthName,hebDay){
+  const fmt=new Intl.DateTimeFormat("en-u-ca-hebrew",{day:"numeric",month:"long",timeZone:"UTC"});
+  for(let m=5;m<=9;m++){
+    const dim=new Date(Date.UTC(gregYear,m+1,0)).getUTCDate();
+    for(let dd=1;dd<=dim;dd++){
+      const p=fmt.formatToParts(new Date(Date.UTC(gregYear,m,dd)));
+      const mon=p.find(x=>x.type==="month").value;
+      const day=parseInt(p.find(x=>x.type==="day").value,10);
+      if(mon===hebMonthName&&day===hebDay)
+        return gregYear+"-"+String(m+1).padStart(2,"0")+"-"+String(dd).padStart(2,"0");
+    }
+  }
+  return null;
+}
+const _summerCache={};
+function summerRange(y){
+  if(_summerCache[y]) return _summerCache[y];
+  return _summerCache[y]={start:hebToGreg(y,"Av",9),end:hebToGreg(y,"Elul",3)}; // ט' באב → ג' אלול
+}
 function isSummer(ds){
-  // תוספת חופש 20%: ט' באב (23/7) עד ג' אלול (16/8)
+  // תוספת חופש 20%: מ-ט' באב עד ג' אלול — מחושב אוטומטית מהלוח העברי בכל שנה
   if(!ds) return false;
-  const d=new Date(ds+"T12:00:00");
+  const d=(ds instanceof Date)?ds:new Date(String(ds).length<=10?ds+"T12:00:00":ds);
+  if(isNaN(d.getTime())) return false;
   const y=d.getFullYear();
-  const start=new Date(y+"-07-23");
-  const end=new Date(y+"-08-16");
-  end.setHours(23,59,59);
-  return d>=start&&d<=end;
+  const key=y+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  const r=summerRange(y);
+  if(!r.start||!r.end) return false;
+  return key>=r.start&&key<=r.end;
 }
 function summerMult(ds){ return isSummer(ds)?1.2:1; }
 
