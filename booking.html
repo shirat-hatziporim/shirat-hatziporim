@@ -463,12 +463,12 @@ function getDayType(ds){
   return "weekday";
 }
 function isSummer(ds){
-  return false; // ⛔ תוספת חופש 20% בוטלה לבקשת יעקב (28.6.2026). להחזרה: מחק שורה זו בלבד.
+  // תוספת חופש 20%: ט' באב (23/7) עד ג' אלול (16/8)
   if(!ds) return false;
   const d=new Date(ds+"T12:00:00");
   const y=d.getFullYear();
-  const start=new Date(y+"-07-02");
-  const end=new Date(y+"-08-30");
+  const start=new Date(y+"-07-23");
+  const end=new Date(y+"-08-16");
   end.setHours(23,59,59);
   return d>=start&&d<=end;
 }
