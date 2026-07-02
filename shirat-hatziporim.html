@@ -121,7 +121,7 @@ const DEFAULT_INQUIRY_TEMPLATE = `שלום וברכה,
 • תוספת יציאה ראשון: ₪350
 • תוספת מיטות (עד 3): ₪300 לאדם
 
-🕒 שעת כניסה: 14:00 | שעת יציאה: 11:00
+🕒 שעת כניסה: 15:00 | שעת יציאה: 11:00
 
 
 📍 כתובת: נחל קדם 93, מיצד
@@ -722,7 +722,7 @@ function buildMsg(b) {
 
 אנו שמחים לאשר את הזמנתך ב*שירת הציפורים* 🐦
 
-📅 *כניסה:* ${fd(b.checkin)} בשעה 13:00
+📅 *כניסה:* ${fd(b.checkin)} בשעה 15:00
 📅 *יציאה:* ${fd(b.checkout)} בשעה 11:00
 🌙 *מספר לילות:* ${nights}
 👥 *אורחים:* ${(b.guests || 2) + (b.extraGuests || 0)}${b.babies > 0 ? ` + ${b.babies} תינוק/ת` : ""}
@@ -749,7 +749,7 @@ function sendReminderWhatsApp(b) {
 
 תזכורת — *מחר* אתם מגיעים לשירת הציפורים! 🐦
 
-📅 כניסה: ${fd(b.checkin)} בשעה 13:00
+📅 כניסה: ${fd(b.checkin)} בשעה 15:00
 📅 יציאה: ${fd(b.checkout)} בשעה 11:00
 📍 כתובת: נחל קדם 93, מיצד
 🗺️ https://waze.com/ul?q=מיצד+נחל+קדם+93
@@ -787,7 +787,7 @@ function buildWelcomeEmail(b) {
 ━━━━━━━━━━━━━━━━━━━━
 פרטי ההזמנה שלכם
 ━━━━━━━━━━━━━━━━━━━━
-📅 כניסה: ${fd(b.checkin)} בשעה 13:00
+📅 כניסה: ${fd(b.checkin)} בשעה 15:00
 📅 יציאה: ${fd(b.checkout)} בשעה 11:00
 🌙 מספר לילות: ${nights}
 👥 אורחים: ${(b.guests || 2) + (b.extraGuests || 0)}${b.babies > 0 ? ` + ${b.babies} תינוק/ת` : ""}
@@ -803,7 +803,7 @@ function buildWelcomeEmail(b) {
 ━━━━━━━━━━━━━━━━━━━━
 מידע חשוב
 ━━━━━━━━━━━━━━━━━━━━
-⏰ שעת כניסה: 13:00
+⏰ שעת כניסה: 15:00
 ⏰ שעת יציאה: 11:00 (יום שישי — שעה וחצי לאחר צאת שבת)
 
 לכל שאלה אנחנו זמינים עבורכם!
@@ -1374,7 +1374,7 @@ function BookingForm({
             },
             children: [/*#__PURE__*/_jsxs("div", {
               children: [/*#__PURE__*/_jsxs(Lbl, {
-                children: ["כניסה (13:00)", err.checkin && /*#__PURE__*/_jsxs("span", {
+                children: ["כניסה (15:00)", err.checkin && /*#__PURE__*/_jsxs("span", {
                   style: {
                     color: "#e53935"
                   },
@@ -3197,7 +3197,7 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
               fontSize: 13,
               color: "#7a6a58"
             },
-            children: "⏰ כניסה: 13:00 · יציאה: 11:00"
+            children: "⏰ כניסה: 15:00 · יציאה: 11:00"
           }), /*#__PURE__*/_jsx("div", {
             style: {
               fontSize: 13,
@@ -7243,7 +7243,7 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
                 color: "#7a6a58",
                 fontFamily: "'Heebo',sans-serif"
               },
-              children: "⏰ כניסה: 13:00 · יציאה: 11:00"
+              children: "⏰ כניסה: 15:00 · יציאה: 11:00"
             }), /*#__PURE__*/_jsx("div", {
               style: {
                 fontSize: 13,
@@ -7494,7 +7494,7 @@ https://charedi.net/tzimar/25569/
 
 תזכורת — מחר אתם מגיעים לשירת הציפורים! 🐦
 
-📅 כניסה: {כניסה} בשעה 13:00
+📅 כניסה: {כניסה} בשעה 15:00
 📅 יציאה: {יציאה} בשעה 11:00
 📍 כתובת: נחל קדם 93, מיצד
 🗺️ https://waze.com/ul?q=מיצד+נחל+קדם+93
