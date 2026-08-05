@@ -147,6 +147,7 @@ async function checkPage(g){
 // ════════ 2. שרת הנתונים — Apps Script (JSONP) ════════
 async function checkBackend(g){
   let bookings = null;
+  let templates = null;
   const reads = [
     ["get",            "הזמנות (get)",            true ],
     ["getBlocked",     "תאריכים חסומים (getBlocked)", false],
@@ -158,19 +159,20 @@ async function checkBackend(g){
   ];
   for (const [action, label, isMain] of reads){
     try {
-      const { data, ms } = await jsonp(SCRIPT_URL + "?action=" + action, 12000);
+      const { data, ms } = await jsonp(SCRIPT_URL + "?action=" + action, 20000);
       const arr = Array.isArray(data);
       const cnt = arr ? data.length : (data && typeof data==="object" ? Object.keys(data).length : 0);
       chk(g, label + " — מגיע מהשרת", data!=null, (arr?cnt+" רשומות":"אובייקט") + " | " + ms + "ms");
       if (ms > 8000) row(g, "warn", label + " — תגובה איטית", ms + "ms");
       if (isMain) bookings = arr ? data : null;
+      if (action === "getTemplates") templates = data;
     } catch(e){
       chk(g, label + " — מגיע מהשרת", false, e.message + " (ייתכן שה-deployment של Apps Script נפל)");
     }
   }
   // ── בדיקת רגרסיה: מייל המתעניינים (HTML קשיח בשרת) — תוספת החופש 20% ולא 40% ──
   try {
-    const { data, ms } = await jsonp(SCRIPT_URL + "?action=previewInquiry", 12000);
+    const { data, ms } = await jsonp(SCRIPT_URL + "?action=previewInquiry", 20000);
     const html = (data && data.html) || "";
     chk(g, "מייל מתעניינים — תוספת החופש = 20% (לא 40%)",
         html.indexOf("תוספת 20%")!==-1 && html.indexOf("תוספת 40%")===-1,
@@ -180,7 +182,7 @@ async function checkBackend(g){
   }
   // ── בדיקת רגרסיה: מייל האישור — שעת כניסה 15:00 ושעת יציאה 11:00 ──
   try {
-    const { data, ms } = await jsonp(SCRIPT_URL + "?action=previewConfirm", 12000);
+    const { data, ms } = await jsonp(SCRIPT_URL + "?action=previewConfirm", 20000);
     const html = (data && data.html) || "";
     chk(g, "מייל אישור — שעת כניסה 15:00 ושעת יציאה 11:00",
         html.indexOf("15:00")!==-1 && html.indexOf("11:00")!==-1,
@@ -193,9 +195,11 @@ async function checkBackend(g){
   // רקע: עד 8.2026 הטריגר רץ ראשון 21:00, ולכן "מחר" היה יום שני ונכנסי יום ראשון
   // לא קיבלו תזכורת כלל (ריצת שבת 09:00 נחסמת ע"י isShabat).
   // createMotzeiShabatTrigger רושם את התזמון בפועל בלשונית "תבניות" תחת _trigger_motzeiShabat.
-  try {
-    const { data, ms } = await jsonp(SCRIPT_URL + "?action=getTemplates", 12000);
-    const sched = (data && data._trigger_motzeiShabat) || "";
+  // ⚠ משתמש ב-templates שכבר נטען בלולאה למעלה — אין קריאה נוספת לשרת (Apps Script נחנק תחת עומס).
+  if (templates == null){
+    row(g, "warn", "טריגר מוצאי שבת — תזמון רשום", "getTemplates לא חזר — לא ניתן לאמת");
+  } else {
+    const sched = templates._trigger_motzeiShabat || "";
     if (!sched){
       row(g, "warn", "טריגר מוצאי שבת — תזמון רשום",
           "לא נמצא _trigger_motzeiShabat בלשונית תבניות — יש להריץ createMotzeiShabatTrigger פעם אחת בעורך Apps Script");
@@ -206,12 +210,10 @@ async function checkBackend(g){
             ? "הטריגר עדיין מוגדר ליום ראשון — נכנסי יום ראשון לא יקבלו תזכורת! הרץ createMotzeiShabatTrigger"
             : sched);
     }
-    const daily = (data && data._trigger_daily) || "";
-    const backup = (data && data._trigger_backup) || "";
+    const daily = templates._trigger_daily || "";
+    const backup = templates._trigger_backup || "";
     row(g, (daily && backup) ? "ok" : "warn", "טריגרים יומיים רשומים (מיילים + גיבוי)",
         (daily || "daily: —") + " | " + (backup || "backup: —"));
-  } catch(e){
-    chk(g, "טריגר מוצאי שבת — תזמון רשום", false, e.message);
   }
   // מבנה הזמנה
   if (Array.isArray(bookings)){
