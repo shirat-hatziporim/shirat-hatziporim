@@ -189,6 +189,30 @@ async function checkBackend(g){
   } catch(e){
     chk(g, "מייל אישור — preview (action=previewConfirm)", false, e.message + " (ייתכן שצריך לפרוס מחדש את Code.gs עם previewConfirm)");
   }
+  // ── בדיקת רגרסיה: תזמון טריגר מוצאי שבת — חייב להיות שבת (SATURDAY), לא ראשון ──
+  // רקע: עד 8.2026 הטריגר רץ ראשון 21:00, ולכן "מחר" היה יום שני ונכנסי יום ראשון
+  // לא קיבלו תזכורת כלל (ריצת שבת 09:00 נחסמת ע"י isShabat).
+  // createMotzeiShabatTrigger רושם את התזמון בפועל בלשונית "תבניות" תחת _trigger_motzeiShabat.
+  try {
+    const { data, ms } = await jsonp(SCRIPT_URL + "?action=getTemplates", 12000);
+    const sched = (data && data._trigger_motzeiShabat) || "";
+    if (!sched){
+      row(g, "warn", "טריגר מוצאי שבת — תזמון רשום",
+          "לא נמצא _trigger_motzeiShabat בלשונית תבניות — יש להריץ createMotzeiShabatTrigger פעם אחת בעורך Apps Script");
+    } else {
+      chk(g, "טריגר מוצאי שבת רץ בשבת (לא בראשון)",
+          sched.indexOf("SATURDAY")!==-1,
+          sched.indexOf("SUNDAY")!==-1
+            ? "הטריגר עדיין מוגדר ליום ראשון — נכנסי יום ראשון לא יקבלו תזכורת! הרץ createMotzeiShabatTrigger"
+            : sched);
+    }
+    const daily = (data && data._trigger_daily) || "";
+    const backup = (data && data._trigger_backup) || "";
+    row(g, (daily && backup) ? "ok" : "warn", "טריגרים יומיים רשומים (מיילים + גיבוי)",
+        (daily || "daily: —") + " | " + (backup || "backup: —"));
+  } catch(e){
+    chk(g, "טריגר מוצאי שבת — תזמון רשום", false, e.message);
+  }
   // מבנה הזמנה
   if (Array.isArray(bookings)){
     if (bookings.length === 0){
