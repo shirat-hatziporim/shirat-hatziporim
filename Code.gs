@@ -384,28 +384,31 @@ function dailyEmailTrigger() {
   if (updated) saveAll(bookings);
 }
 
+// רץ במוצאי שבת (שבת 22:00) ומשלים את מה ש-dailyEmailTrigger דילג עליו בשבת:
+// • תזכורת לנכנסים מחר (יום ראשון) — ריצת שבת 09:00 נחסמת ע"י isShabat()
+// • ביקורת ליוצאי שישי ושבת
+// ⚠ באג שתוקן 8.2026: הטריגר היה מוגדר ליום ראשון 21:00, ולכן "מחר" היה יום שני
+//   (כפילות מיותרת עם הריצה היומית) ואילו נכנסי יום ראשון לא קיבלו תזכורת כלל.
 function motzeiShabatTrigger() {
   const bookings = getBookings();
 
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate()+1);
-  const tomorrowStr = Utilities.formatDate(tomorrow, "Asia/Jerusalem", "yyyy-MM-dd");
+  const dayStr = function(offset) {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return Utilities.formatDate(d, "Asia/Jerusalem", "yyyy-MM-dd");
+  };
 
-  const friday = new Date();
-  friday.setDate(friday.getDate()-2);
-  const fridayStr = Utilities.formatDate(friday, "Asia/Jerusalem", "yyyy-MM-dd");
-
-  const saturday = new Date();
-  saturday.setDate(saturday.getDate()-1);
-  const saturdayStr = Utilities.formatDate(saturday, "Asia/Jerusalem", "yyyy-MM-dd");
+  const sundayStr   = dayStr(1);   // מחר — יום ראשון
+  const saturdayStr = dayStr(0);   // היום — שבת
+  const fridayStr   = dayStr(-1);  // אתמול — יום שישי
 
   let updated = false;
   bookings.forEach(function(b) {
     if (b.status === "cancelled") return;
     if (!b.email) return;
 
-    if (b.checkin === tomorrowStr && !b.sentAutoReminder) {
-      try { sendReminderEmail(b); b.sentAutoReminder = true; updated = true; Logger.log("מוצש תזכורת ליום שני: " + b.name); }
+    if (b.checkin === sundayStr && !b.sentAutoReminder) {
+      try { sendReminderEmail(b); b.sentAutoReminder = true; updated = true; Logger.log("מוצש תזכורת ליום ראשון: " + b.name); }
       catch(err) { Logger.log("שגיאה: " + err); }
     }
 
@@ -422,16 +425,26 @@ function motzeiShabatTrigger() {
   if (updated) saveAll(bookings);
 }
 
+// רושם בלשונית "תבניות" את התזמון שנוצר בפועל, כדי ש-health.html יוכל לאמת אותו
+// דרך ה-action הקיים getTemplates (ה-API של Apps Script לא חושף שעה/יום של טריגר).
+// מפתחות "_trigger_*" אינם מתנגשים עם תבניות המייל confirm/reminder/review/inquiry.
+function noteTrigger(key, schedule) {
+  try {
+    saveTemplate(key, schedule + " · עודכן " + Utilities.formatDate(new Date(), "Asia/Jerusalem", "dd.MM.yyyy HH:mm"));
+  } catch(err) { Logger.log("noteTrigger: " + err); }
+}
+
 function createMotzeiShabatTrigger() {
   ScriptApp.getProjectTriggers().forEach(function(t) {
     if (t.getHandlerFunction() === "motzeiShabatTrigger") ScriptApp.deleteTrigger(t);
   });
   ScriptApp.newTrigger("motzeiShabatTrigger")
     .timeBased()
-    .onWeekDay(ScriptApp.WeekDay.SUNDAY)
-    .atHour(21)
+    .onWeekDay(ScriptApp.WeekDay.SATURDAY)
+    .atHour(22)
     .create();
-  Logger.log("טריגר מוצאי שבת נוצר ✅");
+  noteTrigger("_trigger_motzeiShabat", "SATURDAY 22:00");
+  Logger.log("טריגר מוצאי שבת נוצר (שבת 22:00) ✅");
 }
 
 function createDailyTrigger() {
@@ -439,6 +452,7 @@ function createDailyTrigger() {
     if (t.getHandlerFunction() === "dailyEmailTrigger") ScriptApp.deleteTrigger(t);
   });
   ScriptApp.newTrigger("dailyEmailTrigger").timeBased().everyDays(1).atHour(9).create();
+  noteTrigger("_trigger_daily", "DAILY 09:00");
   Logger.log("טריגר יומי נוצר בהצלחה");
 }
 
@@ -706,5 +720,6 @@ function createBackupTrigger() {
     .everyDays(1)
     .atHour(2)
     .create();
+  noteTrigger("_trigger_backup", "DAILY 02:00");
   Logger.log("טריגר גיבוי יומי נוצר בהצלחה ✅");
 }
