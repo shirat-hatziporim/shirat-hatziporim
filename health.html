@@ -191,6 +191,24 @@ async function checkBackend(g){
   } catch(e){
     chk(g, "מייל אישור — preview (action=previewConfirm)", false, e.message + " (ייתכן שצריך לפרוס מחדש את Code.gs עם previewConfirm)");
   }
+  // ── בדיקת רגרסיה: מייל הביקורת — קישור לטופס ההמלצות באתר מיצד ──
+  // ⚠ נבדק מול **הפריסה החיה** ולא מול Code.gs בריפו: דחיפה לריפו הפרטי מפעילה
+  //   את ה-CI, אבל אם ה-Action נכשל הקוד בריפו מעודכן והסקריפט החי לא.
+  //   previewReview בונה את אותו HTML כמו sendReviewEmail בלי לשלוח מייל.
+  try {
+    const { data, ms } = await jsonp(SCRIPT_URL + "?action=previewReview", 20000);
+    const html = (data && data.html) || "";
+    chk(g, "מייל ביקורת — קישור לטופס ההמלצות במיצד",
+        html.indexOf("metzad.net/?review=") !== -1,
+        html.indexOf("metzad.net/?review=") === -1
+          ? "הקישור לטופס ההמלצות חסר במייל הביקורת — לוודא שה-Action של הפריסה ירוק"
+          : ms + "ms");
+    chk(g, "מייל ביקורת — שלושת אתרי הפרסום נשמרו",
+        html.indexOf("mamimush") !== -1 && html.indexOf("dira4shabat") !== -1 && html.indexOf("charedi.net") !== -1,
+        "הוספת מיצד לא אמורה להחליף את שלושת האתרים הקיימים אלא להתווסף אליהם");
+  } catch(e){
+    chk(g, "מייל ביקורת — preview (action=previewReview)", false, e.message + " (ייתכן שצריך לפרוס מחדש את Code.gs עם previewReview)");
+  }
   // ── בדיקת רגרסיה: תזמון טריגר מוצאי שבת — חייב להיות שבת (SATURDAY), לא ראשון ──
   // רקע: עד 8.2026 הטריגר רץ ראשון 21:00, ולכן "מחר" היה יום שני ונכנסי יום ראשון
   // לא קיבלו תזכורת כלל (ריצת שבת 09:00 נחסמת ע"י isShabat).
