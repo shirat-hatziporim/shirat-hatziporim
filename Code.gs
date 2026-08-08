@@ -7,6 +7,10 @@ const TEMPLATES_SHEET = "תבניות";
 const FROM_EMAIL = "shirathatziporim@gmail.com";
 const FROM_NAME = "צימר שירת הציפורים";
 const HOST_PHONE = "050-4103353";
+// קישור ישיר לטופס הביקורת של הצימר באתר הישוב (metzad.net).
+// ⚠ הפרמטר הוא **מזהה הרשומה** בטבלת "צימרים" ולא שם הצימר — יציב גם אם השם משתנה.
+//   האתר מקבל גם שם, אבל שם עובר קידוד ומתקלקל כשהקישור עובר בוואטסאפ.
+const METZAD_REVIEW_URL = "https://metzad.net/?review=recu7R502ndpO8cas";
 const PDF_URL = "https://raw.githubusercontent.com/shirat-hatziporim/shirat-hatziporim/main/%D7%97%D7%95%D7%91%D7%A8%D7%AA%20%D7%9E%D7%99%D7%93%D7%A2%20%D7%A6%D7%99%D7%9E%D7%A8%20%D7%A9%D7%99%D7%A8%D7%AA%20%D7%94%D7%A6%D7%99%D7%A4%D7%95%D7%A8%D7%99%D7%9D.pdf";
 
 function doGet(e) {
@@ -48,6 +52,8 @@ function doGet(e) {
       result = previewInquiry();
     } else if (action === "previewConfirm") {
       result = previewConfirm();
+    } else if (action === "previewReview") {
+      result = previewReview();
     } else if (action === "sendReminder") {
       const b = JSON.parse(decodeURIComponent(e.parameter.booking));
       sendReminderEmail(b); result = "ok";
@@ -165,6 +171,10 @@ function buildConfirmHtml(b) {
 }
 
 // מחזיר את ה-HTML של מייל האישור בלי לשלוח — לבדיקת רגרסיה ב-health.html (שעות 15:00/11:00)
+function previewReview() {
+  return { html: buildReviewHtml({ name: "בדיקה", email: "", checkin: "2026-07-15", checkout: "2026-07-17" }) };
+}
+
 function previewConfirm() {
   return { html: buildConfirmHtml({ name: "בדיקה", checkin: "2026-07-15", checkout: "2026-07-17", nights: 2, guests: 2, extraGuests: 0, babies: 0, total: 1600 }) };
 }
@@ -260,19 +270,28 @@ function sendReviewEmail(b) {
     const text = templates.review
       .replace(/{שם}/g, b.name||"")
       .replace(/{כניסה}/g, fd(b.checkin))
-      .replace(/{יציאה}/g, fd(b.checkout));
+      .replace(/{יציאה}/g, fd(b.checkout))
+      .replace(/{המלצה}/g, METZAD_REVIEW_URL);
     GmailApp.sendEmail(b.email, "תודה שהתארחתם - שירת הציפורים", text, {
       name: FROM_NAME, replyTo: FROM_EMAIL
     });
     return;
   }
+  sendMail(b.email, "תודה שהתארחתם - שירת הציפורים", buildReviewHtml(b));
+}
+
+// גוף מייל הביקורת (מסלול ה-HTML המעוצב). מופרד מ-sendReviewEmail כדי ש-previewReview
+// יוכל להחזיר בדיוק את אותו HTML בלי לשלוח — אותו זוג כמו buildConfirmHtml/previewConfirm.
+function buildReviewHtml(b) {
   const body = "<tr><td style='padding:28px 24px;font-family:Arial,sans-serif;'>"
     + "<p style='font-size:16px;color:#222;margin:0 0 8px;line-height:1.8;'>שלום וברכה <strong>" + b.name + "</strong>,</p>"
     + "<p style='font-size:15px;color:#444;margin:0 0 16px;line-height:1.8;'>רצינו להודות לכם מקרב לב על שבחרתם להתארח אצלנו בצימר &quot;שירת הציפורים&quot;.</p>"
     + "<p style='font-size:15px;color:#444;margin:0 0 24px;line-height:1.8;'>שמחנו מאוד לארח אתכם, ומקווים שנהנתם מהשהות, מהאווירה הנעימה ומהשקט הייחודי של המקום.</p>"
     + bx(
         "<p style='margin:0 0 14px;font-size:14px;color:#444;font-family:Arial,sans-serif;line-height:1.8;'>נשמח מאוד אם תמליצו עלינו לחברים ומכרים, וכן אם תוכלו להקדיש רגע קצר לשתף את חוויתכם ולהשאיר המלצה &ndash; הדבר מסייע לנו רבות בהמשך הדרך.</p>"
-        + "<p style='margin:0 0 12px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>מצורפים קישורים לאתרים בהם אנו מפרסמים, וניתן לכתוב את ההמלצה בתחתית המודעה:</p>"
+        + "<p style='margin:0 0 10px;font-size:14px;color:#444;font-family:Arial,sans-serif;line-height:1.8;'>הדרך הקצרה ביותר היא באתר הישוב מיצד &ndash; לחיצה אחת פותחת את הטופס, בוחרים כוכבים וכותבים:</p>"
+        + "<p style='margin:0 0 18px;text-align:center;font-family:Arial,sans-serif;'><a href='" + METZAD_REVIEW_URL + "' style='display:inline-block;background:#5a9e4f;color:#fff;text-decoration:none;padding:11px 26px;border-radius:6px;font-size:15px;font-weight:700;font-family:Arial,sans-serif;'>&#x2B50; לכתיבת המלצה באתר מיצד</a></p>"
+        + "<p style='margin:0 0 12px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>בנוסף, מצורפים קישורים לאתרים בהם אנו מפרסמים, וניתן לכתוב את ההמלצה בתחתית המודעה:</p>"
         + "<p style='margin:0 0 8px;font-size:14px;font-family:Arial,sans-serif;'>&#9654; <a href='https://mamimush.co.il/rooms/%D7%A6%D7%99%D7%9E%D7%A8%D7%99%D7%9D-308/' style='color:#2d5a27;font-weight:700;'>אתר מאמימוש</a></p>"
         + "<p style='margin:0 0 8px;font-size:14px;font-family:Arial,sans-serif;'>&#9654; <a href='https://dira4shabat.co.il/listing/%D7%A6%D7%99%D7%9E%D7%A8-%D7%A9%D7%99%D7%A8%D7%AA-%D7%94%D7%A6%D7%99%D7%A4%D7%95%D7%A8%D7%99%D7%9D-%D7%9E%D7%99%D7%A6%D7%93/' style='color:#2d5a27;font-weight:700;'>אתר דירה לשבת</a></p>"
         + "<p style='margin:0;font-size:14px;font-family:Arial,sans-serif;'>&#9654; <a href='https://charedi.net/tzimar/25569/' style='color:#2d5a27;font-weight:700;'>אתר הלוח החרדי</a></p>",
@@ -281,7 +300,7 @@ function sendReviewEmail(b) {
     + "<p style='font-size:14px;color:#666;margin:0 0 4px;font-family:Arial,sans-serif;'>לכל צורך או ביקור נוסף בעתיד &ndash; נשמח לעמוד לשירותכם: <strong>" + HOST_PHONE + "</strong></p>"
     + "<p style='font-size:15px;color:#5a9e4f;font-weight:700;margin:24px 0 0;text-align:center;font-family:Arial,sans-serif;'>&#x1F426; בברכה ובהערכה, יעקב | צימר שירת הציפורים</p>"
     + "</td></tr>";
-  sendMail(b.email, "תודה שהתארחתם - שירת הציפורים", wrap(hdr("&#x2B50; שמחנו לארח אתכם!") + body + ftr()));
+  return wrap(hdr("&#x2B50; שמחנו לארח אתכם!") + body + ftr());
 }
 
 function buildInquiryHtml() {
