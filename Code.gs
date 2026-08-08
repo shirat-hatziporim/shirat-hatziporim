@@ -289,12 +289,12 @@ function buildReviewHtml(b) {
     + "<p style='font-size:15px;color:#444;margin:0 0 24px;line-height:1.8;'>שמחנו מאוד לארח אתכם, ומקווים שנהנתם מהשהות, מהאווירה הנעימה ומהשקט הייחודי של המקום.</p>"
     + bx(
         "<p style='margin:0 0 14px;font-size:14px;color:#444;font-family:Arial,sans-serif;line-height:1.8;'>נשמח מאוד אם תמליצו עלינו לחברים ומכרים, וכן אם תוכלו להקדיש רגע קצר לשתף את חוויתכם ולהשאיר המלצה &ndash; הדבר מסייע לנו רבות בהמשך הדרך.</p>"
-        + "<p style='margin:0 0 10px;font-size:14px;color:#444;font-family:Arial,sans-serif;line-height:1.8;'>הדרך הקצרה ביותר היא באתר הישוב מיצד &ndash; לחיצה אחת פותחת את הטופס, בוחרים כוכבים וכותבים:</p>"
-        + "<p style='margin:0 0 18px;text-align:center;font-family:Arial,sans-serif;'><a href='" + METZAD_REVIEW_URL + "' style='display:inline-block;background:#5a9e4f;color:#fff;text-decoration:none;padding:11px 26px;border-radius:6px;font-size:15px;font-weight:700;font-family:Arial,sans-serif;'>&#x2B50; לכתיבת המלצה באתר מיצד</a></p>"
-        + "<p style='margin:0 0 12px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>בנוסף, מצורפים קישורים לאתרים בהם אנו מפרסמים, וניתן לכתוב את ההמלצה בתחתית המודעה:</p>"
+        + "<p style='margin:0 0 12px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>מצורפים קישורים לאתרים בהם אנו מפרסמים, וניתן לכתוב את ההמלצה בתחתית המודעה:</p>"
         + "<p style='margin:0 0 8px;font-size:14px;font-family:Arial,sans-serif;'>&#9654; <a href='https://mamimush.co.il/rooms/%D7%A6%D7%99%D7%9E%D7%A8%D7%99%D7%9D-308/' style='color:#2d5a27;font-weight:700;'>אתר מאמימוש</a></p>"
         + "<p style='margin:0 0 8px;font-size:14px;font-family:Arial,sans-serif;'>&#9654; <a href='https://dira4shabat.co.il/listing/%D7%A6%D7%99%D7%9E%D7%A8-%D7%A9%D7%99%D7%A8%D7%AA-%D7%94%D7%A6%D7%99%D7%A4%D7%95%D7%A8%D7%99%D7%9D-%D7%9E%D7%99%D7%A6%D7%93/' style='color:#2d5a27;font-weight:700;'>אתר דירה לשבת</a></p>"
-        + "<p style='margin:0;font-size:14px;font-family:Arial,sans-serif;'>&#9654; <a href='https://charedi.net/tzimar/25569/' style='color:#2d5a27;font-weight:700;'>אתר הלוח החרדי</a></p>",
+        + "<p style='margin:0 0 14px;font-size:14px;font-family:Arial,sans-serif;'>&#9654; <a href='https://charedi.net/tzimar/25569/' style='color:#2d5a27;font-weight:700;'>אתר הלוח החרדי</a></p>"
+        + "<p style='margin:0 0 10px;font-size:14px;color:#444;font-family:Arial,sans-serif;line-height:1.8;'>נשמח על המלצה בכל אחד מהאתרים &ndash; ככל שהיא מופיעה ביותר מקומות, כך הדבר מסייע לנו יותר. אפשר גם באתר הישוב מיצד, בטופס קצר:</p>"
+        + "<p style='margin:0;text-align:center;font-family:Arial,sans-serif;'><a href='" + METZAD_REVIEW_URL + "' style='display:inline-block;background:#5a9e4f;color:#fff;text-decoration:none;padding:11px 26px;border-radius:6px;font-size:15px;font-weight:700;font-family:Arial,sans-serif;'>&#x2B50; לכתיבת המלצה באתר מיצד</a></p>",
         "#5a9e4f"
       )
     + "<p style='font-size:14px;color:#666;margin:0 0 4px;font-family:Arial,sans-serif;'>לכל צורך או ביקור נוסף בעתיד &ndash; נשמח לעמוד לשירותכם: <strong>" + HOST_PHONE + "</strong></p>"
