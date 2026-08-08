@@ -124,6 +124,12 @@ function wrap(content) {
     + "</table></td></tr></table></body></html>";
 }
 
+function reviewBtn(url, label, star) {
+  return "<p style='margin:0 0 10px;text-align:center;font-family:Arial,sans-serif;'>"
+    + "<a href='" + url + "' style='display:inline-block;width:240px;background:#5a9e4f;color:#fff;text-decoration:none;padding:12px 10px;border-radius:6px;font-size:15px;font-weight:700;font-family:Arial,sans-serif;text-align:center;'>"
+    + (star ? "&#x2B50; " : "") + label + "</a></p>";
+}
+
 function bx(content, color) {
   return "<table width='100%' cellpadding='0' cellspacing='0' style='background:#f9f7f3;border-radius:8px;border-right:4px solid " + color + ";margin-bottom:24px;'><tr><td style='padding:16px 20px;'>" + content + "</td></tr></table>";
 }
@@ -289,12 +295,12 @@ function buildReviewHtml(b) {
     + "<p style='font-size:15px;color:#444;margin:0 0 24px;line-height:1.8;'>שמחנו מאוד לארח אתכם, ומקווים שנהנתם מהשהות, מהאווירה הנעימה ומהשקט הייחודי של המקום.</p>"
     + bx(
         "<p style='margin:0 0 14px;font-size:14px;color:#444;font-family:Arial,sans-serif;line-height:1.8;'>נשמח מאוד אם תמליצו עלינו לחברים ומכרים, וכן אם תוכלו להקדיש רגע קצר לשתף את חוויתכם ולהשאיר המלצה &ndash; הדבר מסייע לנו רבות בהמשך הדרך.</p>"
-        + "<p style='margin:0 0 12px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>מצורפים קישורים לאתרים בהם אנו מפרסמים, וניתן לכתוב את ההמלצה בתחתית המודעה:</p>"
-        + "<p style='margin:0 0 8px;font-size:14px;font-family:Arial,sans-serif;'>&#9654; <a href='https://mamimush.co.il/rooms/%D7%A6%D7%99%D7%9E%D7%A8%D7%99%D7%9D-308/' style='color:#2d5a27;font-weight:700;'>אתר מאמימוש</a></p>"
-        + "<p style='margin:0 0 8px;font-size:14px;font-family:Arial,sans-serif;'>&#9654; <a href='https://dira4shabat.co.il/listing/%D7%A6%D7%99%D7%9E%D7%A8-%D7%A9%D7%99%D7%A8%D7%AA-%D7%94%D7%A6%D7%99%D7%A4%D7%95%D7%A8%D7%99%D7%9D-%D7%9E%D7%99%D7%A6%D7%93/' style='color:#2d5a27;font-weight:700;'>אתר דירה לשבת</a></p>"
-        + "<p style='margin:0 0 14px;font-size:14px;font-family:Arial,sans-serif;'>&#9654; <a href='https://charedi.net/tzimar/25569/' style='color:#2d5a27;font-weight:700;'>אתר הלוח החרדי</a></p>"
-        + "<p style='margin:0 0 10px;font-size:14px;color:#444;font-family:Arial,sans-serif;line-height:1.8;'>נשמח על המלצה בכל אחד מהאתרים &ndash; ככל שהיא מופיעה ביותר מקומות, כך הדבר מסייע לנו יותר. אפשר גם באתר הישוב מיצד, בטופס קצר:</p>"
-        + "<p style='margin:0;text-align:center;font-family:Arial,sans-serif;'><a href='" + METZAD_REVIEW_URL + "' style='display:inline-block;background:#5a9e4f;color:#fff;text-decoration:none;padding:11px 26px;border-radius:6px;font-size:15px;font-weight:700;font-family:Arial,sans-serif;'>&#x2B50; לכתיבת המלצה באתר מיצד</a></p>",
+        + "<p style='margin:0 0 14px;font-size:14px;color:#444;font-family:Arial,sans-serif;line-height:1.8;'>ככל שההמלצה מופיעה ביותר מקומות כך היא מסייעת לנו יותר, ונשמח על כל אחד מהם:</p>"
+        + reviewBtn("https://mamimush.co.il/rooms/%D7%A6%D7%99%D7%9E%D7%A8%D7%99%D7%9D-308/", "המלצה באתר מאמימוש")
+        + reviewBtn("https://dira4shabat.co.il/listing/%D7%A6%D7%99%D7%9E%D7%A8-%D7%A9%D7%99%D7%A8%D7%AA-%D7%94%D7%A6%D7%99%D7%A4%D7%95%D7%A8%D7%99%D7%9D-%D7%9E%D7%99%D7%A6%D7%93/", "המלצה באתר דירה לשבת")
+        + reviewBtn("https://charedi.net/tzimar/25569/", "המלצה באתר הלוח החרדי")
+        + reviewBtn(METZAD_REVIEW_URL, "המלצה באתר הישוב מיצד", true)
+        + "<p style='margin:14px 0 0;font-size:13px;color:#777;font-family:Arial,sans-serif;line-height:1.7;'>בשלושת אתרי הפרסום ההמלצה נכתבת בתחתית המודעה. באתר מיצד נפתח טופס קצר עם דירוג בכוכבים.</p>",
         "#5a9e4f"
       )
     + "<p style='font-size:14px;color:#666;margin:0 0 4px;font-family:Arial,sans-serif;'>לכל צורך או ביקור נוסף בעתיד &ndash; נשמח לעמוד לשירותכם: <strong>" + HOST_PHONE + "</strong></p>"
