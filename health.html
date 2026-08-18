@@ -251,6 +251,22 @@ async function checkBackend(g){
       chk(g, "להזמנה יש מזהה (id)", has("id"), has("id") ? "id="+b.id : "");
       chk(g, "להזמנה יש תאריכי כניסה/יציאה", has("checkin") && has("checkout"), has("checkin") ? (b.checkin+" → "+b.checkout) : "");
       chk(g, "להזמנה יש סטטוס", has("status"), has("status") ? "status="+b.status : "");
+      // ── רגרסיה: אין הזמנות כפולות בגיליון (id ייחודי) ──
+      // אירוע 18.8.2026: כל ההזמנות הופיעו פעמיים בלוח הניהול.
+      const seen = {}, dups = [];
+      bookings.forEach(x => {
+        const id = (x && x.id !== undefined && x.id !== null && x.id !== "") ? String(x.id) : "";
+        if (!id) return;
+        if (seen[id]) { if (dups.indexOf(id) === -1) dups.push(id); }
+        seen[id] = true;
+      });
+      chk(g, "אין הזמנות כפולות בגיליון (id ייחודי)", dups.length === 0,
+          dups.length ? (dups.length + " מזהים מופיעים יותר מפעם אחת: " + dups.slice(0,8).join(", ") +
+                         " — יש לנקות את הגיליון (שחזור מגיבוי או מחיקת שורות כפולות)")
+                      : bookings.length + " הזמנות, כל המזהים ייחודיים");
+      const noId = bookings.filter(x => !x || x.id === undefined || x.id === null || x.id === "").length;
+      row(g, noId === 0 ? "ok" : "warn", "לכל הזמנה יש מזהה",
+          noId === 0 ? "תקין" : noId + " הזמנות ללא id — הגנת הכפילויות לא חלה עליהן");
     }
   }
   return bookings;
