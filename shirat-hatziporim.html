@@ -2463,7 +2463,20 @@ function App() {
   // טעינה ראשונית — תמיד מגוגל שיטס (המקור האמיתי)
   useEffect(() => {
     Promise.all([loadFromSheets(), loadBlocked(), loadExpenses(), loadManualGuests(), loadTemplates()]).then(([data, blocked, expenses, mGuests]) => {
-      const normalized = data.map(b => {
+      // הגנה מפני כפילויות בגיליון: מזהה הזמנה חייב להיות ייחודי (max+1),
+      // ולכן שתי רשומות עם אותו id הן שכפול. שומרים את המופע הראשון.
+      const seenIds = {};
+      const deduped = data.filter(b => {
+        const id = (b && b.id !== undefined && b.id !== null && b.id !== "") ? String(b.id) : "";
+        if (!id) return true;
+        if (seenIds[id]) return false;
+        seenIds[id] = true;
+        return true;
+      });
+      if (deduped.length !== data.length) {
+        console.warn("⚠ נמצאו " + (data.length - deduped.length) + " הזמנות כפולות בגיליון — הוסתרו מהתצוגה");
+      }
+      const normalized = deduped.map(b => {
         if (b.source === "online" && Number(b.guests) > 2 && Number(b.extraGuests || 0) === Number(b.guests) - 2) {
           return {
             ...b,
@@ -2478,7 +2491,7 @@ function App() {
       setExpenses(expenses);
       if (mGuests.length > 0) setManualGuests(mGuests);
       try {
-        localStorage.setItem("shirat_bookings", JSON.stringify(data));
+        localStorage.setItem("shirat_bookings", JSON.stringify(normalized));
       } catch (e) {}
       try {
         localStorage.setItem("shirat_blocked", JSON.stringify(blocked));
