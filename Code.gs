@@ -506,9 +506,29 @@ function getBookings() {
   });
 }
 
-function saveAll(bookings) {
+// מסנן כפילויות לפי id — שומר את המופע הראשון. מזהי הזמנה אמורים להיות ייחודיים (max+1),
+// ולכן שני רשומות עם אותו id הן תמיד שכפול. רשומות ללא id נשמרות כמות שהן.
+function dedupeById(bookings) {
+  const seen = {};
+  const unique = [];
+  let dropped = 0;
+  (bookings || []).forEach(function(b) {
+    const id = (b && b.id !== undefined && b.id !== null && b.id !== "") ? String(b.id) : "";
+    if (id) {
+      if (seen[id]) { dropped++; return; }
+      seen[id] = true;
+    }
+    unique.push(b);
+  });
+  if (dropped > 0) Logger.log("⚠ נמנעה כתיבת " + dropped + " הזמנות כפולות (id זהה)");
+  return unique;
+}
+
+function saveAll(bookingsRaw) {
+  const bookings = dedupeById(bookingsRaw);
   const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
   sheet.clearContents();
+  SpreadsheetApp.flush();
   if (!bookings.length) return;
   const headers = ["id","name","phone","email","checkin","checkout","guests","extraGuests","babies","babyCrib","status","notes","paid","total","nights","guestExtra","discount","deposit","depositMethod","rating","receiptIssued","source","balanceMethod","sentConfirm","sentReminder","sentReview","sentAutoReminder","sentAutoReview"];
   sheet.appendRow(headers);
