@@ -215,6 +215,7 @@ function buildConfirmBody(b) {
     + bx(
         "<p style='margin:0 0 6px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F4CD; כתובת: <strong>נחל קדם 93, מיצד</strong></p>"
         + "<p style='margin:0 0 6px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F552; כניסה מהשעה <strong>15:00</strong> | יציאה עד השעה <strong>11:00</strong></p>"
+        + "<p style='margin:0 0 6px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F319; במוצאי שבת &ndash; יציאה עד <strong>שעה וחצי לאחר צאת השבת</strong></p>"
         + "<p style='margin:0 0 6px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F68C; תחבורה: קו 364 מירושלים | קו 411 מביתר</p>"
         + "<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x2139; מידע תחבורה: <strong>*8787</strong></p>",
         "#aaa"
@@ -350,6 +351,7 @@ function buildInquiryHtml() {
     + bx(
         "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F4CD; כתובת: <strong>נחל קדם 93, מיצד</strong></p>"
         + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F552; שעת כניסה: <strong>15:00</strong> | שעת יציאה: <strong>11:00</strong></p>"
+        + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F319; במוצאי שבת &ndash; יציאה עד <strong>שעה וחצי לאחר צאת השבת</strong></p>"
         + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F3DE; <a href='https://raw.githubusercontent.com/shirat-hatziporim/shirat-hatziporim/main/%D7%90%D7%98%D7%A8%D7%A7%D7%A6%D7%99%D7%95%D7%AA%20%D7%92%D7%95%D7%A9%20%D7%A2%D7%A6%D7%99%D7%95%D7%9F.pdf' style='color:#2d5a27;font-weight:700;'>קובץ אטרקציות במיצד ובסביבה - לחץ להורדה</a></p>"
         + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x2139; אתר: <a href='https://639885bfa3564.site123.me/' style='color:#1565c0;'>לחץ לצפייה באתר</a></p>"
         + "<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F4DE; טלפון: <strong>" + HOST_PHONE + "</strong></p>",
