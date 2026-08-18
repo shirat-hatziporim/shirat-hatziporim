@@ -527,17 +527,25 @@ function dedupeById(bookings) {
 function saveAll(bookingsRaw) {
   const bookings = dedupeById(bookingsRaw);
   const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
-  sheet.clearContents();
-  SpreadsheetApp.flush();
-  if (!bookings.length) return;
   const headers = ["id","name","phone","email","checkin","checkout","guests","extraGuests","babies","babyCrib","status","notes","paid","total","nights","guestExtra","discount","deposit","depositMethod","rating","receiptIssued","source","balanceMethod","sentConfirm","sentReminder","sentReview","sentAutoReminder","sentAutoReview"];
-  sheet.appendRow(headers);
-  bookings.forEach(function(b) {
-    sheet.appendRow(headers.map(function(h) {
+  const before = sheet.getLastRow();
+
+  // כתיבה אחת (setValues) במקום appendRow בלולאה. appendRow תלוי ב"שורה האחרונה"
+  // שהגיליון מדווח עליה, ולכן ריקון שלא נכנס לתוקף מייצר שורות שרד — כך נוצרה
+  // הכפילות של 18.8.2026. setValues כותב לטווח מפורש ולא תלוי במצב הקודם.
+  const values = [headers].concat(bookings.map(function(b) {
+    return headers.map(function(h) {
       if (h === "phone" && b[h]) return String(b[h]);
-      return b[h] !== undefined ? b[h] : "";
-    }));
-  });
+      return b[h] !== undefined && b[h] !== null ? b[h] : "";
+    });
+  }));
+  sheet.getRange(1, 1, values.length, headers.length).setValues(values);
+
+  // ניקוי מפורש של כל שורה שנשארה מתחת לנתונים החדשים (אם הרשימה התקצרה).
+  if (before > values.length) {
+    sheet.getRange(values.length + 1, 1, before - values.length, headers.length).clearContent();
+  }
+  SpreadsheetApp.flush();
 }
 
 function addBooking(b) {
