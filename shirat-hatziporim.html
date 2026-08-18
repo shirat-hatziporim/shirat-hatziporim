@@ -2829,6 +2829,10 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
   const totalRev = confirmed.reduce((s, b) => s + (b.total || 0), 0);
   const totalPaid = confirmed.reduce((s, b) => s + (b.paid || 0) + (b.deposit || 0), 0);
   const totalNights = confirmed.reduce((s, b) => s + (b.nights || 0), 0);
+  // יתרה לגביה = סכום היתרות של כל הזמנה בנפרד, כשכל יתרה נחסמת ב-0.
+  // ⚠ אין לחשב totalRev - totalPaid: הזמנה ששולמה ביתר (paid+deposit > total)
+  //    יוצרת יתרה שלילית שמקזזת חובות אמיתיים של הזמנות אחרות ומקטינה את הסכום.
+  const totalDue = confirmed.reduce((s, b) => s + Math.max(0, (b.total || 0) - ((b.paid || 0) + (b.deposit || 0))), 0);
   if (!auth) return /*#__PURE__*/_jsx(LoginScreen, {
     onLogin: () => {
       sessionStorage.setItem("shirat_auth", "1");
@@ -3266,7 +3270,7 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
           s: "מאושרות"
         }, {
           l: "יתרה לגביה",
-          v: fm(totalRev - totalPaid),
+          v: fm(totalDue),
           icon: "📊",
           s: `שולם: ${fm(totalPaid)}`
         }].map((s, i) => /*#__PURE__*/_jsxs("div", {
@@ -4084,7 +4088,7 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
               c: "#2e7d32"
             }, {
               l: "יתרה לגביה",
-              v: fm(totalRev - totalPaid),
+              v: fm(totalDue),
               c: "#c62828"
             }].map((s, i) => /*#__PURE__*/_jsxs("div", {
               style: {
