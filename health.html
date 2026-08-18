@@ -302,14 +302,16 @@ function checkBusiness(g, src){
       src.indexOf("fm(totalRev - totalPaid)")!==-1
         ? "עדיין מחושב totalRev - totalPaid — תשלום ביתר יקזז חובות אמיתיים ויציג יתרה נמוכה מדי"
         : "");
-  chk(g, "יתרה לגביה — כל יתרה נחסמת ב-0 (Math.max)",
-      /totalDue\s*=\s*confirmed\.reduce\([^;]*Math\.max\(0,/.test(src),
-      "ללא Math.max(0,…) לכל הזמנה — יתרות שליליות יקזזו את הסכום");
+  {
+    const okMax = /totalDue\s*=\s*confirmed\.reduce\([^;]*Math\.max\(0,/.test(src);
+    chk(g, "יתרה לגביה — כל יתרה נחסמת ב-0 (Math.max)", okMax,
+        okMax ? "" : "ללא Math.max(0,…) לכל הזמנה — יתרות שליליות יקזזו את הסכום");
+  }
   // סימולציה של הלוגיקה: הזמנה בחוב 1200 + הזמנה ששולמה ביתר ב-240 ⇒ 1200 (לא 960)
   {
     const sample = [{ total: 1200, paid: 0, deposit: 0 }, { total: 1000, paid: 1240, deposit: 0 }];
     const due = sample.reduce((s, b) => s + Math.max(0, (b.total||0) - ((b.paid||0)+(b.deposit||0))), 0);
-    chk(g, "יתרה לגביה — תשלום ביתר לא מקזז חוב אחר", due === 1200, "חושב ₪" + due + " (צפוי ₪1,200)");
+    chk(g, "יתרה לגביה — תשלום ביתר לא מקזז חוב אחר", due === 1200, due === 1200 ? "" : "חושב ₪" + due + " במקום ₪1,200");
   }
 }
 
