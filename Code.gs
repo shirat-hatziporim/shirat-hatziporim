@@ -324,8 +324,7 @@ function buildInquiryHtml() {
     + "<p style='margin:0 0 6px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F4C5; סוף שבוע (שישי-שבת): <strong>1,200 ש&#34;ח</strong></p>"
     + "<p style='margin:0 0 6px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F381; חבילת חמישי+שישי+שבת: <strong>1,700 ש&#34;ח</strong></p>"
     + "<p style='margin:0 0 6px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x279C; תוספת יציאה ראשון: <strong>350 ש&#34;ח</strong></p>"
-    + "<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x279C; תוספת מיטות (עד 3): <strong>300 ש&#34;ח לאדם</strong></p>"
-    + "<p style='margin:8px 0 0;font-size:13px;color:#c8860a;font-weight:700;font-family:Arial,sans-serif;'>&#x2600; תוספת 20% על חופשות בין הזמנים (ט' באב &ndash; ג' אלול)</p>";
+    + "<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x279C; תוספת מיטות (עד 3): <strong>300 ש&#34;ח לאדם</strong></p>";
 
   const body = "<tr><td style='padding:28px 24px;font-family:Arial,sans-serif;'>"
     + "<p style='font-size:16px;color:#222;margin:0 0 8px;line-height:1.8;'>שלום וברכה,</p>"
