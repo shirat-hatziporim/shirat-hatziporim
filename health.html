@@ -138,6 +138,19 @@ async function checkPage(g){
   chk(g, "אין GitHub PAT בקוד", !/ghp_[A-Za-z0-9]{20,}/.test(src));
   chk(g, "אין טוקן Airtable בקוד", !/pat[A-Za-z0-9]{14}\.[a-f0-9]{40,}/.test(src) && src.indexOf("AIRTABLE_TOKEN")===-1);
   chk(g, "כתובת ה-Apps Script מוגדרת", src.indexOf("script.google.com/macros/")!==-1);
+  // ── קיבולת 4 נופשים (הוכרעה 26.8.2026): 2 בסיס + עד 2 תוספת ──
+  chk(g, "לוח הניהול — שדה 'נוספים' מוגבל ל-2 (קיבולת 4)",
+      /max:\s*2,\s*value:\s*f\.extraGuests/.test(src),
+      /max:\s*4,\s*value:\s*f\.extraGuests/.test(src)
+        ? "השדה עדיין max:4 — מאפשר להזין הזמנה של 6 נפשות. לתקן ב-shirat-hatziporim.html"
+        : "2 בסיס + עד 2 תוספת = 4");
+  chk(g, "לוח הניהול — תבנית המתעניינים מציגה 4 נופשים",
+      src.indexOf("עד 4 נופשים")!==-1 && src.indexOf("עד 5 נופשים")===-1
+      && src.indexOf("(עד 3): ₪300")===-1,
+      src.indexOf("עד 5 נופשים")!==-1
+        ? "תבנית ברירת המחדל בלוח הניהול עדיין אומרת 5 — סתירה מול המייל שנשלח בפועל"
+        : "אחיד מול Code.gs");
+
   chk(g, "מייל אישור — SCRIPT_URL נגיש (window.SCRIPT_URL)",
       src.indexOf("window.SCRIPT_URL = SCRIPT_URL")!==-1 && src.indexOf('window.SCRIPT_URL+"?action=sendConfirm')!==-1,
       'sendConfirmationEmail בסקריפט נפרד — חייב window.SCRIPT_URL, אחרת ReferenceError ושליחת מייל האישור נכשלת');
@@ -225,11 +238,15 @@ async function checkBackend(g){
         html.indexOf("החזרים ותשלומים")===-1
           ? "ריבוע ההחזרים נעלם מהמייל — לתקן ב-Code.gs (buildInquiryHtml, const payments) ולפרוס מחדש"
           : "חסר פריט (כרטיס אשראי מילואים / החזר מקופות החולים)");
-    chk(g, "מייל מתעניינים — קיבולת 5 נופשים אחידה מול המחירון",
-        html.indexOf("5 נופשים")!==-1 && html.indexOf("עד 4")===-1,
-        html.indexOf("עד 4")!==-1
-          ? "המייל מציג 'עד 4' בעוד המחירון מאפשר 2+3 מיטות — סתירה שצריך להכריע (ראו גם הטקסט באתר)"
-          : "המחירון מאפשר 2 בסיס + עד 3 תוספת = 5");
+    // ── קיבולת: הוכרעה ל-4 נופשים ב-26.8.2026 (2 בסיס + עד 2 תוספת) ──
+    chk(g, "מייל מתעניינים — קיבולת 4 נופשים אחידה מול המחירון",
+        html.indexOf("עד 4 נופשים")!==-1 && html.indexOf("5 נופשים")===-1
+        && html.indexOf("(עד 2)")!==-1 && html.indexOf("(עד 3)")===-1,
+        html.indexOf("5 נופשים")!==-1
+          ? "המייל עדיין מציג 'עד 5 נופשים' — הקיבולת הוכרעה ל-4 (26.8.2026), לתקן ב-Code.gs ולפרוס מחדש"
+          : (html.indexOf("(עד 3)")!==-1
+              ? "שורת תוספת המיטות עדיין 'עד 3' — צריכה להיות 'עד 2' (2 בסיס + 2 = 4)"
+              : "2 בסיס + עד 2 תוספת = 4"));
   } catch(e){
     chk(g, "מייל מתעניינים — preview (action=previewInquiry)", false, e.message + " (ייתכן שצריך לפרוס מחדש את Code.gs עם previewInquiry)");
   }
@@ -416,6 +433,11 @@ async function checkAssets(g){
   try {
     const r = await req("booking.html");
     chk(g, "טופס ההזמנה הציבורי (booking.html) נטען", r.code===200, "HTTP "+r.code);
+    chk(g, "טופס ההזמנה — מקסימום 4 אורחים בבורר (קיבולת 4)",
+        r.text.indexOf('<option value="4">')!==-1 && r.text.indexOf('<option value="5">')===-1,
+        r.text.indexOf('<option value="5">')!==-1
+          ? "עדיין ניתן לבחור 5 אורחים בטופס הציבורי — סתירה מול המייל והמחירון (2+2=4)"
+          : "1–4 אורחים");
   } catch(e){ chk(g, "booking.html נטען", false, e.message); }
   const lg = await loadImg("logo.jpeg", 10000);
   chk(g, "הלוגו (logo.jpeg) נטען", lg.ok, lg.ok ? lg.ms+"ms" : (lg.why||""));
