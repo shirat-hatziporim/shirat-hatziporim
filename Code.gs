@@ -329,6 +329,7 @@ function buildInquiryHtml() {
   const body = "<tr><td style='padding:28px 24px;font-family:Arial,sans-serif;'>"
     + "<p style='font-size:16px;color:#222;margin:0 0 8px;line-height:1.8;'>שלום וברכה,</p>"
     + "<p style='font-size:15px;color:#444;margin:0 0 24px;line-height:1.8;'>תודה רבה על פנייתכם. מצרף לכם פרטים על הצימר שלנו:</p>"
+    + "<p style='font-size:15px;color:#222;font-weight:700;margin:0 0 12px;font-family:Arial,sans-serif;'>&#x1F3D8; מידע על הישוב:</p>"
     + bx(
         "<p style='margin:0 0 8px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F4CD; <a href='https://waze.com/ul?q=%D7%9E%D7%99%D7%A6%D7%93' style='color:#2d5a27;font-weight:700;'>מיצד, הרי יהודה</a> &#8212; כ-35 דקות מירושלים</p>"
         + "<p style='margin:0 0 8px;font-size:14px;font-weight:700;color:#2d5a27;font-family:Arial,sans-serif;'>&#x1F3D8; ישוב מיצד &#8212; ישוב חרדי עם אווירה שקטה ופסטורלית</p>"
