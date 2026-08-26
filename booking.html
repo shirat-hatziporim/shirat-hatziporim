@@ -401,16 +401,7 @@ function selectDay(ds){
         cur.setDate(cur.getDate()+1);
       }
       if(blocked){ selStart=ds; selEnd=null; document.getElementById("checkin").value=ds; document.getElementById("checkout").value=""; showDateError("יש תאריך תפוס בטווח שנבחר"); return; }
-      // בדוק מינימום לילות
-      const ciDate=new Date(selStart+"T12:00:00");
-      const coDate=new Date(ds+"T12:00:00");
-      const nights=Math.round((coDate-ciDate)/(1000*60*60*24));
-      const ciDay=ciDate.getDay(); // 5=שישי
-      const isFridayOnly=(ciDay===5 && nights===1); // שישי לבד — מותר
-      if(!isFridayOnly && nights<2){
-        showDateError("מינימום 2 לילות בימי חול — שישי בלבד ניתן להזמין ללילה אחד");
-        return;
-      }
+      // מינימום הלילות בוטל (26.8.2026) — ניתן להזמין גם לילה אחד בכל יום בשבוע
       selEnd=ds;
       document.getElementById("checkout").value=ds;
       hideDateError();
@@ -436,17 +427,7 @@ function onDateInput(){
     }
   }
   if(selStart&&selEnd){
-    const ciDate=new Date(selStart+"T12:00:00");
-    const coDate=new Date(selEnd+"T12:00:00");
-    const nights=Math.round((coDate-ciDate)/(1000*60*60*24));
-    const ciDay=ciDate.getDay();
-    const isFridayOnly=(ciDay===5 && nights===1);
-    if(nights>0 && !isFridayOnly && nights<2){
-      showDateError("מינימום 2 לילות בימי חול — שישי בלבד ניתן להזמין ללילה אחד");
-      hidePrice();
-      renderCal();
-      return;
-    }
+    // מינימום הלילות בוטל (26.8.2026) — כל טווח תקין של לילה אחד ומעלה מתקבל
     hideDateError();
     calcPrice();
   } else hidePrice();
@@ -530,7 +511,7 @@ function calcPrice(){
     display.style.color="var(--dark)";
     display.style.fontWeight="700";
   } else {
-    display.textContent=`${nights} לילות — חישוב רגיל`;
+    display.textContent=`${nights===1?"לילה אחד":nights+" לילות"} — חישוב רגיל`;
     display.style.color="var(--muted)";
     display.style.fontWeight="400";
   }
@@ -570,7 +551,7 @@ function calcPrice(){
     }
     total+=nightsTotal;
     const summerNote=isSummer(ci)?" (תעריף חופש)":"";
-    rows.push({label:`${nights} לילות${summerNote}`,val:"₪"+nightsTotal.toLocaleString()});
+    rows.push({label:`${nights===1?"לילה אחד":nights+" לילות"}${summerNote}`,val:"₪"+nightsTotal.toLocaleString()});
     // תוספת יציאה בראשון
     if(coDay===0){
       const se=Math.round(PRICES.sundayExtra*summerMult(ci));
@@ -594,7 +575,7 @@ function calcPrice(){
   document.getElementById("priceBox").style.display="block";
   document.getElementById("priceBox")._total=total;
   document.getElementById("priceBox")._nights=nights;
-  document.getElementById("priceBox")._roomLabel=roomLabel||`${nights} לילות`;
+  document.getElementById("priceBox")._roomLabel=roomLabel||(nights===1?"לילה אחד":`${nights} לילות`);
 }
 
 function hidePrice(){ document.getElementById("priceBox").style.display="none"; }
