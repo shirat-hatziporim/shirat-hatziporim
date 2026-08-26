@@ -85,6 +85,11 @@ function doGet(e) {
     } else if (action === "notifyOwner") {
       const data = JSON.parse(safeDecode(e.parameter.data));
       notifyOwner(data); result = "ok";
+    } else if (action === "upsertBooking") {
+      const b = JSON.parse(safeDecode(e.parameter.booking));
+      result = upsertBooking(b);
+    } else if (action === "deleteBooking") {
+      result = deleteBookingById(safeDecode(e.parameter.id));
     } else if (action === "chunk") {
       const cache = CacheService.getScriptCache();
       const idx = String(e.parameter.index);
@@ -105,6 +110,10 @@ function doGet(e) {
 // TTL של החלקים. הועלה מ-300 ל-600 שניות: רצף של 6 קריאות JSONP איטיות
 // (ראו "תקיעות ב-/exec") יכול לחרוג בקלות מחמש דקות ולהפקיע חלק באמצע.
 const CHUNK_TTL = 600;
+
+// סדר העמודות בלשונית ההזמנות. היה משוכפל inline ב-saveAll וב-addBooking —
+// רוכז לקבוע אחד כדי ש-upsertBooking לא יוכל לסטות מהם.
+const BOOKING_HEADERS = ["id","name","phone","email","checkin","checkout","guests","extraGuests","babies","babyCrib","status","notes","paid","total","nights","guestExtra","discount","deposit","depositMethod","rating","receiptIssued","source","balanceMethod","sentConfirm","sentReminder","sentReview","sentAutoReminder","sentAutoReview"];
 
 // מחבר את החלקים שנשמרו ב-CacheService וכותב לגיליון.
 // 🔴 באג שתוקן 26.8.2026 — "הזמנה נשמרה ונעלמה":
@@ -151,6 +160,77 @@ function commitChunks(expectedTotal) {
   cache.remove("chunk_total");
 
   return { ok: true, saved: parsed.length };
+}
+
+// ── כתיבה נקודתית של הזמנה בודדת ─────────────────────────────────────────────
+// ⭐ נוסף 26.8.2026. עד אז **כל** עריכה שלחה מחדש את כל הגיליון: ~10KB של JSON
+//   שהתפצל ל-6+ קריאות JSONP. אחרי encodeURIComponent (כל " : , { } הופך ל-3
+//   תווים, עברית ל-6) ה-URL של חלק בודד הגיע ל-6,000–10,000 תווים — מעל התקרה
+//   של Google, שמחזירה 414 והדפדפן מדווח "jsonp error". זו הייתה הסיבה
+//   לכישלון השמירה של 26.8.2026.
+// upsertBooking שולח **הזמנה אחת** — URL קצר, קריאה אחת, ובלי מסלול chunk בכלל.
+function upsertBooking(b) {
+  if (!b || b.id === undefined || b.id === null || b.id === "") {
+    return { error: "upsertBooking: חסר id — לא נכתב דבר" };
+  }
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(20000); }
+  catch (err) { return { error: "upsertBooking: הגיליון תפוס — נסה שוב" }; }
+  try {
+    const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
+    const headers = BOOKING_HEADERS;
+    const last = sheet.getLastRow();
+    if (last === 0) sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+
+    // איתור השורה לפי id (עמודה A בלבד — קריאה זולה).
+    let rowIdx = -1;
+    if (last > 1) {
+      const ids = sheet.getRange(2, 1, last - 1, 1).getValues();
+      for (let i = 0; i < ids.length; i++) {
+        if (String(ids[i][0]) === String(b.id)) { rowIdx = i + 2; break; }
+      }
+    }
+    const row = headers.map(function(h) {
+      if (h === "phone" && b[h]) return String(b[h]);
+      return b[h] !== undefined && b[h] !== null ? b[h] : "";
+    });
+    const target = rowIdx > 0 ? rowIdx : Math.max(sheet.getLastRow(), 1) + 1;
+    sheet.getRange(target, 1, 1, headers.length).setValues([row]);
+    SpreadsheetApp.flush();
+    return { ok: true, id: b.id, row: target, created: rowIdx < 0 };
+  } catch (err) {
+    return { error: "upsertBooking: " + err.toString() };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// מחיקת הזמנה בודדת לפי id (מוחקת את השורה עצמה, לא מרוקנת אותה).
+function deleteBookingById(id) {
+  if (id === undefined || id === null || id === "") {
+    return { error: "deleteBooking: חסר id" };
+  }
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(20000); }
+  catch (err) { return { error: "deleteBooking: הגיליון תפוס — נסה שוב" }; }
+  try {
+    const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
+    const last = sheet.getLastRow();
+    if (last <= 1) return { ok: true, deleted: 0 };
+    const ids = sheet.getRange(2, 1, last - 1, 1).getValues();
+    for (let i = 0; i < ids.length; i++) {
+      if (String(ids[i][0]) === String(id)) {
+        sheet.deleteRow(i + 2);
+        SpreadsheetApp.flush();
+        return { ok: true, deleted: 1, id: id };
+      }
+    }
+    return { ok: true, deleted: 0, id: id };
+  } catch (err) {
+    return { error: "deleteBooking: " + err.toString() };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function hdr(subtitle) {
@@ -601,7 +681,7 @@ function dedupeById(bookings) {
 function saveAll(bookingsRaw) {
   const bookings = dedupeById(bookingsRaw);
   const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
-  const headers = ["id","name","phone","email","checkin","checkout","guests","extraGuests","babies","babyCrib","status","notes","paid","total","nights","guestExtra","discount","deposit","depositMethod","rating","receiptIssued","source","balanceMethod","sentConfirm","sentReminder","sentReview","sentAutoReminder","sentAutoReview"];
+  const headers = BOOKING_HEADERS;
   const before = sheet.getLastRow();
 
   // כתיבה אחת (setValues) במקום appendRow בלולאה. appendRow תלוי ב"שורה האחרונה"
@@ -624,7 +704,7 @@ function saveAll(bookingsRaw) {
 
 function addBooking(b) {
   const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
-  const headers = ["id","name","phone","email","checkin","checkout","guests","extraGuests","babies","babyCrib","status","notes","paid","total","nights","guestExtra","discount","deposit","depositMethod","rating","receiptIssued","source","balanceMethod","sentConfirm","sentReminder","sentReview","sentAutoReminder","sentAutoReview"];
+  const headers = BOOKING_HEADERS;
   if (sheet.getLastRow() === 0) sheet.appendRow(headers);
   sheet.appendRow(headers.map(function(h) {
     if (h === "phone" && b[h]) return String(b[h]);
