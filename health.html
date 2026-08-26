@@ -186,6 +186,13 @@ async function checkBackend(g){
         html.indexOf("צאת השבת")!==-1 && html.indexOf("שעה וחצי")!==-1,
         (html.indexOf("צאת השבת")===-1 || html.indexOf("שעה וחצי")===-1)
           ? "חסרה שורת היציאה במוצאי שבת במייל המתעניינים — צריך לתקן ב-Code.gs ולפרוס מחדש" : ms+"ms");
+    chk(g, "מייל מתעניינים — כותרת 'מידע על הישוב' לריבוע הראשון (26.8.2026)",
+        html.indexOf("מידע על הישוב") !== -1
+        && html.indexOf("מידע על הישוב") < html.indexOf("מה מחכה לכם בצימר"),
+        html.indexOf("מידע על הישוב")===-1
+          ? "חסרה הכותרת 'מידע על הישוב' מעל ריבוע פרטי הישוב — לתקן ב-Code.gs (buildInquiryHtml) ולפרוס מחדש"
+          : (html.indexOf("מידע על הישוב") >= html.indexOf("מה מחכה לכם בצימר")
+              ? "הכותרת קיימת אבל לא לפני הריבוע הראשון — סדר הבלוקים השתנה" : ms+"ms"));
   } catch(e){
     chk(g, "מייל מתעניינים — preview (action=previewInquiry)", false, e.message + " (ייתכן שצריך לפרוס מחדש את Code.gs עם previewInquiry)");
   }
