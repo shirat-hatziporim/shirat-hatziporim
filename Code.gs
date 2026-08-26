@@ -311,14 +311,23 @@ function buildReviewHtml(b) {
 }
 
 function buildInquiryHtml() {
-  const features = "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F6C1; חדר שינה מרווח עם ג&#39;קוזי זוגי מפנק</p>"
+  const features = "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F6C1; חדר שינה מרווח &#8212; מיטה זוגית נוחה במיוחד, ארון גדול וג&#39;קוזי זוגי מפנק (1.20 &times; 1.80 מ&#39;)</p>"
     + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F6BF; חדר רחצה נוסף עם מקלחון מסאז&#39; יוקרתי</p>"
-    + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F6CB; סלון גדול, נעים ומעוצב לישיבה רגועה, עם ספה נפתחת למיטה זוגית</p>"
-    + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x2615; מטבח מאובזר במלואו &#8212; כיריים אינדוקציה, תנור, מכונת קפה ומקציף חלב</p>"
-    + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F333; חצר פרטית גדולה עם פינת ישיבה, ערסל ומנגל גז</p>"
-    + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F304; מצפה סמוך לצימר, עם נוף פתוח ועוצר נשימה לכיוון ים המלח</p>"
-    + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F46A; מתאים לזוגות ולמשפחות עד 5 נופשים</p>"
-    + "<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F54D; בית כנסת סמוך (קבלת שבת בסגנון קרליבך)</p>";
+    + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F6CB; סלון מרווח &#8212; ספה נפתחת למיטה זוגית, שולחן וכיסאות</p>"
+    + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x2615; מטבח מאובזר &#8212; מקרר גדול, כיריים אינדוקציה, תנור, מכונת קפה ומקציף חלב, כלים וסירים בשריים וחלביים, מערכת שמע</p>"
+    + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F9FA; מאובזר עד הפרט האחרון &#8212; לול לתינוק, מייבש שיער ומגהץ</p>"
+    + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F333; חצר פרטית גדולה &#8212; דשא סינטטי, פינת ישיבה, ערסל, מנגל גז ותאורת אווירה</p>"
+    + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F304; מול הצימר &#8212; מצפה לים המלח עם ספסלים וגינת משחקים לילדים</p>"
+    + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F54D; בית כנסת הרמח&quot;ל בקרבת מקום (קבלת שבת בסגנון קרליבך)</p>"
+    + "<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F46A; מתאים לזוגות ולמשפחות עד 5 נופשים</p>";
+
+  const shabat = "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F6B0; כיור כפול</p>"
+    + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F372; פלטת שבת, מיחם מים ושעון שבת</p>"
+    + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F6CF; מיטה יהודית</p>"
+    + "<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F56F; אביזרי שבת &#8212; סכין וקרש לחלות, נרות שבת</p>";
+
+  const payments = "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F4B3; מקבלים <strong>כרטיס אשראי מילואים</strong></p>"
+    + "<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F3E5; ניתן לקבל <strong>החזר מקופות החולים</strong> להבראה אחרי לידה</p>";
 
   const prices = "<p style='margin:0 0 6px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F319; אמצע שבוע: <strong>800 ש&#34;ח ללילה</strong></p>"
     + "<p style='margin:0 0 6px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F4C5; סוף שבוע (שישי-שבת): <strong>1,200 ש&#34;ח</strong></p>"
@@ -341,8 +350,12 @@ function buildInquiryHtml() {
       )
     + "<p style='font-size:15px;color:#222;font-weight:700;margin:0 0 12px;font-family:Arial,sans-serif;'>&#x2728; מה מחכה לכם בצימר:</p>"
     + bx(features, "#5a9e4f")
+    + "<p style='font-size:15px;color:#222;font-weight:700;margin:0 0 12px;font-family:Arial,sans-serif;'>&#x1F56F; מיועד לשומרי שבת:</p>"
+    + bx(shabat, "#1565c0")
     + "<p style='font-size:15px;color:#222;font-weight:700;margin:0 0 12px;font-family:Arial,sans-serif;'>&#x1F4B0; מחירון לזוג:</p>"
     + bx(prices, "#c8860a")
+    + "<p style='font-size:15px;color:#222;font-weight:700;margin:0 0 12px;font-family:Arial,sans-serif;'>&#x1F4B3; החזרים ותשלומים:</p>"
+    + bx(payments, "#5a9e4f")
     + bx(
         "<p style='margin:0 0 12px;font-size:14px;color:#2d5a27;font-weight:700;font-family:Arial,sans-serif;line-height:1.8;'>&#x1F4AC; נשאר רק לדעת כמה אנשים אתם ולמתי תרצו להגיע - ונשריין לכם את התאריך המתאים!</p>"
         + "<a href='https://shirat-hatziporim.github.io/shirat-hatziporim/booking.html' style='display:inline-block;background:#2d5a27;color:#fff;text-decoration:none;padding:10px 22px;border-radius:6px;font-size:14px;font-weight:700;font-family:Arial,sans-serif;'>לחץ כאן לשליחת בקשת הזמנה</a>",
