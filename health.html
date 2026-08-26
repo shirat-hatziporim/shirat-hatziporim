@@ -458,6 +458,16 @@ async function checkAssets(g){
   try {
     const r = await req("booking.html");
     chk(g, "טופס ההזמנה הציבורי (booking.html) נטען", r.code===200, "HTTP "+r.code);
+    // ── מינימום 2 לילות בוטל 26.8.2026 — ניתן להזמין לילה אחד בכל יום ──
+    chk(g, "טופס ההזמנה — אין חסימת מינימום לילות",
+        r.text.indexOf("מינימום 2 לילות")===-1 && r.text.indexOf("nights<2")===-1
+        && r.text.indexOf("isFridayOnly")===-1,
+        r.text.indexOf("מינימום 2 לילות")!==-1
+          ? "הכלל חזר — לקוחות לא יוכלו להזמין לילה אחד באמצע השבוע"
+          : "לילה אחד ומעלה, בכל יום בשבוע");
+    chk(g, "טופס ההזמנה — תמחור לילה בודד עדיין תקין",
+        /dow===5\|\|dow===6/.test(r.text.replace(/\s/g,"")) && r.text.indexOf("PRICES.weekday")!==-1,
+        "לילה בודד באמצע שבוע ₪800, שישי/שבת ₪1,200 — לולאת הלילות מטפלת בזה");
     chk(g, "טופס ההזמנה — תוספת אורח ₪200 (אחיד מול הניהול)",
         r.text.indexOf("extraGuest:200")!==-1,
         r.text.indexOf("extraGuest:300")!==-1
