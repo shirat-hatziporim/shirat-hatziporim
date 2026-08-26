@@ -239,6 +239,11 @@ async function checkBackend(g){
           ? "ריבוע ההחזרים נעלם מהמייל — לתקן ב-Code.gs (buildInquiryHtml, const payments) ולפרוס מחדש"
           : "חסר פריט (כרטיס אשראי מילואים / החזר מקופות החולים)");
     // ── קיבולת: הוכרעה ל-4 נופשים ב-26.8.2026 (2 בסיס + עד 2 תוספת) ──
+    chk(g, "מייל מתעניינים — תוספת מיטה ₪200 (עודכן 26.8.2026)",
+        html.indexOf("200 ש")!==-1 && html.indexOf("300 ש")===-1,
+        html.indexOf("300 ש")!==-1
+          ? "המייל עדיין מציג ₪300 לתוספת מיטה — לתקן ב-Code.gs ולפרוס מחדש"
+          : "אחיד מול DEFAULT_PRICES");
     chk(g, "מייל מתעניינים — קיבולת 4 נופשים אחידה מול המחירון",
         html.indexOf("עד 4 נופשים")!==-1 && html.indexOf("5 נופשים")===-1
         && html.indexOf("(עד 2)")!==-1 && html.indexOf("(עד 3)")===-1,
@@ -306,6 +311,26 @@ async function checkBackend(g){
     const backup = templates._trigger_backup || "";
     row(g, (daily && backup) ? "ok" : "warn", "טריגרים יומיים רשומים (מיילים + גיבוי)",
         (daily || "daily: —") + " | " + (backup || "backup: —"));
+    // ── מחיר תוספת אורח: הדריסה בגיליון גוברת על DEFAULT_PRICES שבקוד ──
+    // אם shirat_prices בלשונית "תבניות" מחזיק עדיין 300, שינוי הקוד לא ישפיע בפועל.
+    const rawPrices = templates.shirat_prices || "";
+    if (!rawPrices){
+      row(g, "ok", "מחירון: אין דריסה בגיליון — DEFAULT_PRICES שבקוד קובע",
+          "תוספת אורח ₪200 מהקוד");
+    } else {
+      let parsed = null;
+      try { parsed = JSON.parse(rawPrices); } catch(e){ parsed = null; }
+      if (!parsed){
+        row(g, "warn", "מחירון: דריסה בגיליון (shirat_prices)",
+            "לא ניתן לפענח את הערך — לבדוק ידנית בלשונית תבניות");
+      } else {
+        chk(g, "מחירון: תוספת אורח בגיליון = ₪200",
+            Number(parsed.extraGuest) === 200,
+            Number(parsed.extraGuest) === 300
+              ? "הגיליון עדיין מחזיק ₪300 והוא גובר על הקוד — לעדכן בעורך המחירון בלוח הניהול"
+              : "shirat_prices.extraGuest = " + parsed.extraGuest);
+      }
+    }
   }
   // מבנה הזמנה
   if (Array.isArray(bookings)){
@@ -350,7 +375,7 @@ function checkBusiness(g, src){
   price("weekend", 1200);
   price("packageDeal", 1700);
   price("sundayExtra", 350);
-  price("extraGuest", 300);
+  price("extraGuest", 200);
   chk(g, "חישוב מספר לילות (הפרש תאריכים)", src.indexOf("86400000")!==-1);
   chk(g, 'סופ"ש שישי+שבת = תעריף אחד (₪1200, לא כפול)',
       src.indexOf('סופ"ש (שישי-שבת)')!==-1 && /next\.getDay\(\)\s*===\s*6/.test(src),
@@ -433,6 +458,11 @@ async function checkAssets(g){
   try {
     const r = await req("booking.html");
     chk(g, "טופס ההזמנה הציבורי (booking.html) נטען", r.code===200, "HTTP "+r.code);
+    chk(g, "טופס ההזמנה — תוספת אורח ₪200 (אחיד מול הניהול)",
+        r.text.indexOf("extraGuest:200")!==-1,
+        r.text.indexOf("extraGuest:300")!==-1
+          ? "הטופס הציבורי עדיין מחשב ₪300 — יציג ללקוח מחיר גבוה מהמערכת"
+          : "PRICES.extraGuest = 200");
     chk(g, "טופס ההזמנה — מקסימום 4 אורחים בבורר (קיבולת 4)",
         r.text.indexOf('<option value="4">')!==-1 && r.text.indexOf('<option value="5">')===-1,
         r.text.indexOf('<option value="5">')!==-1
