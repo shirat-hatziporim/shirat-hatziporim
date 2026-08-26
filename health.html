@@ -151,6 +151,29 @@ async function checkPage(g){
         ? "תבנית ברירת המחדל בלוח הניהול עדיין אומרת 5 — סתירה מול המייל שנשלח בפועל"
         : "אחיד מול Code.gs");
 
+  // ══ רגרסיה 26.8.2026 — באג "ההזמנה נשמרה ונעלמה" ══
+  // הזמנה חדשה נראתה שמורה ("מסונכרן ✅") אך לא נכתבה לגיליון: חלק אחד מתוך שישה
+  // בשמירה המבוזרת נתקע ב-timeout של 10 שניות, commitChunks לא רץ, וה-catch
+  // ב-saveToSheets בלע את השגיאה. חמש בדיקות — אחת לכל שכבת הגנה.
+  chk(g, "שמירה — timeout של jsonp הועלה ל-25 שניות",
+      /\}, 25000\);/.test(src) && !/\}, 10000\);/.test(src),
+      /\}, 10000\);/.test(src)
+        ? "עדיין 10 שניות — /exec מחזיר לגיטימית תוך ~9 שניות, כל שמירה היא הגרלה"
+        : "מיושר מול הזמן שנמדד ב-health");
+  chk(g, "שמירה — ניסיון חוזר לכל קריאה (jsonpRetry)",
+      /async function jsonpRetry/.test(src) && src.indexOf("jsonpRetry(`${SCRIPT_URL}?action=chunk")!==-1,
+      "תקיעה בודדת ב-/exec כבר לא מפילה את כל השמירה");
+  chk(g, "שמירה — תשובת השרת מאומתת (assertOk)",
+      /function assertOk/.test(src) && src.indexOf('assertOk(await jsonpRetry')!==-1,
+      "עד 26.8.2026 התשובה לא נבדקה כלל — {error:...} נראה כמו הצלחה");
+  chk(g, "שמירה — commitChunks מקבל total לאימות בשרת",
+      src.indexOf("action=commitChunks&total=")!==-1,
+      "השרת מוודא שקיבל בדיוק את מספר החלקים שנשלחו");
+  chk(g, "שמירה — כישלון מוצג למשתמש ולא נבלע",
+      src.indexOf("setSyncError")!==-1 && src.indexOf("❌ לא נשמר!")!==-1
+      && src.indexOf("השמירה לגיליון נכשלה")!==-1,
+      "סרגל עליון אדום + alert. לעולם לא 'מסונכרן ✅' על שמירה שנכשלה");
+
   chk(g, "מייל אישור — SCRIPT_URL נגיש (window.SCRIPT_URL)",
       src.indexOf("window.SCRIPT_URL = SCRIPT_URL")!==-1 && src.indexOf('window.SCRIPT_URL+"?action=sendConfirm')!==-1,
       'sendConfirmationEmail בסקריפט נפרד — חייב window.SCRIPT_URL, אחרת ReferenceError ושליחת מייל האישור נכשלת');
@@ -288,6 +311,23 @@ async function checkBackend(g){
   } catch(e){
     chk(g, "מייל ביקורת — preview (action=previewReview)", false, e.message + " (ייתכן שצריך לפרוס מחדש את Code.gs עם previewReview)");
   }
+  // ══ רגרסיה חיה — commitChunks מסרב לכתוב נתונים חלקיים ══
+  // total=999999 לעולם לא יתאים ל-chunk_total שבזיכרון, ולכן השרת חייב להחזיר
+  // שגיאה מפורשת **בלי לכתוב כלום**. הגרסה הישנה הייתה מחברת מה שיש, נכשלת
+  // ב-JSON.parse, ומחזירה שגיאה שהלקוח ממילא לא בדק.
+  // ⚠ בדיקה בטוחה: מנגנון אי-ההתאמה חוסם כתיבה לפני שנוגעים בגיליון.
+  try {
+    const cc = await jsonp(SCRIPT_URL + "?action=commitChunks&total=999999", 20000);
+    const d = cc.data || {};
+    const msg = String(d.error || "");
+    chk(g, "commitChunks — מסרב לכתוב כשחסרים חלקים",
+        !!d.error && msg.indexOf("לא נכתב דבר")!==-1,
+        d.ok ? "🔴 השרת דיווח הצלחה על בקשה פגומה — הפריסה לא עודכנה!"
+             : (msg || "לא התקבלה שגיאה מפורשת — ודא שהפריסה כוללת את commitChunks המאומת"));
+  } catch(e){
+    row(g, "warn", "commitChunks — מסרב לכתוב כשחסרים חלקים", e.message + " (תקיעה ב-/exec, לא בהכרח תקלה)");
+  }
+
   // ── בדיקת רגרסיה: תזמון טריגר מוצאי שבת — חייב להיות שבת (SATURDAY), לא ראשון ──
   // רקע: עד 8.2026 הטריגר רץ ראשון 21:00, ולכן "מחר" היה יום שני ונכנסי יום ראשון
   // לא קיבלו תזכורת כלל (ריצת שבת 09:00 נחסמת ע"י isShabat).
@@ -479,6 +519,23 @@ async function checkAssets(g){
           ? "עדיין ניתן לבחור 5 אורחים בטופס הציבורי — סתירה מול המייל והמחירון (2+2=4)"
           : "1–4 אורחים");
   } catch(e){ chk(g, "booking.html נטען", false, e.message); }
+  // ── עותק המראה של Code.gs — מאמת שהתיקונים קיימים במקור, לא רק בפריסה ──
+  try {
+    const rc = await req("Code.gs");
+    chk(g, "Code.gs (עותק מראה) נטען", rc.code===200, "HTTP "+rc.code+" | "+Math.round(rc.text.length/1024)+"KB");
+    chk(g, "Code.gs — safeDecode במקום decodeURIComponent על e.parameter",
+        rc.text.indexOf("function safeDecode")!==-1
+        && rc.text.indexOf("decodeURIComponent(e.parameter.")===-1,
+        rc.text.indexOf("decodeURIComponent(e.parameter.")!==-1
+          ? "decodeURIComponent כפול על e.parameter — כל '%' בודד בהערה זורק URIError ומפיל את השמירה"
+          : "פענוח כפול בטוח, לא מתפוצץ על '%'");
+    chk(g, "Code.gs — commitChunks מאמת חלקים חסרים",
+        /function commitChunks/.test(rc.text)
+        && rc.text.indexOf("לא נכתב דבר")!==-1
+        && !/str \+= \(cache\.get\("chunk_"\+i\)\|\|""\)/.test(rc.text),
+        "אף פעם לא נכתבת לגיליון רשימה חלקית");
+  } catch(e){ chk(g, "Code.gs (עותק מראה) נטען", false, e.message); }
+
   const lg = await loadImg("logo.jpeg", 10000);
   chk(g, "הלוגו (logo.jpeg) נטען", lg.ok, lg.ok ? lg.ms+"ms" : (lg.why||""));
 }
