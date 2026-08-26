@@ -13,6 +13,17 @@ const HOST_PHONE = "050-4103353";
 const METZAD_REVIEW_URL = "https://metzad.net/?review=recu7R502ndpO8cas";
 const PDF_URL = "https://raw.githubusercontent.com/shirat-hatziporim/shirat-hatziporim/main/%D7%97%D7%95%D7%91%D7%A8%D7%AA%20%D7%9E%D7%99%D7%93%D7%A2%20%D7%A6%D7%99%D7%9E%D7%A8%20%D7%A9%D7%99%D7%A8%D7%AA%20%D7%94%D7%A6%D7%99%D7%A4%D7%95%D7%A8%D7%99%D7%9D.pdf";
 
+// פענוח בטוח של פרמטר URL.
+// ⚠ Apps Script כבר מפענח את e.parameter, ולכן decodeURIComponent נוסף הוא no-op
+//   לטקסט רגיל — אבל **זורק URIError** על כל מחרוזת שמכילה '%' בודד (למשל הערה
+//   "10% הנחה"). השגיאה נבלעה ב-catch של doGet והשמירה נכשלה בשקט.
+//   safeDecode שומר על ההתנהגות הקיימת ונופל חזרה לערך הגולמי במקום להתפוצץ.
+function safeDecode(v) {
+  if (v === undefined || v === null) return "";
+  var s = String(v);
+  try { return decodeURIComponent(s); } catch (err) { return s; }
+}
+
 function doGet(e) {
   const action = e.parameter.action;
   const callback = e.parameter.callback || "";
@@ -20,33 +31,34 @@ function doGet(e) {
   try {
     if (action === "get") result = getBookings();
     else if (action === "save") {
-      const bookings = JSON.parse(decodeURIComponent(e.parameter.bookings));
-      saveAll(bookings); result = "ok";
+      const bookings = JSON.parse(safeDecode(e.parameter.bookings));
+      if (!Array.isArray(bookings)) throw new Error("save: הנתונים אינם מערך");
+      saveAll(bookings); result = { ok: true, saved: bookings.length };
     } else if (action === "getBlocked") result = getBlocked();
     else if (action === "saveBlocked") {
-      const blocked = JSON.parse(decodeURIComponent(e.parameter.blocked));
+      const blocked = JSON.parse(safeDecode(e.parameter.blocked));
       saveBlocked(blocked); result = "ok";
     } else if (action === "getExpenses") result = getExpenses();
     else if (action === "saveExpenses") {
-      const expenses = JSON.parse(decodeURIComponent(e.parameter.expenses));
+      const expenses = JSON.parse(safeDecode(e.parameter.expenses));
       saveExpenses(expenses); result = "ok";
     } else if (action === "getManualGuests") result = getManualGuests();
     else if (action === "saveManualGuests") {
-      const guests = JSON.parse(decodeURIComponent(e.parameter.guests));
+      const guests = JSON.parse(safeDecode(e.parameter.guests));
       saveManualGuests(guests); result = "ok";
     } else if (action === "getTemplates") result = getTemplates();
     else if (action === "addBooking") {
-      const booking = JSON.parse(decodeURIComponent(e.parameter.booking));
+      const booking = JSON.parse(safeDecode(e.parameter.booking));
       addBooking(booking); result = "ok";
     } else if (action === "saveTemplate") {
-      const key = decodeURIComponent(e.parameter.key);
-      const value = decodeURIComponent(e.parameter.value);
+      const key = safeDecode(e.parameter.key);
+      const value = safeDecode(e.parameter.value);
       saveTemplate(key, value); result = "ok";
     } else if (action === "sendConfirm") {
-      const b = JSON.parse(decodeURIComponent(e.parameter.booking));
+      const b = JSON.parse(safeDecode(e.parameter.booking));
       sendConfirmEmail(b); result = "ok";
     } else if (action === "sendInquiry") {
-      const email = decodeURIComponent(e.parameter.email);
+      const email = safeDecode(e.parameter.email);
       sendInquiryEmail(email); result = "ok";
     } else if (action === "previewInquiry") {
       result = previewInquiry();
@@ -55,41 +67,90 @@ function doGet(e) {
     } else if (action === "previewReview") {
       result = previewReview();
     } else if (action === "sendReminder") {
-      const b = JSON.parse(decodeURIComponent(e.parameter.booking));
+      const b = JSON.parse(safeDecode(e.parameter.booking));
       sendReminderEmail(b); result = "ok";
     } else if (action === "sendReview") {
-      const b = JSON.parse(decodeURIComponent(e.parameter.booking));
+      const b = JSON.parse(safeDecode(e.parameter.booking));
       sendReviewEmail(b); result = "ok";
     } else if (action === "saveLeads") {
-      const leads = JSON.parse(decodeURIComponent(e.parameter.leads));
+      const leads = JSON.parse(safeDecode(e.parameter.leads));
       saveLeads(leads); result = "ok";
     } else if (action === "getLeads") {
       result = getLeads();
     } else if (action === "saveTrash") {
-      const trash = JSON.parse(decodeURIComponent(e.parameter.trash));
+      const trash = JSON.parse(safeDecode(e.parameter.trash));
       saveTrash(trash); result = "ok";
     } else if (action === "getTrash") {
       result = getTrash();
     } else if (action === "notifyOwner") {
-      const data = JSON.parse(decodeURIComponent(e.parameter.data));
+      const data = JSON.parse(safeDecode(e.parameter.data));
       notifyOwner(data); result = "ok";
     } else if (action === "chunk") {
       const cache = CacheService.getScriptCache();
-      cache.put("chunk_"+e.parameter.index, decodeURIComponent(e.parameter.data), 300);
-      cache.put("chunk_total", e.parameter.total, 300);
-      result = "ok";
+      const idx = String(e.parameter.index);
+      cache.put("chunk_" + idx, safeDecode(e.parameter.data), CHUNK_TTL);
+      cache.put("chunk_total", String(e.parameter.total), CHUNK_TTL);
+      result = { ok: true, index: Number(idx) };
     } else if (action === "commitChunks") {
-      const cache = CacheService.getScriptCache();
-      const total = parseInt(cache.get("chunk_total")||"0");
-      let str = "";
-      for (let i = 0; i < total; i++) str += (cache.get("chunk_"+i)||"");
-      saveAll(JSON.parse(str)); result = "ok";
+      result = commitChunks(Number(e.parameter.total || 0));
     } else result = "ok";
   } catch(err) { result = {error: err.toString()}; }
 
   const json = JSON.stringify(result);
   if (callback) return ContentService.createTextOutput(callback+"("+json+");").setMimeType(ContentService.MimeType.JAVASCRIPT);
   return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
+}
+
+// ── שמירה בחלקים (CacheService) ───────────────────────────────────────────────
+// TTL של החלקים. הועלה מ-300 ל-600 שניות: רצף של 6 קריאות JSONP איטיות
+// (ראו "תקיעות ב-/exec") יכול לחרוג בקלות מחמש דקות ולהפקיע חלק באמצע.
+const CHUNK_TTL = 600;
+
+// מחבר את החלקים שנשמרו ב-CacheService וכותב לגיליון.
+// 🔴 באג שתוקן 26.8.2026 — "הזמנה נשמרה ונעלמה":
+//   הגרסה הקודמת עשתה str += (cache.get("chunk_"+i) || "") ואז JSON.parse.
+//   אם חלק אחד לא הגיע (timeout של 10 שניות בצד הלקוח, או פקיעת TTL) —
+//   ה-JSON יצא קטוע, JSON.parse זרק, השגיאה נבלעה ב-catch של doGet,
+//   והלקוח לא בדק את התשובה בכלל ⇒ "מסונכרן ✅" בזמן ששום דבר לא נכתב.
+// עכשיו: אימות מפורש שכל החלקים קיימים, ושגיאה מפורשת ללקוח. לעולם לא נכתבת
+// לגיליון רשימה חלקית — עדיף להיכשל ברעש מאשר להצליח בשקט.
+function commitChunks(expectedTotal) {
+  const cache = CacheService.getScriptCache();
+  const stored = parseInt(cache.get("chunk_total") || "0", 10);
+  const total = expectedTotal || stored;
+
+  if (!total) return { error: "commitChunks: אין חלקים בזיכרון — לא נכתב דבר" };
+  if (expectedTotal && stored !== expectedTotal) {
+    return { error: "commitChunks: אי-התאמה במספר החלקים (לקוח " + expectedTotal + " / זיכרון " + stored + ") — לא נכתב דבר" };
+  }
+
+  const keys = [];
+  for (let i = 0; i < total; i++) keys.push("chunk_" + i);
+  const map = cache.getAll(keys) || {};
+
+  const missing = [];
+  let str = "";
+  for (let i = 0; i < total; i++) {
+    const part = map["chunk_" + i];
+    if (part === undefined || part === null) { missing.push(i); continue; }
+    str += part;
+  }
+  if (missing.length) {
+    return { error: "commitChunks: חסרים חלקים " + missing.join(",") + " מתוך " + total + " — לא נכתב דבר" };
+  }
+
+  let parsed;
+  try { parsed = JSON.parse(str); }
+  catch (err) { return { error: "commitChunks: JSON לא תקין (" + str.length + " תווים) — לא נכתב דבר" }; }
+  if (!Array.isArray(parsed)) return { error: "commitChunks: הנתונים אינם מערך — לא נכתב דבר" };
+
+  saveAll(parsed);
+
+  // ניקוי החלקים כדי שלא יישארו שאריות מנסיון קודם.
+  for (let i = 0; i < total; i++) cache.remove("chunk_" + i);
+  cache.remove("chunk_total");
+
+  return { ok: true, saved: parsed.length };
 }
 
 function hdr(subtitle) {
