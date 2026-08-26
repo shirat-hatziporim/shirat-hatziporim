@@ -313,10 +313,10 @@ function buildReviewHtml(b) {
 function buildInquiryHtml() {
   const features = "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F6C1; חדר שינה מרווח עם ג&#39;קוזי זוגי מפנק</p>"
     + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F6BF; חדר רחצה נוסף עם מקלחון מסאז&#39; יוקרתי</p>"
-    + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F6CB; סלון גדול, נעים ומעוצב לישיבה רגועה</p>"
-    + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x2615; מטבח מאובזר במלואו לכל הצרכים</p>"
+    + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F6CB; סלון גדול, נעים ומעוצב לישיבה רגועה, עם ספה נפתחת למיטה זוגית</p>"
+    + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x2615; מטבח מאובזר במלואו &#8212; כיריים אינדוקציה, תנור, מכונת קפה ומקציף חלב</p>"
     + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F333; חצר פרטית גדולה עם פינת ישיבה, ערסל ומנגל גז</p>"
-    + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F304; נוף פתוח ועוצר נשימה לכיוון ים המלח</p>"
+    + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F304; מצפה סמוך לצימר, עם נוף פתוח ועוצר נשימה לכיוון ים המלח</p>"
     + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F46A; מתאים לזוגות ולמשפחות עד 5 נופשים</p>"
     + "<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F54D; בית כנסת סמוך (קבלת שבת בסגנון קרליבך)</p>";
 
