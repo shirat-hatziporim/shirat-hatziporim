@@ -565,7 +565,9 @@ function jsonp(url) {
         reject(new Error("jsonp timeout"));
         delete window[cb];
       }
-    }, 10000);
+      // 10 שניות היו צמודות מדי: ב-health.html נמדדו תגובות לגיטימיות של ~9 שניות
+      // מ-/exec (התקיעות הבימודליות). מיושר ל-25 שניות כמו בבדיקות התקינות.
+    }, 25000);
     document.head.appendChild(s);
   });
 }
@@ -710,29 +712,57 @@ async function saveTemplateToSheets(key, value) {
     console.error("שגיאה בשמירת תבנית:", e);
   }
 }
+// ניסיון חוזר לקריאת JSONP. התקיעות ב-/exec אקראיות ובימודליות (או ~3 שניות או
+// לעולם לא), ולכן ניסיון שני כמעט תמיד עובר. ⚠ בטוח רק לפעולות אידמפוטנטיות
+// (save / chunk / commitChunks) — לא לשליחת מיילים.
+async function jsonpRetry(url, tries = 3) {
+  let last;
+  for (let i = 0; i < tries; i++) {
+    try {
+      return await jsonp(url);
+    } catch (e) {
+      last = e;
+      console.warn(`ניסיון ${i + 1}/${tries} נכשל:`, e.message);
+      if (i < tries - 1) await new Promise(r => setTimeout(r, 800 * (i + 1)));
+    }
+  }
+  throw last;
+}
+
+// אימות תשובת השרת. הבקאנד מחזיר "ok" (פעולות ישנות), {ok:true,...} או {error:"..."}.
+// ⚠ עד 26.8.2026 התשובה **לא נבדקה כלל** — שגיאת שרת נראתה בדיוק כמו הצלחה.
+function assertOk(res, what) {
+  if (res === "ok") return {};
+  if (res && res.ok) return res;
+  const msg = res && res.error ? res.error : JSON.stringify(res);
+  throw new Error(what + " — " + msg);
+}
+
+// 🔴 שוכתב 26.8.2026 — באג "הזמנה נשמרה ונעלמה".
+// קודם: כל שגיאה נבלעה כאן ב-catch עם console.error בלבד. מספיק שחלק אחד מתוך
+// שישה נתקע (timeout 10 שניות) כדי ש-commitChunks לא ירוץ ⇒ שום דבר לא נכתב
+// לגיליון — אבל ההזמנה נשארה ב-localStorage ועל המסך, עד שהרענון הבא משך את
+// נתוני הגיליון (בלעדיה) ודרס את המטמון. עכשיו: זורק בכישלון, ומאמת כל קריאה.
 async function saveToSheets(bookings) {
-  // שמירה מקומית תמיד
+  // שמירה מקומית תמיד — גם אם השרת ייפול, הנתונים לא יאבדו מהמסך.
   try {
     localStorage.setItem("shirat_bookings", JSON.stringify(bookings));
   } catch (e) {}
-  // שמירה לגוגל שיטס — שליחה בחלקים אם צריך
-  try {
-    const str = JSON.stringify(bookings);
-    // אם קצר מספיק — שלח ישירות
-    if (str.length < 3000) {
-      await jsonp(`${SCRIPT_URL}?action=save&bookings=${encodeURIComponent(str)}`);
-    } else {
-      // שלח בחלקים
-      const parts = Math.ceil(str.length / 2000);
-      for (let i = 0; i < parts; i++) {
-        const chunk = str.slice(i * 2000, (i + 1) * 2000);
-        await jsonp(`${SCRIPT_URL}?action=chunk&index=${i}&total=${parts}&data=${encodeURIComponent(chunk)}`);
-      }
-      await jsonp(`${SCRIPT_URL}?action=commitChunks`);
-    }
-  } catch (e) {
-    console.error("שגיאה בסנכרון:", e);
+  const str = JSON.stringify(bookings);
+  // אם קצר מספיק — שלח ישירות
+  if (str.length < 3000) {
+    assertOk(await jsonpRetry(`${SCRIPT_URL}?action=save&bookings=${encodeURIComponent(str)}`), "save");
+    return { saved: bookings.length };
   }
+  // שלח בחלקים
+  const parts = Math.ceil(str.length / 2000);
+  for (let i = 0; i < parts; i++) {
+    const chunk = str.slice(i * 2000, (i + 1) * 2000);
+    assertOk(await jsonpRetry(`${SCRIPT_URL}?action=chunk&index=${i}&total=${parts}&data=${encodeURIComponent(chunk)}`), `chunk ${i + 1}/${parts}`);
+  }
+  // total נשלח גם ל-commitChunks כדי שהשרת יאמת שקיבל בדיוק את מה שנשלח.
+  const res = assertOk(await jsonpRetry(`${SCRIPT_URL}?action=commitChunks&total=${parts}`), "commitChunks");
+  return { saved: res.saved };
 }
 
 // ── הודעת סגירה ללקוח ──
@@ -2043,6 +2073,8 @@ function App() {
   const [sheetsLoaded, setSheetsLoaded] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [lastSync, setLastSync] = useState(null);
+  // הודעת כישלון סנכרון אחרונה. null = הכל תקין. מוצג בסרגל העליון כ-"❌ לא נשמר!".
+  const [syncError, setSyncError] = useState(null);
   const [view, setView] = useState("list");
   const [showForm, setShowForm] = useState(false);
   const [editB, setEditB] = useState(null);
@@ -2539,9 +2571,20 @@ function App() {
       console.warn('Sheets not loaded yet, saving anyway');
     }
     setSyncing(true);
-    await saveToSheets(newBookings);
-    setSyncing(false);
-    setLastSync(new Date());
+    setSyncError(null);
+    try {
+      await saveToSheets(newBookings);
+      setLastSync(new Date());
+      setSyncError(null);
+    } catch (e) {
+      // ⚠ אסור לסמן "מסונכרן" כשהשמירה נכשלה — זה בדיוק מה שהסתיר את באג
+      //   "ההזמנה נעלמה". הכישלון חייב להיות רועש.
+      console.error("שגיאה בסנכרון:", e);
+      setSyncError(e.message || String(e));
+      alert("⚠ השמירה לגיליון נכשלה!\n\n" + (e.message || e) + "\n\nהנתונים מוצגים על המסך אך לא נשמרו בשרת.\nנסה שוב, ואל תסגור את הדף לפני שמופיע \"מסונכרן\".");
+    } finally {
+      setSyncing(false);
+    }
   }
   function saveManualGuests(mg) {
     setManualGuests(mg);
@@ -2968,6 +3011,16 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
               fontFamily: "'Heebo',sans-serif"
             },
             children: "⏳ שומר..."
+          }) : syncError ? /*#__PURE__*/_jsx("span", {
+            style: {
+              fontSize: 11,
+              color: "#ff6b6b",
+              fontWeight: 700,
+              fontFamily: "'Heebo',sans-serif",
+              cursor: "help"
+            },
+            title: syncError,
+            children: "❌ לא נשמר!"
           }) : lastSync && /*#__PURE__*/_jsx("span", {
             style: {
               fontSize: 11,
