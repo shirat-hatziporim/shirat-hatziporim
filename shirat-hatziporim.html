@@ -90,7 +90,7 @@ const DEFAULT_PRICES = {
   weekend: 1200,
   packageDeal: 1700,
   sundayExtra: 350,
-  extraGuest: 300
+  extraGuest: 200
 };
 const DEFAULT_INQUIRY_TEMPLATE = `שלום וברכה,
 תודה רבה על פנייתכם 🙏
@@ -119,7 +119,7 @@ const DEFAULT_INQUIRY_TEMPLATE = `שלום וברכה,
 • סוף שבוע (שישי–שבת): ₪1,200
 • חבילת חמישי+שישי+שבת: ₪1,700
 • תוספת יציאה ראשון: ₪350
-• תוספת מיטות (עד 2): ₪300 לאדם
+• תוספת מיטות (עד 2): ₪200 לאדם
 • תקופת החופש (ט' באב – ג' אלול): תוספת 20% על המחירון
 
 🕒 שעת כניסה: 15:00 | שעת יציאה: 11:00
@@ -472,7 +472,7 @@ function calcTotal(checkin, checkout, extra = 0) {
       i++;
     }
   }
-  const _extraBase = activePrices.extraGuest || 300;
+  const _extraBase = activePrices.extraGuest || 200;
   const _extraMult = getSummerMultiplier(checkin);
   const guestExtra = Math.max(0, extra) * Math.round(_extraBase * _extraMult) * nights;
   const total = base + guestExtra + sundayExtra;
@@ -1305,7 +1305,7 @@ function BookingForm({
               })]
             }), /*#__PURE__*/_jsxs("div", {
               children: [/*#__PURE__*/_jsx(Lbl, {
-                children: "נוספים (₪300/אדם)"
+                children: "נוספים (₪200/אדם)"
               }), /*#__PURE__*/_jsx("input", {
                 style: iS(),
                 type: "number",
