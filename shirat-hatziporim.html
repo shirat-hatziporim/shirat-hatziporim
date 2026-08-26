@@ -738,6 +738,71 @@ function assertOk(res, what) {
   throw new Error(what + " — " + msg);
 }
 
+// תקרת אורך ל-URL של קריאת JSONP. Google מחזירה 414 מעל ~8KB, והדפדפן מדווח
+// על כך כ-"jsonp error" (onerror), לא כ-timeout.
+// ⚠ הבאג של 26.8.2026: הקוד חתך חלקים של 2000 תווי **JSON גולמי**. אבל בקידוד
+//   URL כל " : , { } הופך ל-3 תווים וכל אות עברית ל-6 — כלומר חלק של 2000 תווים
+//   התנפח ל-6,000–10,000 תווים ונדחה. עכשיו החיתוך נמדד **אחרי** הקידוד.
+const URL_ENCODED_MAX = 4000;
+
+// חותך מחרוזת לחלקים כך שכל חלק **אחרי encodeURIComponent** לא יעבור maxEncoded.
+// חיפוש בינארי כי יחס ההתנפחות משתנה לפי תוכן (1:1 עד 1:6).
+function splitByEncodedSize(str, maxEncoded) {
+  const parts = [];
+  let i = 0;
+  // ⚠ אסור לחתוך באמצע זוג surrogate (אימוג'י בהערות) — encodeURIComponent
+  //   זורק URIError על חצי זוג. הבדיקה חייבת להיות **בתוך** החיפוש הבינארי,
+  //   אחרת החיפוש עצמו מתפוצץ לפני שמספיקים לתקן את הגבול.
+  const fits = function (len) {
+    if (len <= 0) return false;
+    const code = str.charCodeAt(i + len - 1);
+    if (code >= 0xD800 && code <= 0xDBFF) return false;
+    try { return encodeURIComponent(str.substr(i, len)).length <= maxEncoded; }
+    catch (e) { return false; }
+  };
+  while (i < str.length) {
+    let lo = 1, hi = Math.min(str.length - i, maxEncoded), best = 0;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (fits(mid)) { best = mid; lo = mid + 1; }
+      else hi = mid - 1;
+    }
+    if (best === 0) {
+      // התו הראשון עצמו הוא חצי זוג — ניקח את הזוג השלם כדי לא להיתקע.
+      const c0 = str.charCodeAt(i);
+      best = (c0 >= 0xD800 && c0 <= 0xDBFF && i + 1 < str.length) ? 2 : 1;
+    }
+    parts.push(str.substr(i, best));
+    i += best;
+  }
+  return parts;
+}
+
+// ⭐ שמירת הזמנה **בודדת** — המסלול המהיר, נוסף 26.8.2026.
+// קריאה אחת קצרה במקום שליחה מחדש של כל הגיליון (6+ קריאות). זה גם מה שמונע
+// את ה-414: URL של הזמנה אחת הוא ~1.5KB במקום 10KB.
+async function saveOneToSheets(b, fullList) {
+  try {
+    localStorage.setItem("shirat_bookings", JSON.stringify(fullList));
+  } catch (e) {}
+  const url = `${SCRIPT_URL}?action=upsertBooking&booking=${encodeURIComponent(JSON.stringify(b))}`;
+  if (url.length > 7000) {
+    // הזמנה בודדת חריגה באורכה (הערה ארוכה מאוד) — נופלים חזרה לשמירה מלאה.
+    console.warn("upsertBooking: URL ארוך מדי (" + url.length + ") — עובר לשמירה מלאה");
+    return saveToSheets(fullList);
+  }
+  const res = assertOk(await jsonpRetry(url), "upsertBooking");
+  return { saved: 1, row: res.row };
+}
+
+async function deleteOneFromSheets(id, fullList) {
+  try {
+    localStorage.setItem("shirat_bookings", JSON.stringify(fullList));
+  } catch (e) {}
+  assertOk(await jsonpRetry(`${SCRIPT_URL}?action=deleteBooking&id=${encodeURIComponent(String(id))}`), "deleteBooking");
+  return { saved: 1 };
+}
+
 // 🔴 שוכתב 26.8.2026 — באג "הזמנה נשמרה ונעלמה".
 // קודם: כל שגיאה נבלעה כאן ב-catch עם console.error בלבד. מספיק שחלק אחד מתוך
 // שישה נתקע (timeout 10 שניות) כדי ש-commitChunks לא ירוץ ⇒ שום דבר לא נכתב
@@ -749,16 +814,19 @@ async function saveToSheets(bookings) {
     localStorage.setItem("shirat_bookings", JSON.stringify(bookings));
   } catch (e) {}
   const str = JSON.stringify(bookings);
+  // ⚠ ההחלטה נשענת על האורך **המקודד**, לא על אורך ה-JSON. str.length<3000 היה
+  //   מטעה: 3000 תווי JSON עבריים = כ-12,000 תווי URL ⇒ 414.
+  const encoded = encodeURIComponent(str);
   // אם קצר מספיק — שלח ישירות
-  if (str.length < 3000) {
-    assertOk(await jsonpRetry(`${SCRIPT_URL}?action=save&bookings=${encodeURIComponent(str)}`), "save");
+  if (encoded.length <= URL_ENCODED_MAX) {
+    assertOk(await jsonpRetry(`${SCRIPT_URL}?action=save&bookings=${encoded}`), "save");
     return { saved: bookings.length };
   }
   // שלח בחלקים
-  const parts = Math.ceil(str.length / 2000);
+  const chunks = splitByEncodedSize(str, URL_ENCODED_MAX);
+  const parts = chunks.length;
   for (let i = 0; i < parts; i++) {
-    const chunk = str.slice(i * 2000, (i + 1) * 2000);
-    assertOk(await jsonpRetry(`${SCRIPT_URL}?action=chunk&index=${i}&total=${parts}&data=${encodeURIComponent(chunk)}`), `chunk ${i + 1}/${parts}`);
+    assertOk(await jsonpRetry(`${SCRIPT_URL}?action=chunk&index=${i}&total=${parts}&data=${encodeURIComponent(chunks[i])}`), `chunk ${i + 1}/${parts}`);
   }
   // total נשלח גם ל-commitChunks כדי שהשרת יאמת שקיבל בדיוק את מה שנשלח.
   const res = assertOk(await jsonpRetry(`${SCRIPT_URL}?action=commitChunks&total=${parts}`), "commitChunks");
@@ -2494,6 +2562,24 @@ function App() {
 
   // טעינה ראשונית — תמיד מגוגל שיטס (המקור האמיתי)
   useEffect(() => {
+    // ⭐ ציור מיידי מהמטמון המקומי, ורק אחר כך רענון מהגיליון.
+    // ⚠ קודם המסך היה חסום עד ש-Promise.all של חמש קריאות /exec חוזר — קריאה
+    //   אחת תקועה = מסך ריק לעשרות שניות. הגיליון נשאר מקור האמת ודורס בסיום.
+    //   sheetsLoaded נשאר false עד אז, ולכן שמירה עדיין חסומה — אין סיכון לדריסה.
+    try {
+      const cached = localStorage.getItem("shirat_bookings");
+      if (cached) {
+        const arr = JSON.parse(cached);
+        if (Array.isArray(arr) && arr.length) {
+          setBookings(arr);
+          setLoading(false);
+        }
+      }
+      const cb = localStorage.getItem("shirat_blocked");
+      if (cb) { const a = JSON.parse(cb); if (Array.isArray(a)) setBlockedDates(a); }
+      const ce = localStorage.getItem("shirat_expenses");
+      if (ce) { const a = JSON.parse(ce); if (Array.isArray(a)) setExpenses(a); }
+    } catch (e) {}
     Promise.all([loadFromSheets(), loadBlocked(), loadExpenses(), loadManualGuests(), loadTemplates()]).then(([data, blocked, expenses, mGuests]) => {
       // הגנה מפני כפילויות בגיליון: מזהה הזמנה חייב להיות ייחודי (max+1),
       // ולכן שתי רשומות עם אותו id הן שכפול. שומרים את המופע הראשון.
@@ -2579,6 +2665,24 @@ function App() {
     } catch (e) {
       // ⚠ אסור לסמן "מסונכרן" כשהשמירה נכשלה — זה בדיוק מה שהסתיר את באג
       //   "ההזמנה נעלמה". הכישלון חייב להיות רועש.
+      console.error("שגיאה בסנכרון:", e);
+      setSyncError(e.message || String(e));
+      alert("⚠ השמירה לגיליון נכשלה!\n\n" + (e.message || e) + "\n\nהנתונים מוצגים על המסך אך לא נשמרו בשרת.\nנסה שוב, ואל תסגור את הדף לפני שמופיע \"מסונכרן\".");
+    } finally {
+      setSyncing(false);
+    }
+  }
+  // ⭐ שמירה נקודתית — משמשת ליצירה/עריכה של הזמנה בודדת (המסלול הנפוץ).
+  //    זהה ל-syncSave מבחינת דיווח שגיאות, אבל שולחת רק את ההזמנה שהשתנתה.
+  async function syncSaveOne(b, fullList, mode) {
+    setSyncing(true);
+    setSyncError(null);
+    try {
+      if (mode === "delete") await deleteOneFromSheets(b, fullList);
+      else await saveOneToSheets(b, fullList);
+      setLastSync(new Date());
+      setSyncError(null);
+    } catch (e) {
       console.error("שגיאה בסנכרון:", e);
       setSyncError(e.message || String(e));
       alert("⚠ השמירה לגיליון נכשלה!\n\n" + (e.message || e) + "\n\nהנתונים מוצגים על המסך אך לא נשמרו בשרת.\nנסה שוב, ואל תסגור את הדף לפני שמופיע \"מסונכרן\".");
@@ -2835,7 +2939,8 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
     const prevStatus = !isNew ? bookings.find(x => x.id === b.id)?.status : null;
     if (!isNew) updated = bookings.map(x => x.id === b.id ? b : x);else updated = [...bookings, b];
     setBookings(updated);
-    syncSave(updated);
+    // ⭐ שמירה נקודתית במקום שליחת כל הגיליון — קריאה אחת קצרה במקום 6+.
+    syncSaveOne(b, updated);
     setShowForm(false);
     setEditB(null);
     if (b.status === "confirmed" && b.email && (isNew || prevStatus !== "confirmed")) {
@@ -2877,7 +2982,7 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
       if (b) addToTrash(b, "booking");
       const updated = bookings.filter(b => b.id !== id);
       setBookings(updated);
-      syncSave(updated);
+      syncSaveOne(id, updated, "delete");
       setDelC(null);
     }
   }
@@ -3011,6 +3116,14 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
               fontFamily: "'Heebo',sans-serif"
             },
             children: "⏳ שומר..."
+          }) : !sheetsLoaded ? /*#__PURE__*/_jsx("span", {
+            style: {
+              fontSize: 11,
+              color: "#8a86a8",
+              fontFamily: "'Heebo',sans-serif"
+            },
+            title: "מוצגים נתונים מהמטמון המקומי עד שהגיליון נטען",
+            children: "⏳ טוען מהשרת..."
           }) : syncError ? /*#__PURE__*/_jsx("span", {
             style: {
               fontSize: 11,
