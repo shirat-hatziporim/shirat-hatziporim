@@ -319,7 +319,7 @@ function buildInquiryHtml() {
     + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F333; חצר פרטית גדולה &#8212; דשא סינטטי, פינת ישיבה, ערסל, מנגל גז ותאורת אווירה</p>"
     + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F304; מול הצימר &#8212; מצפה לים המלח עם ספסלים וגינת משחקים לילדים</p>"
     + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F54D; בית כנסת הרמח&quot;ל בקרבת מקום (קבלת שבת בסגנון קרליבך)</p>"
-    + "<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F46A; מתאים לזוגות ולמשפחות עד 5 נופשים</p>";
+    + "<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F46A; מתאים לזוגות ולמשפחות עד 4 נופשים</p>";
 
   const shabat = "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F6B0; כיור כפול</p>"
     + "<p style='margin:0 0 7px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F372; פלטת שבת, מיחם מים ושעון שבת</p>"
@@ -333,7 +333,7 @@ function buildInquiryHtml() {
     + "<p style='margin:0 0 6px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F4C5; סוף שבוע (שישי-שבת): <strong>1,200 ש&#34;ח</strong></p>"
     + "<p style='margin:0 0 6px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F381; חבילת חמישי+שישי+שבת: <strong>1,700 ש&#34;ח</strong></p>"
     + "<p style='margin:0 0 6px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x279C; תוספת יציאה ראשון: <strong>350 ש&#34;ח</strong></p>"
-    + "<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x279C; תוספת מיטות (עד 3): <strong>300 ש&#34;ח לאדם</strong></p>";
+    + "<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x279C; תוספת מיטות (עד 2): <strong>300 ש&#34;ח לאדם</strong></p>";
 
   const body = "<tr><td style='padding:28px 24px;font-family:Arial,sans-serif;'>"
     + "<p style='font-size:16px;color:#222;margin:0 0 8px;line-height:1.8;'>שלום וברכה,</p>"
