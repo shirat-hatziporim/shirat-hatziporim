@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ייבוא הזמנות היסטוריות — שירת הציפורים</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:14px;background:#f5f2ec;font-family:Arial,Helvetica,sans-serif;color:#2b2b2b}
+h1{font-size:19px;margin:0 0 4px}
+.sub{font-size:13px;color:#777;margin:0 0 14px}
+.card{background:#fff;border:1px solid #e0dbd0;border-radius:10px;padding:14px;margin-bottom:12px}
+button{font-family:inherit;font-size:15px;font-weight:700;border:0;border-radius:8px;padding:11px 16px;cursor:pointer;margin:0 0 8px 8px}
+.b1{background:#2d5a27;color:#fff}
+.b2{background:#e8e4da;color:#3a3a3a}
+.b3{background:#fff;color:#a33;border:1px solid #dbb}
+button:disabled{opacity:.45;cursor:not-allowed}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:6px 5px;border-bottom:1px solid #eee;text-align:right;vertical-align:top}
+th{background:#faf8f4;font-size:12px;color:#666;position:sticky;top:0}
+.st{font-weight:700;white-space:nowrap;font-size:12px}
+.ok{color:#2d7a27}.err{color:#b32d2d}.skip{color:#8a7a2d}.run{color:#1565c0}
+.est{color:#c8860a;font-weight:700}
+#log{background:#1e1e1e;color:#d4d4d4;font-family:monospace;font-size:12px;padding:10px;border-radius:8px;max-height:220px;overflow:auto;white-space:pre-wrap;direction:ltr;text-align:left}
+.warn{background:#fff8e6;border:1px solid #f0d9a0;border-radius:8px;padding:10px;font-size:13px;margin-bottom:12px;line-height:1.7}
+.prog{font-size:14px;font-weight:700;margin:6px 0}
+</style>
+</head>
+<body>
+
+<h1>ייבוא הזמנות היסטוריות</h1>
+<p class="sub">22 הזמנות מלפני הקמת המערכת · מזהים 9001&ndash;9022 · נכתבות ישירות לגיליון</p>
+
+<div class="warn">
+<strong>לפני שמתחילים:</strong><br>
+1. הפעולה משתמשת ב-<code>upsertBooking</code> — כתיבה לפי מזהה. הרצה חוזרת <strong>לא</strong> תיצור כפילויות, היא רק תדרוס את אותן שורות.<br>
+2. שורות המסומנות <span class="est">מחיר משוער</span> — הסכום לא הופיע ברשימה וחושב לפי המחירון. לתקן ידנית בלוח הניהול אחרי הייבוא.<br>
+3. אחרי הייבוא — לרענן את לוח הניהול (הוא מחזיק מטמון מקומי).
+</div>
+
+<div class="card">
+  <button class="b2" id="btnCheck">בדוק מצב בגיליון</button>
+  <button class="b1" id="btnImport" disabled>ייבא הכל</button>
+  <button class="b3" id="btnDelete" disabled>מחק את הייבוא (9001&ndash;9022)</button>
+  <div class="prog" id="prog"></div>
+</div>
+
+<div class="card" style="overflow:auto;max-height:60vh">
+<table id="tbl"><thead><tr>
+<th>#</th><th>שם</th><th>כניסה</th><th>יציאה</th><th>לילות</th><th>נפשות</th><th>סכום</th><th>מצב</th>
+</tr></thead><tbody></tbody></table>
+</div>
+
+<div class="card"><div id="log">מוכן.</div></div>
+
+<script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby9elcqlGzqijWnXWUYFo3QeW-wWwIt9pj4XmQSsN8RkgkRCwI7eRlRv9AvMLxVC1rTZg/exec";
+const ROWS = [{"id": 9001, "name": "פוקסברומר", "phone": "0504139170", "email": "", "checkin": "2025-11-14", "checkout": "2025-11-15", "guests": 2, "extraGuests": 0, "babies": 1, "babyCrib": false, "status": "confirmed", "notes": "[ייבוא היסטורי] מקרית ספר · זוג + תינוק · הגיעו ב-9:45 באוטובוס 8:30 מירושלים · מחיר משוער — לאמת", "paid": 1200, "total": 1200, "nights": 1, "guestExtra": 0, "discount": 0, "deposit": 0, "depositMethod": "", "rating": "", "receiptIssued": false, "source": "", "balanceMethod": "", "sentConfirm": true, "sentReminder": true, "sentReview": true, "sentAutoReminder": true, "sentAutoReview": true, "_est": true}, {"id": 9002, "name": "יהודה דינר", "phone": "0556702461", "email": "", "checkin": "2025-12-04", "checkout": "2025-12-06", "guests": 2, "extraGuests": 0, "babies": 0, "babyCrib": false, "status": "confirmed", "notes": "[ייבוא היסטורי] חמישי בערב עד מוצ\"ש · מחיר משוער — לאמת", "paid": 1700, "total": 1700, "nights": 2, "guestExtra": 0, "discount": 0, "deposit": 0, "depositMethod": "", "rating": "", "receiptIssued": false, "source": "", "balanceMethod": "", "sentConfirm": true, "sentReminder": true, "sentReview": true, "sentAutoReminder": true, "sentAutoReview": true, "_est": true}, {"id": 9003, "name": "שמוליק יעקובסון", "phone": "0584703844", "email": "", "checkin": "2025-12-12", "checkout": "2025-12-13", "guests": 2, "extraGuests": 1, "babies": 0, "babyCrib": false, "status": "confirmed", "notes": "[ייבוא היסטורי] סופ\"ש · 3 בחורים · מחיר משוער — לאמת", "paid": 1500, "total": 1500, "nights": 1, "guestExtra": 0, "discount": 0, "deposit": 0, "depositMethod": "", "rating": "", "receiptIssued": false, "source": "", "balanceMethod": "", "sentConfirm": true, "sentReminder": true, "sentReview": true, "sentAutoReminder": true, "sentAutoReview": true, "_est": true}, {"id": 9004, "name": "פסח כהן", "phone": "0533168121", "email": "", "checkin": "2025-12-19", "checkout": "2025-12-20", "guests": 2, "extraGuests": 0, "babies": 0, "babyCrib": false, "status": "confirmed", "notes": "[ייבוא היסטורי] שישי עד מוצ\"ש · דובר על אפשרות הארכה עד ראשון (+200)", "paid": 1100, "total": 1100, "nights": 1, "guestExtra": 0, "discount": 0, "deposit": 0, "depositMethod": "", "rating": "", "receiptIssued": false, "source": "", "balanceMethod": "", "sentConfirm": true, "sentReminder": true, "sentReview": true, "sentAutoReminder": true, "sentAutoReview": true, "_est": false}, {"id": 9005, "name": "אלימלך שיש", "phone": "0534144011", "email": "", "checkin": "2025-12-25", "checkout": "2025-12-27", "guests": 2, "extraGuests": 0, "babies": 0, "babyCrib": false, "status": "confirmed", "notes": "[ייבוא היסטורי] חמישי עד מוצ\"ש · מחיר משוער — לאמת", "paid": 1700, "total": 1700, "nights": 2, "guestExtra": 0, "discount": 0, "deposit": 0, "depositMethod": "", "rating": "", "receiptIssued": false, "source": "", "balanceMethod": "", "sentConfirm": true, "sentReminder": true, "sentReview": true, "sentAutoReminder": true, "sentAutoReview": true, "_est": true}, {"id": 9006, "name": "פקשר", "phone": "0534129735", "email": "", "checkin": "2026-01-01", "checkout": "2026-01-03", "guests": 2, "extraGuests": 0, "babies": 0, "babyCrib": false, "status": "confirmed", "notes": "[ייבוא היסטורי] חמישי עד מוצ\"ש · מחיר משוער — לאמת", "paid": 1700, "total": 1700, "nights": 2, "guestExtra": 0, "discount": 0, "deposit": 0, "depositMethod": "", "rating": "", "receiptIssued": false, "source": "", "balanceMethod": "", "sentConfirm": true, "sentReminder": true, "sentReview": true, "sentAutoReminder": true, "sentAutoReview": true, "_est": true}, {"id": 9007, "name": "משפחת בר", "phone": "0554011563", "email": "", "checkin": "2026-01-09", "checkout": "2026-01-10", "guests": 2, "extraGuests": 0, "babies": 0, "babyCrib": false, "status": "confirmed", "notes": "[ייבוא היסטורי] שישי עד מוצ\"ש", "paid": 1200, "total": 1200, "nights": 1, "guestExtra": 0, "discount": 0, "deposit": 0, "depositMethod": "", "rating": "", "receiptIssued": false, "source": "", "balanceMethod": "", "sentConfirm": true, "sentReminder": true, "sentReview": true, "sentAutoReminder": true, "sentAutoReview": true, "_est": false}, {"id": 9008, "name": "יצחק דבוש", "phone": "0527670073", "email": "", "checkin": "2026-01-15", "checkout": "2026-01-17", "guests": 2, "extraGuests": 0, "babies": 0, "babyCrib": false, "status": "confirmed", "notes": "[ייבוא היסטורי] חמישי עד מוצ\"ש", "paid": 1700, "total": 1700, "nights": 2, "guestExtra": 0, "discount": 0, "deposit": 0, "depositMethod": "", "rating": "", "receiptIssued": false, "source": "", "balanceMethod": "", "sentConfirm": true, "sentReminder": true, "sentReview": true, "sentAutoReminder": true, "sentAutoReview": true, "_est": false}, {"id": 9009, "name": "רות חוברה", "phone": "0548505875", "email": "", "checkin": "2026-01-22", "checkout": "2026-01-24", "guests": 2, "extraGuests": 0, "babies": 0, "babyCrib": false, "status": "confirmed", "notes": "[ייבוא היסטורי] חמישי מ-19:00 עד מוצ\"ש", "paid": 1600, "total": 1600, "nights": 2, "guestExtra": 0, "discount": 0, "deposit": 0, "depositMethod": "", "rating": "", "receiptIssued": false, "source": "", "balanceMethod": "", "sentConfirm": true, "sentReminder": true, "sentReview": true, "sentAutoReminder": true, "sentAutoReview": true, "_est": false}, {"id": 9010, "name": "ישראל וינר", "phone": "0548566844", "email": "", "checkin": "2026-01-30", "checkout": "2026-01-31", "guests": 2, "extraGuests": 2, "babies": 0, "babyCrib": false, "status": "confirmed", "notes": "[ייבוא היסטורי] שישי עד מוצ\"ש · זוג + 2 ילדים גדולים", "paid": 1700, "total": 1700, "nights": 1, "guestExtra": 0, "discount": 0, "deposit": 0, "depositMethod": "", "rating": "", "receiptIssued": false, "source": "", "balanceMethod": "", "sentConfirm": true, "sentReminder": true, "sentReview": true, "sentAutoReminder": true, "sentAutoReview": true, "_est": false}, {"id": 9011, "name": "עדי כהן", "phone": "0548502451", "email": "", "checkin": "2026-02-05", "checkout": "2026-02-07", "guests": 2, "extraGuests": 0, "babies": 0, "babyCrib": false, "status": "confirmed", "notes": "[ייבוא היסטורי] חמישי בערב עד מוצ\"ש · מחיר משוער — לאמת", "paid": 1700, "total": 1700, "nights": 2, "guestExtra": 0, "discount": 0, "deposit": 0, "depositMethod": "", "rating": "", "receiptIssued": false, "source": "", "balanceMethod": "", "sentConfirm": true, "sentReminder": true, "sentReview": true, "sentAutoReminder": true, "sentAutoReview": true, "_est": true}, {"id": 9012, "name": "פרידמן", "phone": "", "email": "", "checkin": "2026-02-20", "checkout": "2026-02-21", "guests": 2, "extraGuests": 0, "babies": 0, "babyCrib": false, "status": "confirmed", "notes": "[ייבוא היסטורי] מבית שמש · שישי עד מוצ\"ש", "paid": 1200, "total": 1200, "nights": 1, "guestExtra": 0, "discount": 0, "deposit": 0, "depositMethod": "", "rating": "", "receiptIssued": false, "source": "", "balanceMethod": "", "sentConfirm": true, "sentReminder": true, "sentReview": true, "sentAutoReminder": true, "sentAutoReview": true, "_est": false}, {"id": 9013, "name": "מירי לזר", "phone": "0583200717", "email": "", "checkin": "2026-02-26", "checkout": "2026-02-28", "guests": 2, "extraGuests": 1, "babies": 0, "babyCrib": false, "status": "confirmed", "notes": "[ייבוא היסטורי] חמישי עד מוצ\"ש · 3 בנות · מחיר משוער — לאמת", "paid": 2300, "total": 2300, "nights": 2, "guestExtra": 0, "discount": 0, "deposit": 0, "depositMethod": "", "rating": "", "receiptIssued": false, "source": "", "balanceMethod": "", "sentConfirm": true, "sentReminder": true, "sentReview": true, "sentAutoReminder": true, "sentAutoReview": true, "_est": true}, {"id": 9014, "name": "משפחת מוזסון", "phone": "0548563566", "email": "", "checkin": "2026-03-13", "checkout": "2026-03-14", "guests": 2, "extraGuests": 0, "babies": 0, "babyCrib": false, "status": "confirmed", "notes": "[ייבוא היסטורי] מביתר · שישי עד מוצ\"ש · מבצע", "paid": 900, "total": 900, "nights": 1, "guestExtra": 0, "discount": 0, "deposit": 0, "depositMethod": "", "rating": "", "receiptIssued": false, "source": "", "balanceMethod": "", "sentConfirm": true, "sentReminder": true, "sentReview": true, "sentAutoReminder": true, "sentAutoReview": true, "_est": false}, {"id": 9015, "name": "הבת של מירי זילברמן", "phone": "", "email": "", "checkin": "2026-03-20", "checkout": "2026-03-21", "guests": 2, "extraGuests": 0, "babies": 0, "babyCrib": false, "status": "confirmed", "notes": "[ייבוא היסטורי] שישי עד מוצ\"ש", "paid": 900, "total": 900, "nights": 1, "guestExtra": 0, "discount": 0, "deposit": 0, "depositMethod": "", "rating": "", "receiptIssued": false, "source": "", "balanceMethod": "", "sentConfirm": true, "sentReminder": true, "sentReview": true, "sentAutoReminder": true, "sentAutoReview": true, "_est": false}, {"id": 9016, "name": "רבקה הופמן", "phone": "", "email": "", "checkin": "2026-03-27", "checkout": "2026-03-28", "guests": 2, "extraGuests": 2, "babies": 1, "babyCrib": false, "status": "confirmed", "notes": "[ייבוא היסטורי] שישי עד מוצ\"ש · זוג + 2 ילדים + תינוק", "paid": 1500, "total": 1500, "nights": 1, "guestExtra": 0, "discount": 0, "deposit": 0, "depositMethod": "", "rating": "", "receiptIssued": false, "source": "", "balanceMethod": "", "sentConfirm": true, "sentReminder": true, "sentReview": true, "sentAutoReminder": true, "sentAutoReview": true, "_est": false}, {"id": 9017, "name": "בן ציון הופמן", "phone": "0527654526", "email": "", "checkin": "2026-04-10", "checkout": "2026-04-11", "guests": 2, "extraGuests": 0, "babies": 0, "babyCrib": false, "status": "confirmed", "notes": "[ייבוא היסטורי] זוג", "paid": 1200, "total": 1200, "nights": 1, "guestExtra": 0, "discount": 0, "deposit": 0, "depositMethod": "", "rating": "", "receiptIssued": false, "source": "", "balanceMethod": "", "sentConfirm": true, "sentReminder": true, "sentReview": true, "sentAutoReminder": true, "sentAutoReview": true, "_est": false}, {"id": 9018, "name": "שלמה ניסים", "phone": "0527149002", "email": "", "checkin": "2026-04-14", "checkout": "2026-04-15", "guests": 2, "extraGuests": 0, "babies": 1, "babyCrib": false, "status": "confirmed", "notes": "[ייבוא היסטורי] זוג + תינוק · הגיעו ב-12:00 · מחיר משוער — לאמת", "paid": 800, "total": 800, "nights": 1, "guestExtra": 0, "discount": 0, "deposit": 0, "depositMethod": "", "rating": "", "receiptIssued": false, "source": "", "balanceMethod": "", "sentConfirm": true, "sentReminder": true, "sentReview": true, "sentAutoReminder": true, "sentAutoReview": true, "_est": true}, {"id": 9019, "name": "שרה רצקר", "phone": "0504109184", "email": "", "checkin": "2026-04-15", "checkout": "2026-04-16", "guests": 2, "extraGuests": 0, "babies": 1, "babyCrib": false, "status": "confirmed", "notes": "[ייבוא היסטורי] זוג + תינוק", "paid": 800, "total": 800, "nights": 1, "guestExtra": 0, "discount": 0, "deposit": 0, "depositMethod": "", "rating": "", "receiptIssued": false, "source": "", "balanceMethod": "", "sentConfirm": true, "sentReminder": true, "sentReview": true, "sentAutoReminder": true, "sentAutoReview": true, "_est": false}, {"id": 9020, "name": "יצחק דזיאלשינסקי", "phone": "0583237971", "email": "", "checkin": "2026-04-16", "checkout": "2026-04-18", "guests": 2, "extraGuests": 0, "babies": 0, "babyCrib": false, "status": "confirmed", "notes": "[ייבוא היסטורי] חמישי עד מוצ\"ש · זוג", "paid": 1600, "total": 1600, "nights": 2, "guestExtra": 0, "discount": 0, "deposit": 0, "depositMethod": "", "rating": "", "receiptIssued": false, "source": "", "balanceMethod": "", "sentConfirm": true, "sentReminder": true, "sentReview": true, "sentAutoReminder": true, "sentAutoReview": true, "_est": false}, {"id": 9021, "name": "דבורה וינברג", "phone": "0527149483", "email": "", "checkin": "2026-04-28", "checkout": "2026-04-30", "guests": 2, "extraGuests": 0, "babies": 0, "babyCrib": false, "status": "confirmed", "notes": "[ייבוא היסטורי] זוג · שלישי עד חמישי · מחיר משוער — לאמת", "paid": 1600, "total": 1600, "nights": 2, "guestExtra": 0, "discount": 0, "deposit": 0, "depositMethod": "", "rating": "", "receiptIssued": false, "source": "", "balanceMethod": "", "sentConfirm": true, "sentReminder": true, "sentReview": true, "sentAutoReminder": true, "sentAutoReview": true, "_est": true}, {"id": 9022, "name": "פלוטשניק", "phone": "0548408505", "email": "", "checkin": "2026-04-30", "checkout": "2026-05-02", "guests": 2, "extraGuests": 1, "babies": 1, "babyCrib": false, "status": "confirmed", "notes": "[ייבוא היסטורי] חמישי עד מוצ\"ש · זוג + ילד + תינוק · מחיר משוער — לאמת", "paid": 2300, "total": 2300, "nights": 2, "guestExtra": 0, "discount": 0, "deposit": 0, "depositMethod": "", "rating": "", "receiptIssued": false, "source": "", "balanceMethod": "", "sentConfirm": true, "sentReminder": true, "sentReview": true, "sentAutoReminder": true, "sentAutoReview": true, "_est": true}];
+
+function log(m){const l=document.getElementById("log");l.textContent+="\n"+m;l.scrollTop=l.scrollHeight;}
+
+// JSONP עם timeout של 25 שניות (ה-/exec לפעמים איטי)
+function jsonp(params, timeoutMs){
+  return new Promise(function(resolve,reject){
+    const cb = "cb_"+Math.random().toString(36).slice(2)+"_"+Date.now();
+    let done=false;
+    const s=document.createElement("script");
+    const t=setTimeout(function(){ if(done)return; done=true; cleanup(); reject(new Error("timeout")); }, timeoutMs||25000);
+    function cleanup(){ try{delete window[cb];}catch(e){window[cb]=undefined;} if(s.parentNode)s.parentNode.removeChild(s); clearTimeout(t); }
+    window[cb]=function(res){ if(done)return; done=true; cleanup(); resolve(res); };
+    s.onerror=function(){ if(done)return; done=true; cleanup(); reject(new Error("network")); };
+    s.src=SCRIPT_URL+"?"+params+"&callback="+cb+"&t="+Date.now();
+    document.body.appendChild(s);
+  });
+}
+
+const tb=document.querySelector("#tbl tbody");
+ROWS.forEach(function(b,i){
+  const tr=document.createElement("tr");
+  tr.innerHTML="<td>"+b.id+"</td><td>"+b.name+"</td><td>"+b.checkin+"</td><td>"+b.checkout+"</td>"
+    +"<td>"+b.nights+"</td><td>"+(b.guests+b.extraGuests)+(b.babies?"+"+b.babies+"ת":"")+"</td>"
+    +"<td>&#8362;"+b.total.toLocaleString()+(b._est?" <span class='est'>~</span>":"")+"</td>"
+    +"<td class='st' id='st"+b.id+"'>—</td>";
+  tb.appendChild(tr);
+});
+
+function setSt(id,txt,cls){const e=document.getElementById("st"+id); if(e){e.textContent=txt; e.className="st "+(cls||"");}}
+function prog(t){document.getElementById("prog").textContent=t;}
+
+let existing=null;
+
+document.getElementById("btnCheck").onclick=async function(){
+  this.disabled=true; prog("קורא מהגיליון…"); log("GET bookings…");
+  try{
+    const res=await jsonp("action=get");
+    if(!Array.isArray(res)) throw new Error("תשובה לא צפויה: "+JSON.stringify(res).slice(0,200));
+    existing=res;
+    log("נמצאו "+res.length+" הזמנות בגיליון.");
+    const ids={}; res.forEach(function(b){ids[String(b.id)]=b;});
+    let present=0;
+    ROWS.forEach(function(b){
+      if(ids[String(b.id)]){ present++; setSt(b.id,"כבר קיים","skip"); }
+      else setSt(b.id,"מוכן לייבוא","");
+    });
+    // בדיקת חפיפת תאריכים מול הזמנות קיימות (לא כולל הייבוא עצמו)
+    const mine={}; ROWS.forEach(function(b){mine[String(b.id)]=1;});
+    let clash=0;
+    res.forEach(function(e){
+      if(mine[String(e.id)]) return;
+      if(e.status==="cancelled") return;
+      ROWS.forEach(function(b){
+        if(e.checkin && e.checkout && e.checkin < b.checkout && b.checkin < e.checkout){
+          clash++; log("⚠ חפיפת תאריכים: "+b.name+" ("+b.checkin+") מול הזמנה קיימת "+e.id+" "+e.name);
+        }
+      });
+    });
+    if(!clash) log("אין חפיפות תאריכים מול הזמנות קיימות.");
+    prog(present+" מתוך "+ROWS.length+" כבר קיימים בגיליון.");
+    document.getElementById("btnImport").disabled=false;
+    document.getElementById("btnDelete").disabled=(present===0);
+  }catch(err){ log("שגיאה: "+err.message); prog("הקריאה נכשלה — נסה שוב."); }
+  this.disabled=false;
+};
+
+document.getElementById("btnImport").onclick=async function(){
+  if(!confirm("לייבא "+ROWS.length+" הזמנות לגיליון?")) return;
+  this.disabled=true; document.getElementById("btnCheck").disabled=true; document.getElementById("btnDelete").disabled=true;
+  let ok=0,fail=0;
+  for(let i=0;i<ROWS.length;i++){
+    const b=Object.assign({},ROWS[i]); delete b._est;
+    setSt(b.id,"שולח…","run"); prog("מייבא "+(i+1)+" מתוך "+ROWS.length+"…");
+    try{
+      const res=await jsonp("action=upsertBooking&booking="+encodeURIComponent(JSON.stringify(b)));
+      if(res && res.ok){ ok++; setSt(b.id,res.created?"נוצר ✓":"עודכן ✓","ok"); log("✓ "+b.id+" "+b.name+" (שורה "+res.row+")"); }
+      else { fail++; setSt(b.id,"שגיאה","err"); log("✗ "+b.id+" "+JSON.stringify(res)); }
+    }catch(err){ fail++; setSt(b.id,err.message==="timeout"?"timeout":"שגיאה","err"); log("✗ "+b.id+" "+b.name+" — "+err.message); }
+    await new Promise(function(r){setTimeout(r,400);});
+  }
+  prog("סיום: "+ok+" הצליחו, "+fail+" נכשלו." + (fail?" לחץ שוב על 'ייבא הכל' — השורות שהצליחו לא ישוכפלו.":""));
+  log("=== סיום: "+ok+" ✓ / "+fail+" ✗ ===");
+  this.disabled=false; document.getElementById("btnCheck").disabled=false; document.getElementById("btnDelete").disabled=false;
+};
+
+document.getElementById("btnDelete").onclick=async function(){
+  if(!confirm("למחוק מהגיליון את כל 22 ההזמנות שיובאו (9001-9022)?")) return;
+  this.disabled=true; document.getElementById("btnImport").disabled=true;
+  let ok=0,fail=0;
+  for(let i=0;i<ROWS.length;i++){
+    const b=ROWS[i];
+    setSt(b.id,"מוחק…","run"); prog("מוחק "+(i+1)+" מתוך "+ROWS.length+"…");
+    try{
+      const res=await jsonp("action=deleteBooking&id="+encodeURIComponent(b.id));
+      ok++; setSt(b.id,"נמחק","skip"); log("🗑 "+b.id+" "+JSON.stringify(res));
+    }catch(err){ fail++; setSt(b.id,"שגיאה","err"); log("✗ מחיקה "+b.id+" — "+err.message); }
+    await new Promise(function(r){setTimeout(r,400);});
+  }
+  prog("מחיקה: "+ok+" ✓ / "+fail+" ✗");
+  this.disabled=false; document.getElementById("btnImport").disabled=false;
+};
+</script>
+</body>
+</html>
