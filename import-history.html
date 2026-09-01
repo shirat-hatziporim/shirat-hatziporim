@@ -40,8 +40,8 @@ th{background:#faf8f4;font-size:12px;color:#666;position:sticky;top:0}
 
 <div class="card">
   <button class="b2" id="btnCheck">בדוק מצב בגיליון</button>
-  <button class="b1" id="btnImport" disabled>ייבא הכל</button>
-  <button class="b3" id="btnDelete" disabled>מחק את הייבוא (9001&ndash;9022)</button>
+  <button class="b1" id="btnImport">ייבא הכל</button>
+  <button class="b3" id="btnDelete">מחק את הייבוא (9001&ndash;9022)</button>
   <div class="prog" id="prog"></div>
 </div>
 
@@ -74,6 +74,16 @@ function jsonp(params, timeoutMs){
   });
 }
 
+// /exec נופל לסירוגין ב-timeout — 4 ניסיונות עם המתנה גדלה
+async function call(params, label){
+  let last;
+  for(let a=1;a<=4;a++){
+    try{ return await jsonp(params, 30000); }
+    catch(err){ last=err; log("… ניסיון "+a+"/4 נכשל ("+err.message+")"+(label?" — "+label:"")); await new Promise(function(r){setTimeout(r,900*a);}); }
+  }
+  throw last;
+}
+
 const tb=document.querySelector("#tbl tbody");
 ROWS.forEach(function(b,i){
   const tr=document.createElement("tr");
@@ -92,7 +102,7 @@ let existing=null;
 document.getElementById("btnCheck").onclick=async function(){
   this.disabled=true; prog("קורא מהגיליון…"); log("GET bookings…");
   try{
-    const res=await jsonp("action=get");
+    const res=await call("action=get","טעינת ההזמנות");
     if(!Array.isArray(res)) throw new Error("תשובה לא צפויה: "+JSON.stringify(res).slice(0,200));
     existing=res;
     log("נמצאו "+res.length+" הזמנות בגיליון.");
@@ -116,9 +126,7 @@ document.getElementById("btnCheck").onclick=async function(){
     });
     if(!clash) log("אין חפיפות תאריכים מול הזמנות קיימות.");
     prog(present+" מתוך "+ROWS.length+" כבר קיימים בגיליון.");
-    document.getElementById("btnImport").disabled=false;
-    document.getElementById("btnDelete").disabled=(present===0);
-  }catch(err){ log("שגיאה: "+err.message); prog("הקריאה נכשלה — נסה שוב."); }
+  }catch(err){ log("שגיאה: "+err.message); prog("הבדיקה נכשלה (השרת לא ענה) — אפשר ללחוץ 'ייבא הכל' בכל מקרה, הכתיבה היא לפי מזהה ולא תיצור כפילויות."); }
   this.disabled=false;
 };
 
@@ -130,7 +138,7 @@ document.getElementById("btnImport").onclick=async function(){
     const b=Object.assign({},ROWS[i]); delete b._est;
     setSt(b.id,"שולח…","run"); prog("מייבא "+(i+1)+" מתוך "+ROWS.length+"…");
     try{
-      const res=await jsonp("action=upsertBooking&booking="+encodeURIComponent(JSON.stringify(b)));
+      const res=await call("action=upsertBooking&booking="+encodeURIComponent(JSON.stringify(b)), b.name);
       if(res && res.ok){ ok++; setSt(b.id,res.created?"נוצר ✓":"עודכן ✓","ok"); log("✓ "+b.id+" "+b.name+" (שורה "+res.row+")"); }
       else { fail++; setSt(b.id,"שגיאה","err"); log("✗ "+b.id+" "+JSON.stringify(res)); }
     }catch(err){ fail++; setSt(b.id,err.message==="timeout"?"timeout":"שגיאה","err"); log("✗ "+b.id+" "+b.name+" — "+err.message); }
@@ -149,7 +157,7 @@ document.getElementById("btnDelete").onclick=async function(){
     const b=ROWS[i];
     setSt(b.id,"מוחק…","run"); prog("מוחק "+(i+1)+" מתוך "+ROWS.length+"…");
     try{
-      const res=await jsonp("action=deleteBooking&id="+encodeURIComponent(b.id));
+      const res=await call("action=deleteBooking&id="+encodeURIComponent(b.id), b.name);
       ok++; setSt(b.id,"נמחק","skip"); log("🗑 "+b.id+" "+JSON.stringify(res));
     }catch(err){ fail++; setSt(b.id,"שגיאה","err"); log("✗ מחיקה "+b.id+" — "+err.message); }
     await new Promise(function(r){setTimeout(r,400);});
