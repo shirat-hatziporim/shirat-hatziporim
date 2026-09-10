@@ -200,6 +200,22 @@ async function checkPage(g){
   chk(g, "מייל אישור — SCRIPT_URL נגיש (window.SCRIPT_URL)",
       src.indexOf("window.SCRIPT_URL = SCRIPT_URL")!==-1 && src.indexOf('window.SCRIPT_URL+"?action=sendConfirm')!==-1,
       'sendConfirmationEmail בסקריפט נפרד — חייב window.SCRIPT_URL, אחרת ReferenceError ושליחת מייל האישור נכשלת');
+  // ── מייל עם קובץ לכל המתעניינים (11.9.2026) ──
+  chk(g, "מתעניינים — אפשר לצרף קובץ למייל (bulkFileInput)",
+      src.indexOf('id: "bulkFileInput"')!==-1 && src.indexOf('type: "file"')!==-1
+      && src.indexOf('action: "broadcastUpload"')!==-1 && src.indexOf('action: "broadcastSend"')!==-1,
+      "תמונה/PDF נשלחים דרך doPost — כל נמען מקבל מייל אישי");
+  {
+    const m = src.match(/async function postScript[\s\S]*?\n}\n/);
+    const body = m ? m[0] : "";
+    const hasHdr = /Content-Type|application\/json|headers\s*:/i.test(body);
+    chk(g, "מתעניינים — POST בלי כותרות (בקשה פשוטה, בלי preflight של CORS)",
+        !!body && /method:\s*"POST"/.test(body) && !hasHdr,
+        !body ? "postScript לא נמצא בקוד" : (hasHdr ? "נוספה כותרת — Apps Script לא עונה ל-preflight והשליחה תיכשל" : "גוף מחרוזת (text/plain)"));
+  }
+  chk(g, "מתעניינים — לחיצה חוזרת ממשיכה את אותה שליחה (בלי כפילויות)",
+      src.indexOf("BROADCAST_RESUME_KEY")!==-1 && src.indexOf("getBroadcastStatus(campaign)")!==-1,
+      "מזהה השליחה נשמר ב-localStorage; השרת מדלג על מי שכבר קיבל");
   return src;
 }
 
@@ -300,6 +316,31 @@ async function checkBackend(g){
               : "2 בסיס + עד 2 תוספת = 4"));
   } catch(e){
     chk(g, "מייל מתעניינים — preview (action=previewInquiry)", false, e.message + " (ייתכן שצריך לפרוס מחדש את Code.gs עם previewInquiry)");
+  }
+  // ── מייל עם קובץ למתעניינים (11.9.2026) — מאומת מול הפריסה החיה ──
+  try {
+    const { data, ms } = await jsonp(SCRIPT_URL + "?action=previewBroadcast", 20000);
+    const html = (data && data.html) || "";
+    if (!html){
+      chk(g, "מייל עם קובץ — previewBroadcast קיים בפריסה", false,
+          "השרת לא מכיר את הפעולה — Code.gs החדש לא נפרס (לבדוק שה-Action בריפו הפרטי ירוק)");
+    } else {
+      chk(g, "מייל עם קובץ — התמונה מוטמעת בגוף המייל (cid)", html.indexOf("cid:broadcastimg")!==-1, ms+"ms");
+      chk(g, "מייל עם קובץ — טקסט ההודעה מוגן מ-HTML",
+          html.indexOf("&lt;b&gt;")!==-1 && html.indexOf("<b>לא מודגשת</b>")===-1,
+          "תו < בהודעה לא ישבור את המייל");
+      chk(g, "מייל עם קובץ — כפתור הזמנה ושורת הסרה מהרשימה",
+          html.indexOf("booking.html")!==-1 && html.indexOf("השיבו למייל זה")!==-1);
+    }
+  } catch(e){
+    chk(g, "מייל עם קובץ — previewBroadcast", false, e.message);
+  }
+  try {
+    const { data } = await jsonp(SCRIPT_URL + "?action=broadcastStatus&campaign=bc1000000000", 20000);
+    chk(g, "מייל עם קובץ — broadcastStatus עונה (שליחה שלא קיימת)",
+        !!(data && data.ok && data.exists===false), JSON.stringify(data));
+  } catch(e){
+    chk(g, "מייל עם קובץ — broadcastStatus", false, e.message);
   }
   // ── בדיקת רגרסיה: מייל האישור — שעת כניסה 15:00 ושעת יציאה 11:00 ──
   try {
@@ -576,6 +617,15 @@ async function checkAssets(g){
         && rc.text.indexOf("לא נכתב דבר")!==-1
         && !/str \+= \(cache\.get\("chunk_"\+i\)\|\|""\)/.test(rc.text),
         "אף פעם לא נכתבת לגיליון רשימה חלקית");
+    chk(g, "Code.gs — doPost לשליחת קובץ + דילוג על מי שכבר קיבל",
+        /function doPost/.test(rc.text) && /function broadcastSend/.test(rc.text)
+        && rc.text.indexOf("st.sent.indexOf(to)")!==-1,
+        "ניסיון חוזר לא שולח פעמיים לאותו נמען");
+    chk(g, "Code.gs — אין שימוש ב-MailApp (הרשאה חדשה הייתה משביתה את השרת)",
+        !/\bMailApp\s*\./.test(rc.text),
+        /\bMailApp\s*\./.test(rc.text)
+          ? "MailApp דורש הרשאת script.send_mail — ה-web app ייפול עד אישור ידני בעורך"
+          : "רק GmailApp — הרשאה קיימת");
   } catch(e){ chk(g, "Code.gs (עותק מראה) נטען", false, e.message); }
 
   const lg = await loadImg("logo.jpeg", 10000);
