@@ -334,6 +334,11 @@ async function checkBackend(g){
           "תו < בהודעה לא ישבור את המייל");
       chk(g, "מייל עם קובץ — כפתור הזמנה ושורת הסרה מהרשימה",
           html.indexOf("booking.html")!==-1 && html.indexOf("השיבו למייל זה")!==-1);
+      chk(g, "מייל עם קובץ — שורת ההסרה קטנה (11px, גוברת על ה-media query במובייל)",
+          /class='optout'[^>]*font-size:11px!important/.test(html),
+          /class='optout'[^>]*font-size:11px!important/.test(html)
+            ? "לא תוגדל באפליקציית Gmail"
+            : "בלי !important ה-media query של wrap() מגדיל אותה ל-13px, ו-Gmail באנדרואיד מגדיל עוד (נראה ענק במייל הבדיקה 11.9.2026)");
     }
   } catch(e){
     chk(g, "מייל עם קובץ — previewBroadcast", false, e.message);
