@@ -791,8 +791,11 @@ async function sendBroadcastWithFile({
   subject,
   message,
   emails,
-  onProgress
+  onProgress,
+  test = false
 }) {
+  // test=true: מייל בדיקה לנמען אחד. השרת לא רושם אותו ב"כבר קיבל", ולכן אין ניסיון חוזר
+  // אוטומטי (אחרת תשובה שלא נקראה הייתה שולחת כמה מיילי בדיקה).
   // אותו קובץ + אותו נושא + אותה הודעה ⇒ אותו קמפיין (עד ~6 שעות), כדי שלחיצה חוזרת
   // אחרי תקלה תמשיך מאיפה שנעצרה ולא תשלח שוב למי שכבר קיבל.
   const fileKey = [file.name, file.size, file.lastModified, subject, message].join("|");
@@ -809,7 +812,7 @@ async function sendBroadcastWithFile({
       at: Date.now()
     }));
   } catch (e) {}
-  onProgress("⏳ מעלה את הקובץ…");
+  onProgress(test ? "⏳ שולח מייל בדיקה…" : "⏳ מעלה את הקובץ…");
   const data = await fileToBase64(file);
   try {
     assertOk(await postScript({
@@ -828,20 +831,21 @@ async function sendBroadcastWithFile({
   const failed = [];
   let quotaExceeded = false;
   // כמה כבר נשלחו בקמפיין הזה (רלוונטי בלחיצה חוזרת) — בסיס להשוואה אם תשובה לא תיקרא
-  const st0 = await getBroadcastStatus(campaign);
+  const st0 = test ? null : await getBroadcastStatus(campaign);
   let knownTotal = st0 ? st0.sentCount : 0;
   for (let i = 0; i < emails.length && !quotaExceeded; i += BROADCAST_BATCH) {
     const batch = emails.slice(i, i + BROADCAST_BATCH);
     let res = null;
     let lastErr = null;
-    for (let attempt = 0; attempt < 3 && !res; attempt++) {
+    for (let attempt = 0; attempt < (test ? 1 : 3) && !res; attempt++) {
       try {
         res = assertOk(await postScript({
           action: "broadcastSend",
           campaign,
           subject,
           message,
-          emails: batch
+          emails: batch,
+          test
         }), "שליחה");
         knownTotal = res.total || knownTotal;
       } catch (e) {
@@ -852,6 +856,7 @@ async function sendBroadcastWithFile({
           } catch (x) {}
           throw new Error("הקובץ כבר לא שמור בשרת — לחצו שוב על שליחה");
         }
+        if (test) throw new Error("לא התקבלה תשובה מהשרת (" + e.message + "). בדקו בתיבת הדואר אם מייל הבדיקה הגיע לפני שמנסים שוב.");
         // אולי המנה נשלחה בפועל ורק התשובה לא נקראה
         const st = await getBroadcastStatus(campaign);
         if (st && st.exists && st.sentCount > knownTotal) {
@@ -9520,7 +9525,52 @@ https://charedi.net/tzimar/25569/
                 lineHeight: 1.6,
                 fontFamily: "'Heebo',sans-serif"
               },
-              children: "המייל יישלח ישירות מהמערכת: כל נמען מקבל מייל אישי עם הקובץ, בלי לראות את שאר הנמענים. ב-WhatsApp נשלח טקסט בלבד."
+              children: "המייל יישלח ישירות מהמערכת: כל נמען מקבל מייל אישי עם הקובץ, בלי לראות את שאר הנמענים. ב-WhatsApp נשלח טקסט בלבד. מומלץ לשלוח קודם בדיקה לעצמכם."
+            }), bulkFile && /*#__PURE__*/_jsx("button", {
+              type: "button",
+              id: "bulkTestSend",
+              disabled: bulkBusy,
+              onClick: async () => {
+                if (bulkBusy) return;
+                let last = "";
+                try {
+                  last = localStorage.getItem("shirat_broadcast_test_email") || "";
+                } catch (e) {}
+                const to = (prompt("לאיזה מייל לשלוח את הבדיקה?", last || "shirathatziporim@gmail.com") || "").trim().toLowerCase();
+                if (!to) return;
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+                  alert("כתובת מייל לא תקינה");
+                  return;
+                }
+                try {
+                  localStorage.setItem("shirat_broadcast_test_email", to);
+                } catch (e) {}
+                setBulkBusy(true);
+                try {
+                  const r = await sendBroadcastWithFile({
+                    file: bulkFile,
+                    subject: bulkSubject.trim() || "צימר שירת הציפורים",
+                    message: document.getElementById("bulkFreeText").value,
+                    emails: [to],
+                    onProgress: setBulkStatus,
+                    test: true
+                  });
+                  if (r.done.has(to)) setBulkStatus("✅ מייל בדיקה נשלח אל " + to + ". אם הכל נראה טוב — שלחו לכולם");else setBulkStatus("⚠️ מייל הבדיקה לא נשלח" + (r.failed[0] ? ": " + r.failed[0].error : ""));
+                } catch (e) {
+                  setBulkStatus("⚠️ " + e.message);
+                } finally {
+                  setBulkBusy(false);
+                }
+              },
+              style: {
+                ...bS("#fff8e1", "#8b6000"),
+                border: "1.5px solid #f0d58a",
+                fontSize: 13,
+                width: "100%",
+                marginBottom: 8,
+                opacity: bulkBusy ? 0.6 : 1
+              },
+              children: "🧪 שלח בדיקה לעצמי"
             }), bulkStatus && /*#__PURE__*/_jsx("p", {
               style: {
                 margin: "0 0 8px",
