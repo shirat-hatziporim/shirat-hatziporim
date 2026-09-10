@@ -339,6 +339,9 @@ async function checkBackend(g){
           /class='optout'[^>]*font-size:11px!important/.test(html)
             ? "לא תוגדל באפליקציית Gmail"
             : "בלי !important ה-media query של wrap() מגדיל אותה ל-13px, ו-Gmail באנדרואיד מגדיל עוד (נראה ענק במייל הבדיקה 11.9.2026)");
+      chk(g, "מייל עם קובץ — שורת ההסרה בתחתית המייל (מתחת לפוטר)",
+          html.indexOf("class='optout'")!==-1 && html.lastIndexOf("shirathatziporim@gmail.com") < html.indexOf("class='optout'"),
+          "הועברה לסוף המייל לבקשת יעקב (11.9.2026)");
     }
   } catch(e){
     chk(g, "מייל עם קובץ — previewBroadcast", false, e.message);
