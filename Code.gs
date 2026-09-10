@@ -254,14 +254,14 @@ function buildBroadcastHtml(message, mimeType, name) {
     + paras + attach
     + "<p style='margin:8px 0 18px;text-align:center;'><a href='" + BOOKING_PAGE_URL + "' style='display:inline-block;background:#2d5a27;color:#fff;text-decoration:none;padding:12px 26px;border-radius:6px;font-size:15px;font-weight:700;font-family:Arial,sans-serif;'>לשליחת בקשת הזמנה</a></p>"
     + "<p style='margin:0;font-size:14px;color:#666;text-align:center;font-family:Arial,sans-serif;'>לפרטים והזמנות: <strong>" + HOST_PHONE + "</strong></p>"
-    // שורת ההסרה — קטנה בכוונה. ⚠ ה-media query של wrap() כופה p{font-size:13px!important} במובייל,
-    //   ולכן הגודל כאן חייב !important inline (גובר עליו). הטבלה הצרה + text-size-adjust מונעים
-    //   מאפליקציית Gmail באנדרואיד "להגדיל" פסקה ארוכה (font boosting) — כך זה יצא ענק בבדיקה 11.9.2026.
-    + "<table role='presentation' align='center' cellpadding='0' cellspacing='0' style='margin:22px auto 0;max-width:300px;'><tr><td style='padding:0;'>"
-    + "<p class='optout' style='margin:0;font-size:11px!important;line-height:1.5!important;color:#aaa;text-align:center;font-family:Arial,sans-serif;-webkit-text-size-adjust:100%;text-size-adjust:100%;'>לא מעוניינים לקבל מאיתנו עדכונים?<br>השיבו למייל זה ונסיר אתכם מהרשימה.</p>"
-    + "</td></tr></table>"
     + "</td></tr>";
-  return wrap(top + body + ftr());
+  // שורת ההסרה — בתחתית המייל, מתחת לפוטר ובאותו רקע (בקשת יעקב 11.9.2026).
+  // ⚠ ה-media query של wrap() כופה p{font-size:13px!important} במובייל, ולכן הגודל כאן חייב
+  //   !important inline. text-size-adjust מצמצם את ההגדלה האוטומטית של Gmail באנדרואיד.
+  const optout = "<table width='100%' cellpadding='0' cellspacing='0' style='background:#f5f2ec;'><tr><td style='padding:0 32px 18px;text-align:center;'>"
+    + "<p class='optout' style='margin:0;font-size:11px!important;line-height:1.5!important;color:#aaa;text-align:center;font-family:Arial,sans-serif;-webkit-text-size-adjust:100%;text-size-adjust:100%;'>לא מעוניינים לקבל מאיתנו עדכונים?<br>השיבו למייל זה ונסיר אתכם מהרשימה.</p>"
+    + "</td></tr></table>";
+  return wrap(top + body + ftr() + optout);
 }
 
 // ── שמירה בחלקים (CacheService) ───────────────────────────────────────────────
