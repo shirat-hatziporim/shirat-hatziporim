@@ -98,12 +98,160 @@ function doGet(e) {
       result = { ok: true, index: Number(idx) };
     } else if (action === "commitChunks") {
       result = commitChunks(Number(e.parameter.total || 0));
+    } else if (action === "broadcastStatus") {
+      result = broadcastStatus(safeDecode(e.parameter.campaign));
+    } else if (action === "previewBroadcast") {
+      // HTML של מייל התפוצה בלי לשלוח ובלי Drive — לבדיקת רגרסיה ב-health.html
+      result = { html: buildBroadcastHtml("שנה טובה מצימר שירת הציפורים!\nשורה שנייה <b>לא מודגשת</b>", "image/jpeg", "בדיקה.jpg") };
     } else result = "ok";
   } catch(err) { result = {error: err.toString()}; }
 
   const json = JSON.stringify(result);
   if (callback) return ContentService.createTextOutput(callback+"("+json+");").setMimeType(ContentService.MimeType.JAVASCRIPT);
   return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
+}
+
+// ════════ מייל עם קובץ לכל המתעניינים (11.9.2026) ════════════════════════════
+// ⚠ למה POST ולא JSONP: JSONP היא בקשת GET, וכתובת URL מוגבלת ל-~8KB — קובץ לא נכנס בה.
+//   הקובץ וההוראות עוברים ב-doPost. הלקוח שולח fetch עם גוף מחרוזת (text/plain) — "בקשה פשוטה"
+//   שלא מפעילה preflight של CORS. ⚠ אסור להוסיף Content-Type: application/json בצד הלקוח.
+// ⚠ אין כאן שימוש בשירות הדואר MailApp בכוונה: הוא דורש scope חדש (script.send_mail), וכל scope
+//   חדש משבית את ה-web app כולו עד אישור ידני בעורך. GmailApp / DriveApp / CacheService / LockService
+//   כבר מאושרים בפרויקט.
+// ⭐ אידמפוטנטי לפי קמפיין: רשימת מי שכבר קיבל נשמרת ב-CacheService (6 שעות), ולכן ניסיון חוזר
+//   של אותה מנה לא שולח פעמיים — גם אם התשובה הקודמת לא הגיעה ללקוח.
+const BROADCAST_FOLDER = "קבצים למתעניינים - שירת הציפורים";
+const BROADCAST_TTL = 21600;                 // 6 שעות — המקסימום של CacheService
+const BROADCAST_MAX_BYTES = 10 * 1024 * 1024;
+const BROADCAST_MAX_BATCH = 20;
+const BOOKING_PAGE_URL = "https://shirat-hatziporim.github.io/shirat-hatziporim/booking.html";
+
+function doPost(e) {
+  let result;
+  try {
+    const body = JSON.parse((e && e.postData && e.postData.contents) || "{}");
+    if (body.action === "broadcastUpload") result = broadcastUpload(body);
+    else if (body.action === "broadcastSend") result = broadcastSend(body);
+    else result = { error: "פעולה לא מוכרת: " + body.action };
+  } catch (err) { result = { error: err.toString() }; }
+  return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function broadcastKey(campaign) {
+  const c = String(campaign || "");
+  if (!/^bc[0-9]{10,16}$/.test(c)) throw new Error("מזהה קמפיין לא תקין");
+  return "bc_" + c;
+}
+
+// מצב קמפיין — לבדיקה מהלקוח כשתשובת POST לא נקראה. מחזיר מספר בלבד, לא את רשימת המיילים.
+function broadcastStatus(campaign) {
+  try {
+    const raw = CacheService.getScriptCache().get(broadcastKey(campaign));
+    const st = raw ? JSON.parse(raw) : null;
+    return { ok: true, exists: !!st, sentCount: st ? st.sent.length : 0 };
+  } catch (err) {
+    return { error: err.toString() };
+  }
+}
+
+function broadcastUpload(body) {
+  const key = broadcastKey(body.campaign);
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) return { error: "busy: השרת עסוק, נסו שוב" };
+  try {
+    const cache = CacheService.getScriptCache();
+    const existing = cache.get(key);
+    if (existing) {
+      const prev = JSON.parse(existing);
+      return { ok: true, campaign: body.campaign, fileId: prev.fileId, size: prev.size, reused: true };
+    }
+    if (!body.data) return { error: "לא התקבל קובץ" };
+    const bytes = Utilities.base64Decode(String(body.data));
+    if (bytes.length > BROADCAST_MAX_BYTES) return { error: "הקובץ גדול מדי (מקסימום 10MB)" };
+    const name = String(body.name || "קובץ").slice(0, 120);
+    const mimeType = String(body.mimeType || "application/octet-stream");
+    const folders = DriveApp.getFoldersByName(BROADCAST_FOLDER);
+    const folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(BROADCAST_FOLDER);
+    const file = folder.createFile(Utilities.newBlob(bytes, mimeType, name));
+    const st = { fileId: file.getId(), name: name, mimeType: mimeType, size: bytes.length, sent: [] };
+    cache.put(key, JSON.stringify(st), BROADCAST_TTL);
+    return { ok: true, campaign: body.campaign, fileId: st.fileId, size: st.size };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function broadcastSend(body) {
+  const key = broadcastKey(body.campaign);
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) return { error: "busy: השרת עסוק, נסו שוב" };
+  try {
+    const cache = CacheService.getScriptCache();
+    const raw = cache.get(key);
+    if (!raw) return { error: "expired: הקובץ כבר לא שמור בשרת — יש לשלוח מחדש" };
+    const st = JSON.parse(raw);
+    const subject = String(body.subject || "").trim().slice(0, 150) || FROM_NAME;
+    const message = String(body.message || "").slice(0, 5000);
+    const emails = (Array.isArray(body.emails) ? body.emails : []).slice(0, BROADCAST_MAX_BATCH)
+      .map(function(x) { return String(x || "").trim().toLowerCase(); });
+    const blob = DriveApp.getFileById(st.fileId).getBlob().setName(st.name);
+    const isImage = /^image\//.test(st.mimeType);
+    const html = buildBroadcastHtml(message, st.mimeType, st.name);
+    const plain = (message.trim() ? message.trim() + "\n\n" : "") + FROM_NAME + " | " + HOST_PHONE + "\n" + BOOKING_PAGE_URL;
+    const res = { ok: true, sent: [], skipped: [], failed: [], quotaExceeded: false };
+    for (let i = 0; i < emails.length; i++) {
+      const to = emails[i];
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) { res.failed.push({ email: to, error: "כתובת לא תקינה" }); continue; }
+      if (st.sent.indexOf(to) !== -1) { res.skipped.push(to); continue; }
+      try {
+        const opts = { htmlBody: html, name: FROM_NAME, replyTo: FROM_EMAIL };
+        if (isImage) opts.inlineImages = { broadcastimg: blob };
+        else opts.attachments = [blob];
+        GmailApp.sendEmail(to, subject, plain, opts);
+        st.sent.push(to);
+        res.sent.push(to);
+        cache.put(key, JSON.stringify(st), BROADCAST_TTL);   // שמירה אחרי כל מייל — התקדמות חלקית לא הולכת לאיבוד
+      } catch (err) {
+        const m = err.toString();
+        if (/too many times|Service invoked|quota|limit exceeded/i.test(m)) {
+          res.quotaExceeded = true;
+          res.failed.push({ email: to, error: "מגבלת שליחה יומית" });
+          break;
+        }
+        res.failed.push({ email: to, error: m });
+      }
+    }
+    res.total = st.sent.length;
+    return res;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+// גוף מייל התפוצה. תמונה מוטמעת בראש המייל (cid:broadcastimg) — המודעה עצמה היא הכותרת.
+// קובץ שאינו תמונה (PDF) מצורף, ובראש המייל מופיע הלוגו הטקסטואלי הרגיל.
+function buildBroadcastHtml(message, mimeType, name) {
+  const isImage = /^image\//.test(String(mimeType || ""));
+  const text = String(message || "").trim();
+  const paras = text ? escHtml(text).split(/\n{2,}/).map(function(p) {
+    return "<p style='font-size:15px;color:#333;margin:0 0 14px;line-height:1.8;font-family:Arial,sans-serif;'>" + p.replace(/\n/g, "<br>") + "</p>";
+  }).join("") : "";
+  const top = isImage
+    ? "<tr><td style='padding:0;line-height:0;'><img src='cid:broadcastimg' alt='צימר שירת הציפורים' width='600' style='display:block;width:100%;max-width:600px;height:auto;border:0;'></td></tr>"
+    : hdr("&#x1F426; עדכון מצימר שירת הציפורים");
+  const attach = isImage ? "" : bx("<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F4CE; מצורף קובץ: <strong>" + escHtml(name || "") + "</strong></p>", "#c8860a");
+  const body = "<tr><td style='padding:24px 24px 28px;font-family:Arial,sans-serif;'>"
+    + paras + attach
+    + "<p style='margin:8px 0 18px;text-align:center;'><a href='" + BOOKING_PAGE_URL + "' style='display:inline-block;background:#2d5a27;color:#fff;text-decoration:none;padding:12px 26px;border-radius:6px;font-size:15px;font-weight:700;font-family:Arial,sans-serif;'>לשליחת בקשת הזמנה</a></p>"
+    + "<p style='margin:0;font-size:14px;color:#666;text-align:center;font-family:Arial,sans-serif;'>לפרטים והזמנות: <strong>" + HOST_PHONE + "</strong></p>"
+    + "<p style='margin:18px 0 0;font-size:12px;color:#999;text-align:center;font-family:Arial,sans-serif;'>לא מעוניינים לקבל מאיתנו עדכונים? השיבו למייל זה ונסיר אתכם מהרשימה.</p>"
+    + "</td></tr>";
+  return wrap(top + body + ftr());
 }
 
 // ── שמירה בחלקים (CacheService) ───────────────────────────────────────────────
