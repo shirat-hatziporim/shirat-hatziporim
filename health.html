@@ -216,6 +216,9 @@ async function checkPage(g){
   chk(g, "מתעניינים — לחיצה חוזרת ממשיכה את אותה שליחה (בלי כפילויות)",
       src.indexOf("BROADCAST_RESUME_KEY")!==-1 && src.indexOf("getBroadcastStatus(campaign)")!==-1,
       "מזהה השליחה נשמר ב-localStorage; השרת מדלג על מי שכבר קיבל");
+  chk(g, "מתעניינים — כפתור 'שלח בדיקה לעצמי' קיים ושולח במצב בדיקה",
+      src.indexOf('id: "bulkTestSend"')!==-1 && /test:\s*true/.test(src) && src.indexOf("attempt < (test ? 1 : 3)")!==-1,
+      "נמען אחד, בלי ניסיון חוזר אוטומטי (לא יישלחו כמה מיילי בדיקה)");
   return src;
 }
 
@@ -621,6 +624,11 @@ async function checkAssets(g){
         /function doPost/.test(rc.text) && /function broadcastSend/.test(rc.text)
         && rc.text.indexOf("st.sent.indexOf(to)")!==-1,
         "ניסיון חוזר לא שולח פעמיים לאותו נמען");
+    chk(g, "Code.gs — מייל בדיקה לא נרשם כ'כבר קיבל'",
+        rc.text.indexOf("const isTest = body.test === true")!==-1
+        && rc.text.indexOf("!isTest && st.sent.indexOf(to)")!==-1
+        && /if \(!isTest\) \{\s*st\.sent\.push\(to\)/.test(rc.text),
+        "אחרת הבדיקה הייתה חוסמת את הכתובת בשליחה האמיתית ומונעת בדיקה חוזרת");
     chk(g, "Code.gs — אין שימוש ב-MailApp (הרשאה חדשה הייתה משביתה את השרת)",
         !/\bMailApp\s*\./.test(rc.text),
         /\bMailApp\s*\./.test(rc.text)
