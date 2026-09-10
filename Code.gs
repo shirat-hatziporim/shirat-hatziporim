@@ -190,9 +190,12 @@ function broadcastSend(body) {
     const raw = cache.get(key);
     if (!raw) return { error: "expired: הקובץ כבר לא שמור בשרת — יש לשלוח מחדש" };
     const st = JSON.parse(raw);
+    // מייל בדיקה: נמען אחד, לא נרשם ברשימת "כבר קיבל" — כדי שאפשר יהיה לבדוק שוב ושוב,
+    // ושהבדיקה לא תגרום לדילוג על הכתובת הזו בשליחה האמיתית.
+    const isTest = body.test === true;
     const subject = String(body.subject || "").trim().slice(0, 150) || FROM_NAME;
     const message = String(body.message || "").slice(0, 5000);
-    const emails = (Array.isArray(body.emails) ? body.emails : []).slice(0, BROADCAST_MAX_BATCH)
+    const emails = (Array.isArray(body.emails) ? body.emails : []).slice(0, isTest ? 1 : BROADCAST_MAX_BATCH)
       .map(function(x) { return String(x || "").trim().toLowerCase(); });
     const blob = DriveApp.getFileById(st.fileId).getBlob().setName(st.name);
     const isImage = /^image\//.test(st.mimeType);
@@ -202,15 +205,17 @@ function broadcastSend(body) {
     for (let i = 0; i < emails.length; i++) {
       const to = emails[i];
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) { res.failed.push({ email: to, error: "כתובת לא תקינה" }); continue; }
-      if (st.sent.indexOf(to) !== -1) { res.skipped.push(to); continue; }
+      if (!isTest && st.sent.indexOf(to) !== -1) { res.skipped.push(to); continue; }
       try {
         const opts = { htmlBody: html, name: FROM_NAME, replyTo: FROM_EMAIL };
         if (isImage) opts.inlineImages = { broadcastimg: blob };
         else opts.attachments = [blob];
         GmailApp.sendEmail(to, subject, plain, opts);
-        st.sent.push(to);
         res.sent.push(to);
-        cache.put(key, JSON.stringify(st), BROADCAST_TTL);   // שמירה אחרי כל מייל — התקדמות חלקית לא הולכת לאיבוד
+        if (!isTest) {
+          st.sent.push(to);
+          cache.put(key, JSON.stringify(st), BROADCAST_TTL);   // שמירה אחרי כל מייל — התקדמות חלקית לא הולכת לאיבוד
+        }
       } catch (err) {
         const m = err.toString();
         if (/too many times|Service invoked|quota|limit exceeded/i.test(m)) {
