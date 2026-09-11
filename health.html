@@ -216,6 +216,33 @@ async function checkPage(g){
   chk(g, "מתעניינים — לחיצה חוזרת ממשיכה את אותה שליחה (בלי כפילויות)",
       src.indexOf("BROADCAST_RESUME_KEY")!==-1 && src.indexOf("getBroadcastStatus(campaign)")!==-1,
       "מזהה השליחה נשמר ב-localStorage; השרת מדלג על מי שכבר קיבל");
+  // ── חיפוש ברשימת המתעניינים (12.9.2026) ──
+  chk(g, "מתעניינים — שורת חיפוש, והשורות מסוננות עם האינדקס המקורי",
+      src.indexOf('id: "leadSearch"')!==-1 && /leadsVisible\(inquiryLeads, leadSearch\)\.map\(\(\{\s*l,\s*i\s*\}\)/.test(src),
+      "מחיקה/סימון מתוך תוצאות החיפוש פועלים על הרשומה הנכונה ברשימה המלאה");
+  {
+    const m = src.match(/function leadMatches\(l, q\) \{[\s\S]*?\n\}\n/);
+    let ok = false, detail = "leadMatches לא נמצא בקוד";
+    if (m){
+      try {
+        const f = new Function(m[0] + "; return leadMatches;")();
+        const cases = [
+          [{email:"t0534152101@gmail.com"}, "T0534", true],
+          [{email:"a@x.com", phone:527566769}, "0527566769", true],   // Sheets מחק את ה-0
+          [{email:"", phone:"052-756-6769"}, "527566", true],
+          [{email:"a@x.com", phone:""}, "xyz", false],
+          [{email:"a@x.com", phone:"0501111111"}, "", true]
+        ];
+        const bad = cases.filter(c => f(c[0], c[1]) !== c[2]);
+        ok = bad.length === 0;
+        detail = ok ? "מייל בלי תלות באותיות, טלפון עם/בלי 0 מוביל" : "נכשלו: " + bad.map(c => JSON.stringify(c[1])).join(", ");
+      } catch(e){ detail = "שגיאה בהרצה: " + e.message; }
+    }
+    chk(g, "מתעניינים — לוגיקת החיפוש (סימולציה)", ok, detail);
+  }
+  chk(g, "מתעניינים — WhatsApp לא נופל על טלפון שנשמר כמספר",
+      src.indexOf('"972" + String(l.phone).replace(')!==-1 && src.indexOf('"972" + l.phone.replace(')===-1,
+      "Sheets מחזיר 527566769 כמספר — .replace על מספר זורק TypeError");
   chk(g, "מתעניינים — כפתור 'שלח בדיקה לעצמי' קיים ושולח במצב בדיקה",
       src.indexOf('id: "bulkTestSend"')!==-1 && /test:\s*true/.test(src) && src.indexOf("attempt < (test ? 1 : 3)")!==-1,
       "נמען אחד, בלי ניסיון חוזר אוטומטי (לא יישלחו כמה מיילי בדיקה)");
