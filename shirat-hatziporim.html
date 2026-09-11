@@ -738,6 +738,31 @@ function assertOk(res, what) {
   throw new Error(what + " — " + msg);
 }
 
+// ════════ חיפוש ברשימת המתעניינים (12.9.2026) ════════
+// מייל: חיפוש חלקי בלי תלות באותיות גדולות. טלפון: ספרות בלבד, עם או בלי 0 מוביל —
+// ⚠ Sheets שומר טלפון כמספר ומוחק את ה-0 (למשל 527566769), ולכן משווים בלי 0/972 בשני הצדדים.
+function leadMatches(l, q) {
+  const s = String(q || "").trim().toLowerCase();
+  if (!s) return true;
+  if (String(l.email || "").toLowerCase().includes(s)) return true;
+  const qd = s.replace(/\D/g, "").replace(/^0+/, "");
+  if (!qd) return false;
+  const pd = String(l.phone || "").replace(/\D/g, "").replace(/^972/, "").replace(/^0+/, "");
+  return pd.includes(qd);
+}
+// מחזיר את השורות התואמות עם האינדקס המקורי — מחיקה/סימון חייבים לפעול על המיקום ברשימה המלאה
+function leadsVisible(leads, q) {
+  return leads.map((l, i) => ({
+    l,
+    i
+  })).filter(x => leadMatches(x.l, q));
+}
+// תצוגה בלבד: מחזיר את ה-0 שהגיליון מחק (9 ספרות שמתחילות ב-5 = נייד)
+function leadPhoneDisplay(phone) {
+  const d = String(phone || "").trim();
+  return /^5\d{8}$/.test(d) ? "0" + d : d;
+}
+
 // ════════ מייל עם קובץ לכל המתעניינים (11.9.2026) ════════
 // JSONP (GET) לא יכול לשאת קובץ — העלאה ושליחה עוברות ב-POST ל-doPost שב-Code.gs.
 // ⚠ גוף הבקשה הוא מחרוזת בלי headers (text/plain) = "בקשה פשוטה" בלי preflight של CORS.
@@ -2630,6 +2655,8 @@ function App() {
       return [];
     }
   });
+  // חיפוש ברשימת המתעניינים
+  const [leadSearch, setLeadSearch] = useState("");
   // שליחת קובץ למתעניינים (מייל ישיר מהשרת)
   const [bulkFile, setBulkFile] = useState(null);
   const [bulkSubject, setBulkSubject] = useState("מידע על צימר שירת הציפורים");
@@ -9267,16 +9294,60 @@ https://charedi.net/tzimar/25569/
           },
           children: "אין מתעניינים עדיין"
         }) : /*#__PURE__*/_jsxs(_Fragment, {
-          children: [/*#__PURE__*/_jsx("div", {
+          children: [/*#__PURE__*/_jsxs("div", {
+            style: {
+              position: "relative",
+              marginBottom: 10
+            },
+            children: [/*#__PURE__*/_jsx("input", {
+              id: "leadSearch",
+              type: "text",
+              value: leadSearch,
+              onChange: e => setLeadSearch(e.target.value),
+              placeholder: "🔍 חיפוש לפי מייל או טלפון",
+              autoComplete: "off",
+              autoCapitalize: "off",
+              spellCheck: false,
+              style: {
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "10px 12px 10px 40px",
+                borderRadius: 10,
+                border: "1.5px solid #e0d8cc",
+                fontSize: 15,
+                fontFamily: "'Heebo',sans-serif",
+                direction: "rtl",
+                background: "#fff"
+              }
+            }), leadSearch && /*#__PURE__*/_jsx("button", {
+              type: "button",
+              "aria-label": "נקה חיפוש",
+              onClick: () => setLeadSearch(""),
+              style: {
+                position: "absolute",
+                left: 6,
+                top: "50%",
+                transform: "translateY(-50%)",
+                border: "none",
+                background: "transparent",
+                fontSize: 18,
+                color: "#999",
+                cursor: "pointer",
+                padding: "4px 8px"
+              },
+              children: "✕"
+            })]
+          }), /*#__PURE__*/_jsxs("div", {
             style: {
               display: "flex",
+              alignItems: "center",
               gap: 8,
               marginBottom: 8,
               fontSize: 12,
               color: "#888",
               fontFamily: "'Heebo',sans-serif"
             },
-            children: /*#__PURE__*/_jsxs("label", {
+            children: [/*#__PURE__*/_jsxs("label", {
               style: {
                 cursor: "pointer",
                 display: "flex",
@@ -9285,15 +9356,31 @@ https://charedi.net/tzimar/25569/
               },
               children: [/*#__PURE__*/_jsx("input", {
                 type: "checkbox",
+                id: "leadSelectAll",
+                // מבוקר: משקף את מצב השורות המוצגות (אחרת נשאר מסומן אחרי שינוי החיפוש)
+                checked: (() => {
+                  const vis = leadsVisible(inquiryLeads, leadSearch);
+                  return vis.length > 0 && vis.every(x => x.l.selected);
+                })(),
                 onChange: e => {
                   const all = e.target.checked;
-                  setInquiryLeads(prev => prev.map(l => ({
+                  // בזמן חיפוש — מסמן רק את התוצאות המוצגות
+                  const vis = new Set(leadsVisible(inquiryLeads, leadSearch).map(x => x.i));
+                  setInquiryLeads(prev => prev.map((l, j) => vis.has(j) ? {
                     ...l,
                     selected: all
-                  })));
+                  } : l));
                 }
-              }), " בחר הכל"]
-            })
+              }), leadSearch.trim() ? " בחר את כל התוצאות" : " בחר הכל"]
+            }), leadSearch.trim() && /*#__PURE__*/_jsx("span", {
+              id: "leadSearchCount",
+              style: {
+                marginRight: "auto",
+                color: "#5a4e40",
+                fontWeight: 700
+              },
+              children: "נמצאו " + leadsVisible(inquiryLeads, leadSearch).length + " מתוך " + inquiryLeads.length
+            })]
           }), /*#__PURE__*/_jsxs("table", {
             style: {
               width: "100%",
@@ -9306,7 +9393,7 @@ https://charedi.net/tzimar/25569/
                 style: {
                   background: "#f8f4ec"
                 },
-                children: ["", "מייל", "טלפון", "תאריך", ""].map((h, i) => /*#__PURE__*/_jsx("th", {
+                children: ["", "", "מייל", "טלפון", "תאריך"].map((h, i) => /*#__PURE__*/_jsx("th", {
                   style: {
                     padding: "8px 10px",
                     textAlign: "right",
@@ -9318,7 +9405,20 @@ https://charedi.net/tzimar/25569/
                 }, i))
               })
             }), /*#__PURE__*/_jsx("tbody", {
-              children: inquiryLeads.map((l, i) => /*#__PURE__*/_jsxs("tr", {
+              children: leadSearch.trim() && leadsVisible(inquiryLeads, leadSearch).length === 0 ? /*#__PURE__*/_jsx("tr", {
+                children: /*#__PURE__*/_jsx("td", {
+                  colSpan: 5,
+                  style: {
+                    padding: "18px 10px",
+                    textAlign: "center",
+                    color: "#999"
+                  },
+                  children: "לא נמצאו תוצאות עבור \"" + leadSearch.trim() + "\""
+                })
+              }) : leadsVisible(inquiryLeads, leadSearch).map(({
+                l,
+                i
+              }) => /*#__PURE__*/_jsxs("tr", {
                 style: {
                   borderBottom: "1px solid #f4f0ea",
                   background: l.selected ? "#f0f7ee" : "transparent"
@@ -9340,30 +9440,11 @@ https://charedi.net/tzimar/25569/
                   })
                 }), /*#__PURE__*/_jsx("td", {
                   style: {
-                    padding: "8px 10px",
-                    color: "#1a1a2e",
-                    direction: "ltr"
-                  },
-                  children: l.email || "—"
-                }), /*#__PURE__*/_jsx("td", {
-                  style: {
-                    padding: "8px 10px",
-                    color: "#555",
-                    direction: "ltr"
-                  },
-                  children: l.phone || "—"
-                }), /*#__PURE__*/_jsx("td", {
-                  style: {
-                    padding: "8px 10px",
-                    color: "#888"
-                  },
-                  children: l.date
-                }), /*#__PURE__*/_jsx("td", {
-                  style: {
                     padding: "8px 10px"
                   },
                   children: /*#__PURE__*/_jsx("button", {
                     onClick: () => {
+                      if (!confirm("למחוק את " + (inquiryLeads[i].email || leadPhoneDisplay(inquiryLeads[i].phone) || "הרשומה") + " מהרשימה?\n(אפשר לשחזר מסל המחזור)")) return;
                       const updated = inquiryLeads.filter((_, j) => j !== i);
                       setInquiryLeads(updated);
                       try {
@@ -9389,6 +9470,26 @@ https://charedi.net/tzimar/25569/
                     },
                     children: "מחק"
                   })
+                }), /*#__PURE__*/_jsx("td", {
+                  style: {
+                    padding: "8px 10px",
+                    color: "#1a1a2e",
+                    direction: "ltr"
+                  },
+                  children: l.email || "—"
+                }), /*#__PURE__*/_jsx("td", {
+                  style: {
+                    padding: "8px 10px",
+                    color: "#555",
+                    direction: "ltr"
+                  },
+                  children: leadPhoneDisplay(l.phone) || "—"
+                }), /*#__PURE__*/_jsx("td", {
+                  style: {
+                    padding: "8px 10px",
+                    color: "#888"
+                  },
+                  children: l.date
                 })]
               }, i))
             })]
@@ -9664,7 +9765,8 @@ https://charedi.net/tzimar/25569/
                   }
                   targets.forEach((l, i) => {
                     setTimeout(() => {
-                      const phone = "972" + l.phone.replace(/\D/g, "").replace(/^0/, "");
+                      // ⚠ String(): Sheets מחזיר טלפון כמספר, ו-.replace על מספר זורק TypeError
+                      const phone = "972" + String(l.phone).replace(/\D/g, "").replace(/^0/, "");
                       window.open("https://api.whatsapp.com/send?phone=" + phone + "&text=" + encodeURIComponent(msg), "_blank");
                     }, i * 500);
                   });
