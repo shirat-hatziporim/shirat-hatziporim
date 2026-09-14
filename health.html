@@ -270,6 +270,11 @@ async function checkPage(g){
     }
     chk(g, "אורחים — חיפוש לפי שם/מייל/טלפון/הערות (סימולציה)", ok, detail);
   }
+  chk(g, "אורחים/מתעניינים — סימון 'ללא דיוור' ואי-שליחה אליו",
+      src.indexOf('className: "optOutBtn"')!==-1 && src.indexOf("action=saveOptOuts")!==-1
+      && src.indexOf("all.filter(g => g.email && !isOptedOut(g.email))")!==-1
+      && src.indexOf(".filter(e => !isOptedOut(e))")!==-1,
+      "הסינון חל על שידור האורחים ועל המייל למתעניינים");
   chk(g, "אורחים — החיפוש משתמש ב-guestMatches ולא בהשוואת שם/טלפון בלבד",
       src.indexOf("guests.filter(g => guestMatches(g, guestSearch))")!==-1
       && src.indexOf('(g.name || "").includes(guestSearch)')===-1,
@@ -711,6 +716,11 @@ async function checkAssets(g){
         && rc.text.indexOf("st.sent.indexOf(to) !== -1 || already[to]")!==-1
         && /function broadcastLogAppend/.test(rc.text),
         "CacheService פג אחרי 6 שעות; בלי היומן שליחה למחרת הייתה חוזרת על נמענים");
+    chk(g, "Code.gs — 'ללא דיוור' נאכף בשרת (לא רק במסך)",
+        /const OPTOUT_SHEET = "ללא דיוור"/.test(rc.text)
+        && rc.text.indexOf("if (optedOut[to]) { res.skipped.push(to); res.optedOut.push(to); continue; }")!==-1
+        && /function saveOptOuts/.test(rc.text),
+        "גם אם המסך ישן או נתון לא נטען — מי שביקש לא יקבל");
     chk(g, "Code.gs — היסטוריית שידורים: שורה אחת לשידור (upsert), בלי מיילי בדיקה",
         /function broadcastHistoryUpsert/.test(rc.text) && /function getBroadcastHistory/.test(rc.text)
         && rc.text.indexOf("if (!isTest && (res.sent.length")!==-1,
