@@ -254,6 +254,11 @@ async function checkPage(g){
       src.indexOf('fileKey: logKey')!==-1 && src.indexOf('const logKey = file.name + "|" + file.size')!==-1
       && src.indexOf('id: "gcSkipLeads"')!==-1,
       "מפתח היומן הוא הקובץ בלבד — לא הנושא/הטקסט — כך ששתי הלשוניות נחשבות שידור אחד");
+  chk(g, "שידור — היסטוריית שליחות זמינה משתי הלשוניות",
+      (src.match(/className: "bcHistoryBtn"/g) || []).length === 2
+      && src.indexOf('action=getBroadcastHistory')!==-1
+      && /source: "מתעניינים"/.test(src) && /source: "אורחים"/.test(src),
+      "כל שידור נרשם עם המקור שלו");
   chk(g, "מתעניינים — כפתור 'שלח בדיקה לעצמי' קיים ושולח במצב בדיקה",
       src.indexOf('id: "bulkTestSend"')!==-1 && /test:\s*true/.test(src) && src.indexOf("attempt < (test ? 1 : 3)")!==-1,
       "נמען אחד, בלי ניסיון חוזר אוטומטי (לא יישלחו כמה מיילי בדיקה)");
@@ -683,6 +688,10 @@ async function checkAssets(g){
         && rc.text.indexOf("st.sent.indexOf(to) !== -1 || already[to]")!==-1
         && /function broadcastLogAppend/.test(rc.text),
         "CacheService פג אחרי 6 שעות; בלי היומן שליחה למחרת הייתה חוזרת על נמענים");
+    chk(g, "Code.gs — היסטוריית שידורים: שורה אחת לשידור (upsert), בלי מיילי בדיקה",
+        /function broadcastHistoryUpsert/.test(rc.text) && /function getBroadcastHistory/.test(rc.text)
+        && rc.text.indexOf("if (!isTest && (res.sent.length")!==-1,
+        "הקריאה מגיעה פעם לכל מנה של 5 נמענים — בלי upsert היו נוצרות שורות כפולות");
     chk(g, "Code.gs — אין שימוש ב-MailApp (הרשאה חדשה הייתה משביתה את השרת)",
         !/\bMailApp\s*\./.test(rc.text),
         /\bMailApp\s*\./.test(rc.text)
