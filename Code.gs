@@ -981,7 +981,7 @@ function getBlocked() {
   const sheet = getOrCreateSheet(BLOCKED_SHEET);
   const rows = sheet.getDataRange().getValues();
   if (rows.length <= 1) return [];
-  return rows.slice(1).map(function(r) {
+  return rows.slice(1).filter(hasValue).map(function(r) {
     let date = r[0];
     if (date instanceof Date) {
       date = date.getFullYear()+"-"+String(date.getMonth()+1).padStart(2,"0")+"-"+String(date.getDate()).padStart(2,"0");
@@ -990,18 +990,36 @@ function getBlocked() {
   });
 }
 
+// ⭐ כתיבה בטוחה ללשונית (12.9.2026). מחליף את הדפוס clearContents + appendRow בלולאה,
+// שהוא בדיוק מה שגרם לאירוע 18.8.2026: clearContents לא נכנס לתוקף מיד, ולכן appendRow
+// ממשיך לכתוב אחרי השורה האחרונה הישנה — נוצרות שורות ריקות בראש והנתונים נדחפים למטה
+// (או שנשארות שורות שרד בסוף). כאן: setValues לטווח מפורש + ניקוי מפורש של הזנב + flush.
+function writeSheet(sheet, headers, rows) {
+  const before = sheet.getLastRow();
+  const values = [headers].concat(rows);
+  sheet.getRange(1, 1, values.length, headers.length).setValues(values);
+  if (before > values.length) {
+    sheet.getRange(values.length + 1, 1, before - values.length, sheet.getLastColumn() || headers.length).clearContent();
+  }
+  SpreadsheetApp.flush();
+}
+
+// שורה ריקה = אין בה שום ערך. מסננים בקריאה כדי ששורות שרד מתקלות ישנות לא יוצגו כרשומות ריקות.
+function hasValue(r) {
+  for (let i = 0; i < r.length; i++) if (String(r[i] === null || r[i] === undefined ? "" : r[i]).trim() !== "") return true;
+  return false;
+}
+
 function saveBlocked(blocked) {
-  const sheet = getOrCreateSheet(BLOCKED_SHEET);
-  sheet.clearContents();
-  sheet.appendRow(["date","note"]);
-  blocked.forEach(function(b) { sheet.appendRow([b.date, b.note||""]); });
+  writeSheet(getOrCreateSheet(BLOCKED_SHEET), ["date","note"],
+    blocked.map(function(b) { return [b.date, b.note||""]; }));
 }
 
 function getExpenses() {
   const sheet = getOrCreateSheet(EXPENSES_SHEET);
   const rows = sheet.getDataRange().getValues();
   if (rows.length <= 1) return [];
-  return rows.slice(1).map(function(r) {
+  return rows.slice(1).filter(hasValue).map(function(r) {
     let date = r[0];
     if (date instanceof Date) {
       date = date.getFullYear()+"-"+String(date.getMonth()+1).padStart(2,"0")+"-"+String(date.getDate()).padStart(2,"0");
@@ -1011,10 +1029,8 @@ function getExpenses() {
 }
 
 function saveExpenses(expenses) {
-  const sheet = getOrCreateSheet(EXPENSES_SHEET);
-  sheet.clearContents();
-  sheet.appendRow(["date","desc","amount"]);
-  expenses.forEach(function(e) { sheet.appendRow([e.date, e.desc, e.amount]); });
+  writeSheet(getOrCreateSheet(EXPENSES_SHEET), ["date","desc","amount"],
+    expenses.map(function(e) { return [e.date, e.desc, e.amount]; }));
 }
 
 function getManualGuests() {
@@ -1022,7 +1038,7 @@ function getManualGuests() {
   const rows = sheet.getDataRange().getValues();
   if (rows.length <= 1) return [];
   const headers = rows[0];
-  return rows.slice(1).map(function(r) {
+  return rows.slice(1).filter(hasValue).map(function(r) {
     const obj = {};
     headers.forEach(function(h, i) { obj[h] = r[i] !== undefined ? r[i] : ""; });
     return obj;
@@ -1030,12 +1046,13 @@ function getManualGuests() {
 }
 
 function saveManualGuests(guests) {
-  const sheet = getOrCreateSheet(GUESTS_SHEET);
-  sheet.clearContents();
-  if (!guests.length) { sheet.appendRow(["name","phone","email","rating","notes"]); return; }
   const headers = ["name","phone","email","rating","notes"];
-  sheet.appendRow(headers);
-  guests.forEach(function(g) { sheet.appendRow(headers.map(function(h) { return g[h] !== undefined ? g[h] : ""; })); });
+  writeSheet(getOrCreateSheet(GUESTS_SHEET), headers, guests.map(function(g) {
+    return headers.map(function(h) {
+      if (h === "phone" && g[h]) return String(g[h]);
+      return g[h] !== undefined ? g[h] : "";
+    });
+  }));
 }
 
 function getTemplates() {
@@ -1058,19 +1075,16 @@ function saveTemplate(key, value) {
 const LEADS_SHEET = "מתעניינים";
 
 function saveLeads(leads) {
-  const sheet = getOrCreateSheet(LEADS_SHEET);
-  sheet.clearContents();
-  sheet.appendRow(["email","phone","date"]);
-  leads.forEach(function(l) {
-    sheet.appendRow([l.email||"", l.phone||"", l.date||""]);
-  });
+  writeSheet(getOrCreateSheet(LEADS_SHEET), ["email","phone","date"], leads.map(function(l) {
+    return [l.email||"", l.phone ? String(l.phone) : "", l.date||""];
+  }));
 }
 
 function getLeads() {
   const sheet = getOrCreateSheet(LEADS_SHEET);
   const rows = sheet.getDataRange().getValues();
   if (rows.length <= 1) return [];
-  return rows.slice(1).map(function(r) {
+  return rows.slice(1).filter(hasValue).map(function(r) {
     return {email: r[0]||"", phone: r[1]||"", date: r[2]||""};
   });
 }
@@ -1078,29 +1092,28 @@ function getLeads() {
 const TRASH_SHEET = "סל מחזור";
 
 function saveTrash(items) {
-  const sheet = getOrCreateSheet(TRASH_SHEET);
-  sheet.clearContents();
-  sheet.appendRow(["סוג","שם","מייל","טלפון","תאריך כניסה","תאריך יציאה","סטטוס","תאריך מחיקה","נתונים מלאים"]);
-  items.forEach(function(item) {
-    sheet.appendRow([
-      item._type==="booking"?"הזמנה":"מתעניין",
-      item.name||"",
-      item.email||"",
-      item.phone||"",
-      item.checkin||"",
-      item.checkout||"",
-      item.status||"",
-      item._deletedAt||"",
-      JSON.stringify(item)
-    ]);
-  });
+  writeSheet(getOrCreateSheet(TRASH_SHEET),
+    ["סוג","שם","מייל","טלפון","תאריך כניסה","תאריך יציאה","סטטוס","תאריך מחיקה","נתונים מלאים"],
+    items.map(function(item) {
+      return [
+        item._type==="booking"?"הזמנה":"מתעניין",
+        item.name||"",
+        item.email||"",
+        item.phone ? String(item.phone) : "",
+        item.checkin||"",
+        item.checkout||"",
+        item.status||"",
+        item._deletedAt||"",
+        JSON.stringify(item)
+      ];
+    }));
 }
 
 function getTrash() {
   const sheet = getOrCreateSheet(TRASH_SHEET);
   const rows = sheet.getDataRange().getValues();
   if (rows.length <= 1) return [];
-  return rows.slice(1).map(function(r) {
+  return rows.slice(1).filter(hasValue).map(function(r) {
     try {
       return JSON.parse(r[8]||"{}");
     } catch(e) {
