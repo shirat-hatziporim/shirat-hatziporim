@@ -816,6 +816,7 @@ async function sendBroadcastWithFile({
   subject,
   message,
   emails,
+  names = null,
   onProgress,
   test = false
 }) {
@@ -870,6 +871,7 @@ async function sendBroadcastWithFile({
           subject,
           message,
           emails: batch,
+          names: names ? names.slice(i, i + BROADCAST_BATCH) : undefined,
           test
         }), "שליחה");
         knownTotal = res.total || knownTotal;
@@ -2388,6 +2390,11 @@ function App() {
   });
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [broadcastMsg, setBroadcastMsg] = useState("");
+  // שידור לאורחים עם קובץ מצורף (12.9.2026) — אותו מנגנון כמו במתעניינים
+  const [gcFile, setGcFile] = useState(null);
+  const [gcSubject, setGcSubject] = useState("שירת הציפורים — עדכון מיוחד");
+  const [gcStatus, setGcStatus] = useState("");
+  const [gcBusy, setGcBusy] = useState(false);
   const [reminderPopup, setReminderPopup] = useState(null);
   const [confirmPopup, setConfirmPopup] = useState(null);
   const [reviewPopup, setReviewPopup] = useState(null);
@@ -7438,6 +7445,166 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
                 outline: "none",
                 marginBottom: 14
               }
+            }), /*#__PURE__*/_jsx("label", {
+              style: {
+                display: "block",
+                fontSize: 12,
+                color: "#7a6a58",
+                marginBottom: 5,
+                fontWeight: 600,
+                fontFamily: "'Heebo',sans-serif"
+              },
+              children: "נושא המייל"
+            }), /*#__PURE__*/_jsx("input", {
+              id: "gcSubject",
+              value: gcSubject,
+              onChange: e => setGcSubject(e.target.value),
+              placeholder: "נושא המייל",
+              style: {
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "9px 12px",
+                borderRadius: 10,
+                border: "1.5px solid #e0d8cc",
+                fontSize: 14,
+                fontFamily: "'Heebo',sans-serif",
+                direction: "rtl",
+                marginBottom: 12,
+                outline: "none"
+              }
+            }), /*#__PURE__*/_jsxs("div", {
+              style: {
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                flexWrap: "wrap",
+                marginBottom: 10
+              },
+              children: [/*#__PURE__*/_jsx("input", {
+                id: "gcFileInput",
+                type: "file",
+                accept: "image/*,application/pdf",
+                style: {
+                  display: "none"
+                },
+                onChange: e => {
+                  const f = e.target.files && e.target.files[0];
+                  e.target.value = "";
+                  if (!f) return;
+                  if (f.size > BROADCAST_MAX_MB * 1024 * 1024) {
+                    alert("הקובץ גדול מ-" + BROADCAST_MAX_MB + "MB");
+                    return;
+                  }
+                  setGcFile(f);
+                  setGcStatus("");
+                }
+              }), /*#__PURE__*/_jsx("button", {
+                type: "button",
+                disabled: gcBusy,
+                onClick: () => document.getElementById("gcFileInput").click(),
+                style: {
+                  ...bS("#fff", "#5a4e40"),
+                  border: "1.5px dashed #c9b99a",
+                  fontSize: 13
+                },
+                children: gcFile ? "🔄 החלף קובץ" : "📎 צרף קובץ (תמונה / PDF)"
+              }), gcFile && /*#__PURE__*/_jsxs("span", {
+                style: {
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  background: "#eef5ec",
+                  color: "#2d5a27",
+                  borderRadius: 20,
+                  padding: "4px 10px",
+                  fontSize: 12,
+                  maxWidth: "100%"
+                },
+                children: [/*#__PURE__*/_jsx("span", {
+                  style: {
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    maxWidth: 170
+                  },
+                  children: gcFile.name
+                }), /*#__PURE__*/_jsx("span", {
+                  children: "(" + (gcFile.size < 1024 * 1024 ? Math.max(1, Math.round(gcFile.size / 1024)) + "KB" : (gcFile.size / 1024 / 1024).toFixed(1) + "MB") + ")"
+                }), /*#__PURE__*/_jsx("button", {
+                  type: "button",
+                  disabled: gcBusy,
+                  "aria-label": "הסר קובץ",
+                  onClick: () => {
+                    setGcFile(null);
+                    setGcStatus("");
+                  },
+                  style: {
+                    border: "none",
+                    background: "transparent",
+                    color: "#c62828",
+                    cursor: "pointer",
+                    fontSize: 14,
+                    padding: 0
+                  },
+                  children: "✕"
+                })]
+              })]
+            }), gcFile && /*#__PURE__*/_jsx("button", {
+              type: "button",
+              id: "gcTestSend",
+              disabled: gcBusy,
+              onClick: async () => {
+                if (gcBusy) return;
+                let last = "";
+                try {
+                  last = localStorage.getItem("shirat_broadcast_test_email") || "";
+                } catch (e) {}
+                const to = (prompt("לאיזה מייל לשלוח את הבדיקה?", last || "shirathatziporim@gmail.com") || "").trim().toLowerCase();
+                if (!to) return;
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+                  alert("כתובת מייל לא תקינה");
+                  return;
+                }
+                try {
+                  localStorage.setItem("shirat_broadcast_test_email", to);
+                } catch (e) {}
+                setGcBusy(true);
+                try {
+                  const r = await sendBroadcastWithFile({
+                    file: gcFile,
+                    subject: gcSubject.trim() || "צימר שירת הציפורים",
+                    message: broadcastMsg,
+                    emails: [to],
+                    names: ["בדיקה"],
+                    onProgress: setGcStatus,
+                    test: true
+                  });
+                  if (r.done.has(to)) setGcStatus("✅ מייל בדיקה נשלח אל " + to + ". אם הכל נראה טוב — שלחו לכולם");else setGcStatus("⚠️ מייל הבדיקה לא נשלח" + (r.failed[0] ? ": " + r.failed[0].error : ""));
+                } catch (e) {
+                  setGcStatus("⚠️ " + e.message);
+                } finally {
+                  setGcBusy(false);
+                }
+              },
+              style: {
+                ...bS("#fff8e1", "#8b6000"),
+                border: "1.5px solid #f0d58a",
+                fontSize: 13,
+                width: "100%",
+                marginBottom: 10,
+                opacity: gcBusy ? 0.6 : 1
+              },
+              children: "🧪 שלח בדיקה לעצמי"
+            }), gcStatus && /*#__PURE__*/_jsx("p", {
+              style: {
+                margin: "0 0 10px",
+                fontSize: 13,
+                fontWeight: 700,
+                lineHeight: 1.6,
+                color: gcStatus.startsWith("✅") ? "#2e7d32" : gcStatus.startsWith("⏳") ? "#8b6000" : "#c62828",
+                fontFamily: "'Heebo',sans-serif"
+              },
+              children: gcStatus
             }), /*#__PURE__*/_jsxs("div", {
               style: {
                 display: "flex",
@@ -7445,6 +7612,7 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
                 flexWrap: "wrap"
               },
               children: [/*#__PURE__*/_jsxs("button", {
+                disabled: gcBusy,
                 onClick: () => {
                   if (!broadcastMsg.trim()) {
                     alert("נא להזין תוכן הודעה");
@@ -7465,22 +7633,58 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
                 },
                 children: ["💬 WhatsApp (", withPhone.length, ")"]
               }), withEmail.length > 0 && /*#__PURE__*/_jsxs("button", {
-                onClick: () => {
-                  if (!broadcastMsg.trim()) {
+                disabled: gcBusy,
+                onClick: async () => {
+                  if (!broadcastMsg.trim() && !gcFile) {
                     alert("נא להזין תוכן הודעה");
                     return;
                   }
-                  const emails = withEmail.map(g => g.email).join(",");
-                  const subject = encodeURIComponent("שירת הציפורים — עדכון מיוחד");
-                  const body = encodeURIComponent(broadcastMsg);
-                  openEmailBcc(emails, subject, body);
+                  const subject = gcSubject.trim() || "שירת הציפורים — עדכון מיוחד";
+                  if (!gcFile) {
+                    // בלי קובץ — כמו קודם: טיוטת Gmail עם כל הנמענים ב-BCC
+                    openEmailBcc(withEmail.map(g => g.email).join(","), encodeURIComponent(subject), encodeURIComponent(broadcastMsg));
+                    return;
+                  }
+                  if (gcBusy) return;
+                  // מייל אחד לכל אורח, עם השם שלו במקום {שם} — dedupe לפי כתובת
+                  const seen = new Set();
+                  const targets = [];
+                  withEmail.forEach(g => {
+                    const em = String(g.email).trim().toLowerCase();
+                    if (!em || seen.has(em)) return;
+                    seen.add(em);
+                    targets.push({
+                      email: em,
+                      name: g.name || ""
+                    });
+                  });
+                  const quotaNote = targets.length > 80 ? "\n\n⚠️ גוגל מגבילה את החשבון לכ-100 מיילים ביום (כולל התזכורות האוטומטיות)." : "";
+                  if (!confirm("לשלוח את \"" + gcFile.name + "\" ל-" + targets.length + " אורחים?\nנושא: " + subject + "\nכל אורח יקבל מייל אישי." + quotaNote)) return;
+                  setGcBusy(true);
+                  try {
+                    const r = await sendBroadcastWithFile({
+                      file: gcFile,
+                      subject,
+                      message: broadcastMsg,
+                      emails: targets.map(t => t.email),
+                      names: targets.map(t => t.name),
+                      onProgress: setGcStatus
+                    });
+                    const failedList = r.failed.filter(f => !r.done.has(f.email));
+                    if (r.quotaExceeded) setGcStatus("⚠️ הגעתם למגבלת השליחה היומית של גוגל. נשלחו " + r.done.size + " מתוך " + r.total + ". אפשר להמשיך מחר — מי שכבר קיבל לא יקבל שוב.");else if (failedList.length) setGcStatus("⚠️ נשלחו " + r.done.size + " מתוך " + r.total + ". לא נשלח אל: " + failedList.map(f => f.email).join(", "));else setGcStatus("✅ נשלחו " + r.done.size + " מיילים עם הקובץ");
+                  } catch (e) {
+                    setGcStatus("⚠️ " + e.message);
+                  } finally {
+                    setGcBusy(false);
+                  }
                 },
                 style: {
                   ...bS("#1565c0", "#fff"),
                   fontSize: 13,
-                  flex: 1
+                  flex: 1,
+                  opacity: gcBusy ? 0.6 : 1
                 },
-                children: ["📧 מייל (", withEmail.length, ")"]
+                children: [gcFile ? gcBusy ? "⏳ שולח… (" : "📧 מייל + קובץ (" : "📧 מייל (", withEmail.length, ")"]
               })]
             }), /*#__PURE__*/_jsx("div", {
               style: {
@@ -7489,7 +7693,7 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
                 color: "#a09080",
                 fontFamily: "'Heebo',sans-serif"
               },
-              children: "💡 ניתן להשתמש ב- {שם} בהודעת WhatsApp לשם אישי לכל אורח"
+              children: "💡 ניתן להשתמש ב- {שם} לשם אישי לכל אורח — גם ב-WhatsApp וגם במייל עם קובץ"
             })]
           })
         })
