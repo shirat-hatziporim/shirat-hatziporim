@@ -254,6 +254,9 @@ async function checkPage(g){
       src.indexOf('fileKey: logKey')!==-1 && src.indexOf('const logKey = file.name + "|" + file.size')!==-1
       && src.indexOf('id: "gcSkipLeads"')!==-1,
       "מפתח היומן הוא הקובץ בלבד — לא הנושא/הטקסט — כך ששתי הלשוניות נחשבות שידור אחד");
+  chk(g, "מתעניינים — רשומות ריקות (שורות שרד) מסוננות בטעינה",
+      /const cleanLeads = arr =>/.test(src) && src.indexOf("cleanLeads(JSON.parse(s))")!==-1 && src.indexOf("const clean = cleanLeads(r);")!==-1,
+      "התקלה מ-12.9.2026: הרשימה הוצגה כעשרות שורות ריקות");
   chk(g, "שידור — היסטוריית שליחות זמינה משתי הלשוניות",
       (src.match(/className: "bcHistoryBtn"/g) || []).length === 2
       && src.indexOf('action=getBroadcastHistory')!==-1
@@ -692,6 +695,11 @@ async function checkAssets(g){
         /function broadcastHistoryUpsert/.test(rc.text) && /function getBroadcastHistory/.test(rc.text)
         && rc.text.indexOf("if (!isTest && (res.sent.length")!==-1,
         "הקריאה מגיעה פעם לכל מנה של 5 נמענים — בלי upsert היו נוצרות שורות כפולות");
+    chk(g, "Code.gs — אין clearContents+appendRow בשמירה ללשוניות (התקלה שהשאירה שורות ריקות)",
+        !/clearContents\(\)/.test(rc.text.replace(/\/\/[^\n]*/g, ""))
+        && /function writeSheet\(sheet, headers, rows\)/.test(rc.text)
+        && (rc.text.match(/\.filter\(hasValue\)/g) || []).length >= 5,
+        "saveLeads/saveTrash/saveBlocked/saveExpenses/saveManualGuests עברו ל-setValues + ניקוי זנב + flush");
     chk(g, "Code.gs — אין שימוש ב-MailApp (הרשאה חדשה הייתה משביתה את השרת)",
         !/\bMailApp\s*\./.test(rc.text),
         /\bMailApp\s*\./.test(rc.text)
