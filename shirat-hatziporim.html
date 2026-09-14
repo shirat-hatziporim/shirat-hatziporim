@@ -2674,10 +2674,12 @@ function App() {
     s.src = SCRIPT_URL + "?action=saveTrash&trash=" + encodeURIComponent(JSON.stringify(items)) + "&authuser=0&callback=" + cb + "&t=" + Date.now();
     document.head.appendChild(s);
   }
+  // רשומה בלי מייל ובלי טלפון היא שורת שרד בגיליון (ראו התקלה מ-12.9.2026) — לא מציגים אותה
+  const cleanLeads = arr => (Array.isArray(arr) ? arr : []).filter(l => String(l && l.email || "").trim() || String(l && l.phone || "").trim());
   const [inquiryLeads, setInquiryLeads] = useState(() => {
     try {
       const s = localStorage.getItem("shirat_leads");
-      return s ? JSON.parse(s) : [];
+      return s ? cleanLeads(JSON.parse(s)) : [];
     } catch {
       return [];
     }
@@ -2711,9 +2713,10 @@ function App() {
     window[cb] = function (r) {
       delete window[cb];
       if (Array.isArray(r) && r.length > 0) {
-        setInquiryLeads(r);
+        const clean = cleanLeads(r);
+        setInquiryLeads(clean);
         try {
-          localStorage.setItem("shirat_leads", JSON.stringify(r));
+          localStorage.setItem("shirat_leads", JSON.stringify(clean));
         } catch (e) {}
       }
     };
@@ -3174,7 +3177,7 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
       sendConfirmationEmail(b);
     }
     if (b.email) {
-      const cleanedLeads = inquiryLeads.filter(l => l.email.toLowerCase() !== b.email.toLowerCase());
+      const cleanedLeads = inquiryLeads.filter(l => String(l.email || "").toLowerCase() !== b.email.toLowerCase());
       if (cleanedLeads.length !== inquiryLeads.length) {
         setInquiryLeads(cleanedLeads);
         try {
