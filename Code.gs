@@ -98,6 +98,8 @@ function doGet(e) {
       result = { ok: true, index: Number(idx) };
     } else if (action === "commitChunks") {
       result = commitChunks(Number(e.parameter.total || 0));
+    } else if (action === "getBroadcastHistory") {
+      result = getBroadcastHistory();
     } else if (action === "broadcastStatus") {
       result = broadcastStatus(safeDecode(e.parameter.campaign));
     } else if (action === "previewBroadcast") {
@@ -130,6 +132,9 @@ const BOOKING_PAGE_URL = "https://shirat-hatziporim.github.io/shirat-hatziporim/
 //   היומן יושב בגיליון ולכן שורד גם בין מכשירים וגם בין ימים. המפתח הוא הקובץ (שם|גודל),
 //   ולא הנושא/הטקסט — אותה מודעה שנשלחת משתי לשוניות עם ניסוח שונה נחשבת אותו שידור.
 const BROADCAST_LOG_SHEET = "שידורים";
+// היסטוריית שליחות — שורה אחת לכל שידור (לא לכל נמען), מתעדכנת תוך כדי המנות.
+const BROADCAST_HISTORY_SHEET = "היסטוריית שידורים";
+const BROADCAST_HISTORY_COLS = ["מזהה", "תאריך", "קובץ", "נושא", "מקור", "נשלחו", "דולגו", "נכשלו"];
 
 function doPost(e) {
   let result;
@@ -163,6 +168,43 @@ function broadcastLogAppend(entries) {
   }
   sheet.getRange(sheet.getLastRow() + 1, 1, entries.length, 3).setValues(entries);
   SpreadsheetApp.flush();
+}
+
+// שורה אחת לכל שידור. הקריאה מגיעה פעם לכל מנה (5 נמענים), ולכן upsert שמצטבר ולא שורה חדשה.
+function broadcastHistoryUpsert(campaign, info) {
+  const sheet = getOrCreateSheet(BROADCAST_HISTORY_SHEET);
+  const rows = sheet.getDataRange().getValues();
+  if (rows.length === 0 || String(rows[0][0]) !== BROADCAST_HISTORY_COLS[0]) {
+    sheet.getRange(1, 1, 1, BROADCAST_HISTORY_COLS.length).setValues([BROADCAST_HISTORY_COLS]);
+    SpreadsheetApp.flush();
+  }
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]) === campaign) {
+      sheet.getRange(i + 1, 6, 1, 3).setValues([[
+        Number(rows[i][5] || 0) + info.sent,
+        Number(rows[i][6] || 0) + info.skipped,
+        Number(rows[i][7] || 0) + info.failed
+      ]]);
+      SpreadsheetApp.flush();
+      return;
+    }
+  }
+  sheet.getRange(sheet.getLastRow() + 1, 1, 1, BROADCAST_HISTORY_COLS.length).setValues([[
+    campaign, info.date, info.file, info.subject, info.source, info.sent, info.skipped, info.failed
+  ]]);
+  SpreadsheetApp.flush();
+}
+
+// היסטוריית השליחות, החדשות קודם. ⚠ בלי עמודת המזהה — היא פנימית ולא מעניינת בתצוגה.
+function getBroadcastHistory() {
+  const rows = getOrCreateSheet(BROADCAST_HISTORY_SHEET).getDataRange().getValues();
+  if (rows.length <= 1) return [];
+  return rows.slice(1).filter(function(r) { return r[0]; }).map(function(r) {
+    return {
+      date: String(r[1] || ""), file: String(r[2] || ""), subject: String(r[3] || ""),
+      source: String(r[4] || ""), sent: Number(r[5] || 0), skipped: Number(r[6] || 0), failed: Number(r[7] || 0)
+    };
+  }).reverse().slice(0, 60);
 }
 
 function broadcastKey(campaign) {
@@ -266,9 +308,21 @@ function broadcastSend(body) {
         res.failed.push({ email: to, error: m });
       }
     }
-    // הרישום ליומן בסוף — כתיבה אחת לגיליון במקום אחת לכל מייל
-    try { if (!isTest && fileKey) broadcastLogAppend(logEntries); }
-    catch (err) { res.logError = err.toString(); }
+    // הרישום ליומן ובהיסטוריה בסוף — כתיבה אחת לגיליון במקום אחת לכל מייל
+    try {
+      if (!isTest && fileKey) broadcastLogAppend(logEntries);
+      if (!isTest && (res.sent.length || res.skipped.length || res.failed.length)) {
+        broadcastHistoryUpsert(String(body.campaign), {
+          date: stamp,
+          file: st.name,
+          subject: subject,
+          source: String(body.source || "").slice(0, 30),
+          sent: res.sent.length,
+          skipped: res.skipped.length,
+          failed: res.failed.length
+        });
+      }
+    } catch (err) { res.logError = err.toString(); }
     res.total = st.sent.length;
     return res;
   } finally {
