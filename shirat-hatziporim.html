@@ -825,6 +825,9 @@ async function sendBroadcastWithFile({
   // אותו קובץ + אותו נושא + אותה הודעה ⇒ אותו קמפיין (עד ~6 שעות), כדי שלחיצה חוזרת
   // אחרי תקלה תמשיך מאיפה שנעצרה ולא תשלח שוב למי שכבר קיבל.
   const fileKey = [file.name, file.size, file.lastModified, subject, message].join("|");
+  // מזהה הקובץ ליומן השידורים בשרת (שם|גודל, בלי נושא/טקסט) — כך אותה מודעה שנשלחת
+  // מלשונית המתעניינים ומלשונית האורחים נחשבת שידור אחד, ומי שכבר קיבל לא יקבל שוב.
+  const logKey = file.name + "|" + file.size;
   let campaign = null;
   try {
     const saved = JSON.parse(localStorage.getItem(BROADCAST_RESUME_KEY) || "null");
@@ -838,7 +841,13 @@ async function sendBroadcastWithFile({
       at: Date.now()
     }));
   } catch (e) {}
-  onProgress(test ? "⏳ שולח מייל בדיקה…" : "⏳ מעלה את הקובץ…");
+  // אם הקובץ כבר עלה בשליחה קודמת של אותו קמפיין (בדיקה, או ניסיון שנקטע) — לא מעלים שוב
+  const pre = await getBroadcastStatus(campaign);
+  if (pre && pre.exists) {
+    onProgress(test ? "⏳ שולח מייל בדיקה…" : "⏳ שולח…");
+    return await broadcastLoop();
+  }
+  onProgress("⏳ מעלה את הקובץ…");
   const data = await fileToBase64(file);
   try {
     assertOk(await postScript({
@@ -853,7 +862,11 @@ async function sendBroadcastWithFile({
     const st = await getBroadcastStatus(campaign);
     if (!(st && st.exists)) throw e;
   }
+  return await broadcastLoop();
+
+  async function broadcastLoop() {
   const done = new Set();
+  const skipped = new Set();
   const failed = [];
   let quotaExceeded = false;
   // כמה כבר נשלחו בקמפיין הזה (רלוונטי בלחיצה חוזרת) — בסיס להשוואה אם תשובה לא תיקרא
@@ -872,6 +885,7 @@ async function sendBroadcastWithFile({
           message,
           emails: batch,
           names: names ? names.slice(i, i + BROADCAST_BATCH) : undefined,
+          fileKey: logKey,
           test
         }), "שליחה");
         knownTotal = res.total || knownTotal;
@@ -905,16 +919,19 @@ async function sendBroadcastWithFile({
       throw new Error("השליחה נעצרה (" + (lastErr ? lastErr.message : "שגיאה") + "). לפי השרת נשלחו עד כה " + count + " מיילים עם הקובץ הזה. אפשר ללחוץ שוב על שליחה — מי שכבר קיבל לא יקבל פעמיים.");
     }
     (res.sent || []).concat(res.skipped || []).forEach(x => done.add(x));
+    (res.skipped || []).forEach(x => skipped.add(x));
     (res.failed || []).forEach(f => failed.push(f));
     if (res.quotaExceeded) quotaExceeded = true;
     onProgress("⏳ נשלחו " + done.size + " מתוך " + emails.length + "…");
   }
   return {
     done,
+    skipped,
     failed,
     quotaExceeded,
     total: emails.length
   };
+  }
 }
 
 // תקרת אורך ל-URL של קריאת JSONP. Google מחזירה 414 מעל ~8KB, והדפדפן מדווח
@@ -2393,6 +2410,7 @@ function App() {
   // שידור לאורחים עם קובץ מצורף (12.9.2026) — אותו מנגנון כמו במתעניינים
   const [gcFile, setGcFile] = useState(null);
   const [gcSubject, setGcSubject] = useState("שירת הציפורים — עדכון מיוחד");
+  const [gcSkipLeads, setGcSkipLeads] = useState(true);
   const [gcStatus, setGcStatus] = useState("");
   const [gcBusy, setGcBusy] = useState(false);
   const [reminderPopup, setReminderPopup] = useState(null);
@@ -7549,7 +7567,36 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
                   children: "✕"
                 })]
               })]
-            }), gcFile && /*#__PURE__*/_jsx("button", {
+            }), gcFile && (() => {
+              // מי שכבר נשלח אליו מלשונית המתעניינים. השרת חוסם כפילויות לפי יומן השידורים,
+              // אבל היומן קיים רק משליחות שנעשו אחרי 12.9.2026 — הסינון הזה מכסה גם שליחות ישנות.
+              const leadSet = new Set(inquiryLeads.map(l => String(l.email || "").trim().toLowerCase()).filter(Boolean));
+              const overlap = withEmail.filter(g => leadSet.has(String(g.email).trim().toLowerCase())).length;
+              if (!overlap) return null;
+              return /*#__PURE__*/_jsxs("label", {
+                id: "gcSkipLeads",
+                style: {
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  background: "#fdf6e8",
+                  border: "1px solid #f0e2c4",
+                  borderRadius: 10,
+                  padding: "9px 12px",
+                  marginBottom: 10,
+                  fontSize: 13,
+                  color: "#7a6a58",
+                  fontFamily: "'Heebo',sans-serif",
+                  cursor: "pointer"
+                },
+                children: [/*#__PURE__*/_jsx("input", {
+                  type: "checkbox",
+                  checked: gcSkipLeads,
+                  disabled: gcBusy,
+                  onChange: e => setGcSkipLeads(e.target.checked)
+                }), "דלג על " + overlap + " אורחים שנמצאים גם ברשימת המתעניינים"]
+              });
+            })(), gcFile && /*#__PURE__*/_jsx("button", {
               type: "button",
               id: "gcTestSend",
               disabled: gcBusy,
@@ -7647,19 +7694,29 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
                   }
                   if (gcBusy) return;
                   // מייל אחד לכל אורח, עם השם שלו במקום {שם} — dedupe לפי כתובת
+                  const leadSet = new Set(inquiryLeads.map(l => String(l.email || "").trim().toLowerCase()).filter(Boolean));
                   const seen = new Set();
                   const targets = [];
+                  let skippedLeads = 0;
                   withEmail.forEach(g => {
                     const em = String(g.email).trim().toLowerCase();
                     if (!em || seen.has(em)) return;
                     seen.add(em);
+                    if (gcSkipLeads && leadSet.has(em)) {
+                      skippedLeads++;
+                      return;
+                    }
                     targets.push({
                       email: em,
                       name: g.name || ""
                     });
                   });
+                  if (!targets.length) {
+                    alert(skippedLeads ? "כל האורחים עם מייל כבר קיבלו את הקובץ דרך רשימת המתעניינים" : "אין נמענים לשליחה");
+                    return;
+                  }
                   const quotaNote = targets.length > 80 ? "\n\n⚠️ גוגל מגבילה את החשבון לכ-100 מיילים ביום (כולל התזכורות האוטומטיות)." : "";
-                  if (!confirm("לשלוח את \"" + gcFile.name + "\" ל-" + targets.length + " אורחים?\nנושא: " + subject + "\nכל אורח יקבל מייל אישי." + quotaNote)) return;
+                  if (!confirm("לשלוח את \"" + gcFile.name + "\" ל-" + targets.length + " אורחים?\nנושא: " + subject + "\nכל אורח יקבל מייל אישי." + (skippedLeads ? "\nמדלג על " + skippedLeads + " שכבר קיבלו דרך המתעניינים." : "") + quotaNote)) return;
                   setGcBusy(true);
                   try {
                     const r = await sendBroadcastWithFile({
@@ -7671,7 +7728,7 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
                       onProgress: setGcStatus
                     });
                     const failedList = r.failed.filter(f => !r.done.has(f.email));
-                    if (r.quotaExceeded) setGcStatus("⚠️ הגעתם למגבלת השליחה היומית של גוגל. נשלחו " + r.done.size + " מתוך " + r.total + ". אפשר להמשיך מחר — מי שכבר קיבל לא יקבל שוב.");else if (failedList.length) setGcStatus("⚠️ נשלחו " + r.done.size + " מתוך " + r.total + ". לא נשלח אל: " + failedList.map(f => f.email).join(", "));else setGcStatus("✅ נשלחו " + r.done.size + " מיילים עם הקובץ");
+                    if (r.quotaExceeded) setGcStatus("⚠️ הגעתם למגבלת השליחה היומית של גוגל. נשלחו " + r.done.size + " מתוך " + r.total + ". אפשר להמשיך מחר — מי שכבר קיבל לא יקבל שוב.");else if (failedList.length) setGcStatus("⚠️ נשלחו " + r.done.size + " מתוך " + r.total + ". לא נשלח אל: " + failedList.map(f => f.email).join(", "));else setGcStatus("✅ נשלחו " + (r.done.size - r.skipped.size) + " מיילים עם הקובץ" + (r.skipped.size || skippedLeads ? " · דילג על " + (r.skipped.size + skippedLeads) + " שכבר קיבלו" : ""));
                   } catch (e) {
                     setGcStatus("⚠️ " + e.message);
                   } finally {
@@ -9936,7 +9993,7 @@ https://charedi.net/tzimar/25569/
                     } else if (failedList.length) {
                       setBulkStatus("⚠️ נשלחו " + r.done.size + " מתוך " + r.total + ". לא נשלח אל: " + failedList.map(f => f.email).join(", "));
                     } else {
-                      setBulkStatus("✅ נשלחו " + r.done.size + " מיילים עם הקובץ");
+                      setBulkStatus("✅ נשלחו " + (r.done.size - r.skipped.size) + " מיילים עם הקובץ" + (r.skipped.size ? " · " + r.skipped.size + " כבר קיבלו אותו קודם" : ""));
                     }
                   } catch (e) {
                     setBulkStatus("⚠️ " + e.message);
