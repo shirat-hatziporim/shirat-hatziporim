@@ -254,6 +254,26 @@ async function checkPage(g){
       src.indexOf('fileKey: logKey')!==-1 && src.indexOf('const logKey = file.name + "|" + file.size')!==-1
       && src.indexOf('id: "gcSkipLeads"')!==-1,
       "מפתח היומן הוא הקובץ בלבד — לא הנושא/הטקסט — כך ששתי הלשוניות נחשבות שידור אחד");
+  {
+    const m = src.match(/function guestMatches\(g, q\) \{[\s\S]*?\n\}\n/);
+    let ok = false, detail = "guestMatches לא נמצא בקוד";
+    if (m){
+      try {
+        const f = new Function(m[0] + "; return guestMatches;")();
+        const g1 = { name:"טובה מש", email:"Targumit@gmail.com", phone:525862813, notes:"אורחת חוזרת" };
+        const cases = [[g1,"טובה",true],[g1,"targumit",true],[g1,"0525862813",true],[g1,"525862",true],
+                       [g1,"חוזרת",true],[g1,"xyz",false],[g1,"",true]];
+        const bad = cases.filter(c => f(c[0], c[1]) !== c[2]);
+        ok = bad.length === 0;
+        detail = ok ? "שם, מייל, טלפון (עם/בלי 0 מוביל) והערות" : "נכשלו: " + bad.map(c => JSON.stringify(c[1])).join(", ");
+      } catch(e){ detail = "שגיאה בהרצה: " + e.message; }
+    }
+    chk(g, "אורחים — חיפוש לפי שם/מייל/טלפון/הערות (סימולציה)", ok, detail);
+  }
+  chk(g, "אורחים — החיפוש משתמש ב-guestMatches ולא בהשוואת שם/טלפון בלבד",
+      src.indexOf("guests.filter(g => guestMatches(g, guestSearch))")!==-1
+      && src.indexOf('(g.name || "").includes(guestSearch)')===-1,
+      "חיפוש לפי מייל לא עבד עד 12.9.2026");
   chk(g, "מתעניינים — רשומות ריקות (שורות שרד) מסוננות בטעינה",
       /const cleanLeads = arr =>/.test(src) && src.indexOf("cleanLeads(JSON.parse(s))")!==-1 && src.indexOf("const clean = cleanLeads(r);")!==-1,
       "התקלה מ-12.9.2026: הרשימה הוצגה כעשרות שורות ריקות");
