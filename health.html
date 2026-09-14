@@ -250,6 +250,10 @@ async function checkPage(g){
   chk(g, "אורחים — {שם} מוחלף אישית בכל מייל, וכתובות כפולות מסוננות",
       /names:\s*targets\.map\(t => t\.name\)/.test(src) && src.indexOf("if (!em || seen.has(em)) return;")!==-1,
       "אורח שמופיע פעמיים לא יקבל שני מיילים");
+  chk(g, "שידור — דילוג על מי שכבר קיבל את אותו קובץ (יומן בגיליון + סינון מול המתעניינים)",
+      src.indexOf('fileKey: logKey')!==-1 && src.indexOf('const logKey = file.name + "|" + file.size')!==-1
+      && src.indexOf('id: "gcSkipLeads"')!==-1,
+      "מפתח היומן הוא הקובץ בלבד — לא הנושא/הטקסט — כך ששתי הלשוניות נחשבות שידור אחד");
   chk(g, "מתעניינים — כפתור 'שלח בדיקה לעצמי' קיים ושולח במצב בדיקה",
       src.indexOf('id: "bulkTestSend"')!==-1 && /test:\s*true/.test(src) && src.indexOf("attempt < (test ? 1 : 3)")!==-1,
       "נמען אחד, בלי ניסיון חוזר אוטומטי (לא יישלחו כמה מיילי בדיקה)");
@@ -674,6 +678,11 @@ async function checkAssets(g){
     chk(g, "Code.gs — {שם} מוחלף לפי נמען, וללא שם לא נשאר פלייסהולדר",
         /function personalize\(text, name\)/.test(rc.text) && rc.text.indexOf("personalize(subject, name)")!==-1,
         "אורח בלי שם יקבל 'שלום,' ולא 'שלום {שם},'");
+    chk(g, "Code.gs — יומן שידורים קבוע בגיליון (שורד יותר מ-6 שעות)",
+        /const BROADCAST_LOG_SHEET = "שידורים"/.test(rc.text)
+        && rc.text.indexOf("st.sent.indexOf(to) !== -1 || already[to]")!==-1
+        && /function broadcastLogAppend/.test(rc.text),
+        "CacheService פג אחרי 6 שעות; בלי היומן שליחה למחרת הייתה חוזרת על נמענים");
     chk(g, "Code.gs — אין שימוש ב-MailApp (הרשאה חדשה הייתה משביתה את השרת)",
         !/\bMailApp\s*\./.test(rc.text),
         /\bMailApp\s*\./.test(rc.text)
