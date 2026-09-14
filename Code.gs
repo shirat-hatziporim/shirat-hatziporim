@@ -125,6 +125,11 @@ const BROADCAST_TTL = 21600;                 // 6 שעות — המקסימום 
 const BROADCAST_MAX_BYTES = 10 * 1024 * 1024;
 const BROADCAST_MAX_BATCH = 20;
 const BOOKING_PAGE_URL = "https://shirat-hatziporim.github.io/shirat-hatziporim/booking.html";
+// ⭐ יומן שידורים קבוע (12.9.2026) — מי קיבל איזה קובץ. הזיכרון של CacheService חי 6 שעות בלבד,
+//   ולכן שליחה מלשונית האורחים יום אחרי שליחה למתעניינים הייתה שולחת שוב למי שחופף.
+//   היומן יושב בגיליון ולכן שורד גם בין מכשירים וגם בין ימים. המפתח הוא הקובץ (שם|גודל),
+//   ולא הנושא/הטקסט — אותה מודעה שנשלחת משתי לשוניות עם ניסוח שונה נחשבת אותו שידור.
+const BROADCAST_LOG_SHEET = "שידורים";
 
 function doPost(e) {
   let result;
@@ -135,6 +140,29 @@ function doPost(e) {
     else result = { error: "פעולה לא מוכרת: " + body.action };
   } catch (err) { result = { error: err.toString() }; }
   return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+}
+
+// מפת המיילים שכבר קיבלו את הקובץ הזה (מפתח → true)
+function broadcastLogGet(fileKey) {
+  if (!fileKey) return {};
+  const rows = getOrCreateSheet(BROADCAST_LOG_SHEET).getDataRange().getValues();
+  const map = {};
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][1]) === fileKey) map[String(rows[i][0]).trim().toLowerCase()] = true;
+  }
+  return map;
+}
+
+// ⚠ כתיבה בטווח מפורש (setValues) ולא appendRow בלולאה — ראו אירוע 18.8.2026.
+function broadcastLogAppend(entries) {
+  if (!entries.length) return;
+  const sheet = getOrCreateSheet(BROADCAST_LOG_SHEET);
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, 3).setValues([["מייל", "קובץ", "תאריך"]]);
+    SpreadsheetApp.flush();
+  }
+  sheet.getRange(sheet.getLastRow() + 1, 1, entries.length, 3).setValues(entries);
+  SpreadsheetApp.flush();
 }
 
 function broadcastKey(campaign) {
@@ -200,13 +228,18 @@ function broadcastSend(body) {
     // שמות מקבילים ל-emails (אופציונלי) — להחלפת {שם} בכל מייל בנפרד. רשימת המתעניינים
     // לא שולחת שמות, ואז {שם} פשוט לא מוחלף — התנהגות זהה לקודם.
     const names = Array.isArray(body.names) ? body.names : [];
+    // מזהה הקובץ ליומן השידורים (שם|גודל). בלי מזהה — אין דילוג ואין רישום (תאימות לאחור).
+    const fileKey = String(body.fileKey || "").slice(0, 200);
+    const already = (!isTest && fileKey) ? broadcastLogGet(fileKey) : {};
+    const logEntries = [];
+    const stamp = Utilities.formatDate(new Date(), "Asia/Jerusalem", "dd.MM.yyyy HH:mm");
     const blob = DriveApp.getFileById(st.fileId).getBlob().setName(st.name);
     const isImage = /^image\//.test(st.mimeType);
     const res = { ok: true, sent: [], skipped: [], failed: [], quotaExceeded: false };
     for (let i = 0; i < emails.length; i++) {
       const to = emails[i];
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) { res.failed.push({ email: to, error: "כתובת לא תקינה" }); continue; }
-      if (!isTest && st.sent.indexOf(to) !== -1) { res.skipped.push(to); continue; }
+      if (!isTest && (st.sent.indexOf(to) !== -1 || already[to])) { res.skipped.push(to); continue; }
       try {
         const name = String(names[i] || "").trim();
         const msg = personalize(message, name);
@@ -220,6 +253,8 @@ function broadcastSend(body) {
         if (!isTest) {
           st.sent.push(to);
           cache.put(key, JSON.stringify(st), BROADCAST_TTL);   // שמירה אחרי כל מייל — התקדמות חלקית לא הולכת לאיבוד
+          already[to] = true;
+          if (fileKey) logEntries.push([to, fileKey, stamp]);
         }
       } catch (err) {
         const m = err.toString();
@@ -231,6 +266,9 @@ function broadcastSend(body) {
         res.failed.push({ email: to, error: m });
       }
     }
+    // הרישום ליומן בסוף — כתיבה אחת לגיליון במקום אחת לכל מייל
+    try { if (!isTest && fileKey) broadcastLogAppend(logEntries); }
+    catch (err) { res.logError = err.toString(); }
     res.total = st.sent.length;
     return res;
   } finally {
