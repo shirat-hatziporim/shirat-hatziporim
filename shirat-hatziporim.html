@@ -750,6 +750,19 @@ function leadMatches(l, q) {
   const pd = String(l.phone || "").replace(/\D/g, "").replace(/^972/, "").replace(/^0+/, "");
   return pd.includes(qd);
 }
+// חיפוש אורח: שם, מייל, טלפון (ספרות בלבד, עם או בלי 0 מוביל) והערות.
+// ⚠ String() בכל שדה — Sheets מחזיר טלפון כמספר, ואז .includes זורק TypeError.
+function guestMatches(g, q) {
+  const s = String(q || "").trim().toLowerCase();
+  if (!s) return true;
+  const text = [g.name, g.email, g.notes].map(x => String(x || "").toLowerCase()).join(" ");
+  if (text.includes(s)) return true;
+  const qd = s.replace(/\D/g, "").replace(/^0+/, "");
+  if (!qd) return false;
+  const pd = String(g.phone || "").replace(/\D/g, "").replace(/^972/, "").replace(/^0+/, "");
+  return pd.includes(qd);
+}
+
 // מחזיר את השורות התואמות עם האינדקס המקורי — מחיקה/סימון חייבים לפעול על המיקום ברשימה המלאה
 function leadsVisible(leads, q) {
   return leads.map((l, i) => ({
@@ -5054,7 +5067,7 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
           }
         });
         const guests = Object.values(guestMap).sort((a, b) => b.visits.length - a.visits.length);
-        const filteredG = guests.filter(g => (g.name || "").includes(guestSearch) || (g.phone || "").includes(guestSearch));
+        const filteredG = guests.filter(g => guestMatches(g, guestSearch));
         return /*#__PURE__*/_jsxs("div", {
           children: [/*#__PURE__*/_jsxs("div", {
             style: {
@@ -5066,9 +5079,10 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
               gap: 8
             },
             children: [/*#__PURE__*/_jsx("input", {
+              id: "guestSearch",
               value: guestSearch,
               onChange: e => setGuestSearch(e.target.value),
-              placeholder: "🔍 חיפוש אורח...",
+              placeholder: "🔍 חיפוש לפי שם, מייל או טלפון",
               style: {
                 padding: "8px 14px",
                 borderRadius: 10,
@@ -5189,7 +5203,7 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
                       color: "#8a7e6e",
                       fontFamily: "'Heebo',sans-serif"
                     },
-                    children: [g.phone, g.email ? ` · ${g.email}` : ""]
+                    children: [leadPhoneDisplay(g.phone), g.email ? ` · ${g.email}` : ""]
                   }), lastVisit && /*#__PURE__*/_jsxs("div", {
                     style: {
                       fontSize: 12,
