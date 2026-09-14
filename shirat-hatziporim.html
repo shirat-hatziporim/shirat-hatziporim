@@ -817,6 +817,7 @@ async function sendBroadcastWithFile({
   message,
   emails,
   names = null,
+  source = "",
   onProgress,
   test = false
 }) {
@@ -886,6 +887,7 @@ async function sendBroadcastWithFile({
           emails: batch,
           names: names ? names.slice(i, i + BROADCAST_BATCH) : undefined,
           fileKey: logKey,
+          source,
           test
         }), "שליחה");
         knownTotal = res.total || knownTotal;
@@ -2680,6 +2682,22 @@ function App() {
       return [];
     }
   });
+  // היסטוריית שליחות (12.9.2026) — נטענת מהגיליון, לא נשמרת מקומית
+  const [showBcHistory, setShowBcHistory] = useState(false);
+  const [bcHistory, setBcHistory] = useState(null);
+  const [bcHistoryErr, setBcHistoryErr] = useState("");
+  const openBcHistory = async () => {
+    setShowBcHistory(true);
+    setBcHistory(null);
+    setBcHistoryErr("");
+    try {
+      const rows = await jsonp(SCRIPT_URL + "?action=getBroadcastHistory");
+      if (rows && rows.error) throw new Error(rows.error);
+      setBcHistory(Array.isArray(rows) ? rows : []);
+    } catch (e) {
+      setBcHistoryErr("לא ניתן לטעון את ההיסטוריה כרגע (" + e.message + ")");
+    }
+  };
   // חיפוש ברשימת המתעניינים
   const [leadSearch, setLeadSearch] = useState("");
   // שליחת קובץ למתעניינים (מייל ישיר מהשרת)
@@ -7725,6 +7743,7 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
                       message: broadcastMsg,
                       emails: targets.map(t => t.email),
                       names: targets.map(t => t.name),
+                      source: "אורחים",
                       onProgress: setGcStatus
                     });
                     const failedList = r.failed.filter(f => !r.done.has(f.email));
@@ -7751,6 +7770,18 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
                 fontFamily: "'Heebo',sans-serif"
               },
               children: "💡 ניתן להשתמש ב- {שם} לשם אישי לכל אורח — גם ב-WhatsApp וגם במייל עם קובץ"
+            }), /*#__PURE__*/_jsx("button", {
+              type: "button",
+              className: "bcHistoryBtn",
+              onClick: openBcHistory,
+              style: {
+                ...bS("#fff", "#5a4e40"),
+                border: "1.5px solid #e0d8cc",
+                fontSize: 12,
+                width: "100%",
+                marginTop: 12
+              },
+              children: "📜 היסטוריית שליחות"
             })]
           })
         })
@@ -9499,6 +9530,156 @@ https://charedi.net/tzimar/25569/
           })]
         })]
       })
+    }), showBcHistory && /*#__PURE__*/_jsx("div", {
+      style: {
+        position: "fixed",
+        inset: 0,
+        background: "rgba(20,20,35,.55)",
+        zIndex: 300,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 12
+      },
+      onClick: () => setShowBcHistory(false),
+      children: /*#__PURE__*/_jsxs("div", {
+        onClick: e => e.stopPropagation(),
+        style: {
+          background: "#fff",
+          borderRadius: 20,
+          width: "min(560px,96vw)",
+          maxHeight: "85vh",
+          overflowY: "auto",
+          boxShadow: "0 24px 80px rgba(0,0,0,.22)",
+          direction: "rtl",
+          padding: "22px 22px 26px"
+        },
+        children: [/*#__PURE__*/_jsxs("div", {
+          style: {
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 14
+          },
+          children: [/*#__PURE__*/_jsx("h2", {
+            style: {
+              margin: 0,
+              fontSize: 18,
+              fontFamily: "'Heebo',sans-serif",
+              color: "#1a1a2e",
+              fontWeight: 800
+            },
+            children: "📜 היסטוריית שליחות"
+          }), /*#__PURE__*/_jsx("button", {
+            onClick: () => setShowBcHistory(false),
+            style: {
+              border: "none",
+              background: "none",
+              fontSize: 22,
+              cursor: "pointer",
+              color: "#aaa"
+            },
+            children: "✕"
+          })]
+        }), bcHistoryErr ? /*#__PURE__*/_jsx("p", {
+          style: {
+            color: "#c62828",
+            fontSize: 13,
+            fontFamily: "'Heebo',sans-serif",
+            textAlign: "center"
+          },
+          children: bcHistoryErr
+        }) : bcHistory === null ? /*#__PURE__*/_jsx("p", {
+          style: {
+            color: "#999",
+            fontSize: 13,
+            fontFamily: "'Heebo',sans-serif",
+            textAlign: "center"
+          },
+          children: "⏳ טוען…"
+        }) : bcHistory.length === 0 ? /*#__PURE__*/_jsx("p", {
+          style: {
+            color: "#999",
+            fontSize: 13,
+            fontFamily: "'Heebo',sans-serif",
+            textAlign: "center"
+          },
+          children: "עדיין לא נשלחו שידורים עם קובץ"
+        }) : /*#__PURE__*/_jsx("div", {
+          children: bcHistory.map((h, i) => /*#__PURE__*/_jsxs("div", {
+            style: {
+              border: "1px solid #eee6d8",
+              borderRadius: 12,
+              padding: "12px 14px",
+              marginBottom: 10,
+              fontFamily: "'Heebo',sans-serif"
+            },
+            children: [/*#__PURE__*/_jsxs("div", {
+              style: {
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 8,
+                alignItems: "baseline",
+                marginBottom: 4
+              },
+              children: [/*#__PURE__*/_jsx("span", {
+                style: {
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: "#1a1a2e"
+                },
+                children: h.subject || "(ללא נושא)"
+              }), /*#__PURE__*/_jsx("span", {
+                style: {
+                  fontSize: 12,
+                  color: "#999",
+                  whiteSpace: "nowrap"
+                },
+                children: h.date
+              })]
+            }), /*#__PURE__*/_jsxs("div", {
+              style: {
+                fontSize: 12,
+                color: "#7a6a58",
+                marginBottom: 8
+              },
+              children: ["📎 ", h.file || "—", h.source ? " · " + h.source : ""]
+            }), /*#__PURE__*/_jsxs("div", {
+              style: {
+                display: "flex",
+                gap: 6,
+                flexWrap: "wrap",
+                fontSize: 12
+              },
+              children: [/*#__PURE__*/_jsxs("span", {
+                style: {
+                  background: "#eef5ec",
+                  color: "#2d5a27",
+                  borderRadius: 20,
+                  padding: "3px 10px"
+                },
+                children: ["נשלחו ", h.sent]
+              }), h.skipped > 0 && /*#__PURE__*/_jsxs("span", {
+                style: {
+                  background: "#fdf6e8",
+                  color: "#8b6000",
+                  borderRadius: 20,
+                  padding: "3px 10px"
+                },
+                children: ["דולגו ", h.skipped]
+              }), h.failed > 0 && /*#__PURE__*/_jsxs("span", {
+                style: {
+                  background: "#fce4ec",
+                  color: "#c62828",
+                  borderRadius: 20,
+                  padding: "3px 10px"
+                },
+                children: ["נכשלו ", h.failed]
+              })]
+            })]
+          }, i))
+        })]
+      })
     }), showLeads && /*#__PURE__*/_jsx("div", {
       style: {
         position: "fixed",
@@ -9770,6 +9951,18 @@ https://charedi.net/tzimar/25569/
                 fontFamily: "'Heebo',sans-serif"
               },
               children: "📢 שלח הודעה לכל המתעניינים"
+            }), /*#__PURE__*/_jsx("button", {
+              type: "button",
+              className: "bcHistoryBtn",
+              onClick: openBcHistory,
+              style: {
+                ...bS("#fff", "#5a4e40"),
+                border: "1.5px solid #e0d8cc",
+                fontSize: 12,
+                width: "100%",
+                marginBottom: 8
+              },
+              children: "📜 היסטוריית שליחות"
             }), /*#__PURE__*/_jsx("input", {
               id: "bulkSubject",
               value: bulkSubject,
@@ -9980,6 +10173,7 @@ https://charedi.net/tzimar/25569/
                       subject,
                       message: msg,
                       emails,
+                      source: "מתעניינים",
                       onProgress: setBulkStatus
                     });
                     const failedList = r.failed.filter(f => !r.done.has(f.email));
