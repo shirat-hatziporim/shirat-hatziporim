@@ -98,6 +98,11 @@ function doGet(e) {
       result = { ok: true, index: Number(idx) };
     } else if (action === "commitChunks") {
       result = commitChunks(Number(e.parameter.total || 0));
+    } else if (action === "getOptOuts") {
+      result = getOptOuts();
+    } else if (action === "saveOptOuts") {
+      saveOptOuts(JSON.parse(safeDecode(e.parameter.optouts)));
+      result = "ok";
     } else if (action === "getBroadcastHistory") {
       result = getBroadcastHistory();
     } else if (action === "broadcastStatus") {
@@ -135,6 +140,9 @@ const BROADCAST_LOG_SHEET = "שידורים";
 // היסטוריית שליחות — שורה אחת לכל שידור (לא לכל נמען), מתעדכנת תוך כדי המנות.
 const BROADCAST_HISTORY_SHEET = "היסטוריית שידורים";
 const BROADCAST_HISTORY_COLS = ["מזהה", "תאריך", "קובץ", "נושא", "מקור", "נשלחו", "דולגו", "נכשלו"];
+// ⭐ רשימת "ללא דיוור" (12.9.2026) — מיילים שביקשו לא לקבל דיוור קבוצתי.
+// מוחזקת לפי כתובת מייל ולכן חלה גם על אורחים וגם על מתעניינים, ונאכפת בשרת ולא רק במסך.
+const OPTOUT_SHEET = "ללא דיוור";
 
 function doPost(e) {
   let result;
@@ -148,6 +156,32 @@ function doPost(e) {
 }
 
 // מפת המיילים שכבר קיבלו את הקובץ הזה (מפתח → true)
+function getOptOuts() {
+  const rows = getOrCreateSheet(OPTOUT_SHEET).getDataRange().getValues();
+  if (rows.length <= 1) return [];
+  return rows.slice(1).filter(hasValue).map(function(r) {
+    return { email: String(r[0] || "").trim().toLowerCase(), date: String(r[1] || ""), note: String(r[2] || "") };
+  }).filter(function(x) { return x.email; });
+}
+
+function saveOptOuts(list) {
+  const seen = {};
+  const rows = [];
+  (list || []).forEach(function(o) {
+    const em = String(o && o.email || "").trim().toLowerCase();
+    if (!em || seen[em]) return;
+    seen[em] = true;
+    rows.push([em, o.date || "", o.note || ""]);
+  });
+  writeSheet(getOrCreateSheet(OPTOUT_SHEET), ["מייל", "תאריך", "הערה"], rows);
+}
+
+function optOutMap() {
+  const map = {};
+  getOptOuts().forEach(function(o) { map[o.email] = true; });
+  return map;
+}
+
 function broadcastLogGet(fileKey) {
   if (!fileKey) return {};
   const rows = getOrCreateSheet(BROADCAST_LOG_SHEET).getDataRange().getValues();
@@ -273,14 +307,17 @@ function broadcastSend(body) {
     // מזהה הקובץ ליומן השידורים (שם|גודל). בלי מזהה — אין דילוג ואין רישום (תאימות לאחור).
     const fileKey = String(body.fileKey || "").slice(0, 200);
     const already = (!isTest && fileKey) ? broadcastLogGet(fileKey) : {};
+    // מייל בדיקה נשלח תמיד — הוא הולך אל יעקב עצמו, לא אל הנמענים
+    const optedOut = isTest ? {} : optOutMap();
     const logEntries = [];
     const stamp = Utilities.formatDate(new Date(), "Asia/Jerusalem", "dd.MM.yyyy HH:mm");
     const blob = DriveApp.getFileById(st.fileId).getBlob().setName(st.name);
     const isImage = /^image\//.test(st.mimeType);
-    const res = { ok: true, sent: [], skipped: [], failed: [], quotaExceeded: false };
+    const res = { ok: true, sent: [], skipped: [], optedOut: [], failed: [], quotaExceeded: false };
     for (let i = 0; i < emails.length; i++) {
       const to = emails[i];
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) { res.failed.push({ email: to, error: "כתובת לא תקינה" }); continue; }
+      if (optedOut[to]) { res.skipped.push(to); res.optedOut.push(to); continue; }
       if (!isTest && (st.sent.indexOf(to) !== -1 || already[to])) { res.skipped.push(to); continue; }
       try {
         const name = String(names[i] || "").trim();
