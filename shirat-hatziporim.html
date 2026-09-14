@@ -2697,6 +2697,47 @@ function App() {
       return [];
     }
   });
+  // ⭐ "ללא דיוור" (12.9.2026) — רשימת מיילים שלא מקבלים דיוור קבוצתי. לפי כתובת מייל,
+  // ולכן חלה גם על אורחים וגם על מתעניינים. נאכפת גם בשרת, כדי שלא תלוי במסך.
+  const [optOuts, setOptOuts] = useState(() => {
+    try {
+      const v = localStorage.getItem("shirat_optouts");
+      return v ? JSON.parse(v) : [];
+    } catch {
+      return [];
+    }
+  });
+  const optOutSet = React.useMemo(() => new Set(optOuts.map(o => String(o.email || "").trim().toLowerCase())), [optOuts]);
+  const isOptedOut = email => optOutSet.has(String(email || "").trim().toLowerCase());
+  React.useEffect(() => {
+    jsonp(SCRIPT_URL + "?action=getOptOuts").then(r => {
+      if (!Array.isArray(r)) return;
+      setOptOuts(r);
+      try {
+        localStorage.setItem("shirat_optouts", JSON.stringify(r));
+      } catch (e) {}
+    }).catch(() => {});
+  }, []);
+  const toggleOptOut = async (email, name) => {
+    const em = String(email || "").trim().toLowerCase();
+    if (!em) return;
+    const on = isOptedOut(em);
+    if (!on && !window.confirm((name ? name + " (" + em + ")" : em) + "\nלא יקבל יותר מיילים קבוצתיים. להמשיך?")) return;
+    const updated = on ? optOuts.filter(o => String(o.email || "").trim().toLowerCase() !== em) : [...optOuts, {
+      email: em,
+      date: new Date().toLocaleDateString("he-IL"),
+      note: name || ""
+    }];
+    setOptOuts(updated);
+    try {
+      localStorage.setItem("shirat_optouts", JSON.stringify(updated));
+    } catch (e) {}
+    try {
+      await jsonp(SCRIPT_URL + "?action=saveOptOuts&optouts=" + encodeURIComponent(JSON.stringify(updated)));
+    } catch (e) {
+      alert("השינוי נשמר במכשיר אבל לא בשרת — נסו שוב מאוחר יותר");
+    }
+  };
   // היסטוריית שליחות (12.9.2026) — נטענת מהגיליון, לא נשמרת מקומית
   const [showBcHistory, setShowBcHistory] = useState(false);
   const [bcHistory, setBcHistory] = useState(null);
@@ -5196,6 +5237,16 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
                         fontWeight: 700
                       },
                       children: "ידני"
+                    }), isOptedOut(g.email) && /*#__PURE__*/_jsx("span", {
+                      style: {
+                        background: "#fce4ec",
+                        color: "#c62828",
+                        borderRadius: 6,
+                        padding: "1px 8px",
+                        fontSize: 11,
+                        fontWeight: 700
+                      },
+                      children: "🚫 ללא דיוור"
                     })]
                   }), /*#__PURE__*/_jsxs("div", {
                     style: {
@@ -5260,6 +5311,16 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
                       padding: "5px 12px"
                     },
                     children: "✏️ עריכה"
+                  }), g.email && /*#__PURE__*/_jsx("button", {
+                    className: "optOutBtn",
+                    onClick: () => toggleOptOut(g.email, g.name),
+                    title: isOptedOut(g.email) ? "החזרה לרשימת הדיוור" : "לא לשלוח לאורח זה מיילים קבוצתיים",
+                    style: {
+                      ...(isOptedOut(g.email) ? bS("#e8f5e9", "#2e7d32") : bS("#f0eee8", "#7a6a58")),
+                      fontSize: 12,
+                      padding: "5px 12px"
+                    },
+                    children: isOptedOut(g.email) ? "✉️ החזר לדיוור" : "🚫 ללא דיוור"
                   }), g._manual && /*#__PURE__*/_jsx("button", {
                     onClick: () => {
                       if (!window.confirm(`למחוק את ${g.name}?`)) return;
@@ -7410,7 +7471,8 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
       });
       const all = Object.values(guestMap);
       const withPhone = all.filter(g => g.phone);
-      const withEmail = all.filter(g => g.email);
+      const optedOutCount = all.filter(g => g.email && isOptedOut(g.email)).length;
+      const withEmail = all.filter(g => g.email && !isOptedOut(g.email));
       return /*#__PURE__*/_jsx(_Fragment, {
         children: /*#__PURE__*/_jsx("div", {
           style: {
@@ -7469,7 +7531,7 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
                 fontFamily: "'Heebo',sans-serif",
                 marginBottom: 14
               },
-              children: [withPhone.length, " אורחים עם טלפון · ", withEmail.length, " אורחים עם מייל"]
+              children: [withPhone.length, " אורחים עם טלפון · ", withEmail.length, " אורחים עם מייל", optedOutCount ? " · " + optedOutCount + " מסומנים ללא דיוור" : ""]
             }), /*#__PURE__*/_jsx("label", {
               style: {
                 display: "block",
@@ -7737,6 +7799,7 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
                     const em = String(g.email).trim().toLowerCase();
                     if (!em || seen.has(em)) return;
                     seen.add(em);
+                    if (isOptedOut(em)) return;
                     if (gcSkipLeads && leadSet.has(em)) {
                       skippedLeads++;
                       return;
@@ -9935,7 +9998,17 @@ https://charedi.net/tzimar/25569/
                     color: "#1a1a2e",
                     direction: "ltr"
                   },
-                  children: l.email || "—"
+                  children: l.email ? /*#__PURE__*/_jsxs("span", {
+                    style: {
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6
+                    },
+                    children: [l.email, isOptedOut(l.email) && /*#__PURE__*/_jsx("span", {
+                      title: "לא מקבל מיילים קבוצתיים",
+                      children: "🚫"
+                    })]
+                  }) : "—"
                 }), /*#__PURE__*/_jsx("td", {
                   style: {
                     padding: "8px 10px",
@@ -10175,12 +10248,16 @@ https://charedi.net/tzimar/25569/
                       alert("כתוב הודעה לשליחה");
                       return;
                     }
-                    const bcc = targets.map(l => l.email).join(",");
+                    const bcc = targets.map(l => l.email).filter(e => !isOptedOut(e)).join(",");
                     window.open("https://mail.google.com/mail/?view=cm&bcc=" + encodeURIComponent(bcc) + "&su=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(msg), "_blank");
                     return;
                   }
                   if (bulkBusy) return;
-                  const emails = [...new Set(targets.map(l => String(l.email).trim().toLowerCase()))];
+                  const emails = [...new Set(targets.map(l => String(l.email).trim().toLowerCase()))].filter(e => !isOptedOut(e));
+                  if (!emails.length) {
+                    alert("כל הנמענים שנבחרו מסומנים 'ללא דיוור'");
+                    return;
+                  }
                   const quotaNote = emails.length > 80 ? "\n\n⚠️ גוגל מגבילה את חשבון ה-Gmail לכ-100 מיילים ביום (כולל התזכורות האוטומטיות). אם תגיעו למגבלה, מי שלא קיבל יסומן ברשימה ותוכלו להמשיך מחר." : "";
                   if (!confirm("לשלוח את \"" + bulkFile.name + "\" ל-" + emails.length + " נמענים?\nנושא: " + subject + "\nכל נמען יקבל מייל אישי." + quotaNote)) return;
                   setBulkBusy(true);
