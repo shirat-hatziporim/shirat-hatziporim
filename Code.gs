@@ -197,20 +197,25 @@ function broadcastSend(body) {
     const message = String(body.message || "").slice(0, 5000);
     const emails = (Array.isArray(body.emails) ? body.emails : []).slice(0, isTest ? 1 : BROADCAST_MAX_BATCH)
       .map(function(x) { return String(x || "").trim().toLowerCase(); });
+    // שמות מקבילים ל-emails (אופציונלי) — להחלפת {שם} בכל מייל בנפרד. רשימת המתעניינים
+    // לא שולחת שמות, ואז {שם} פשוט לא מוחלף — התנהגות זהה לקודם.
+    const names = Array.isArray(body.names) ? body.names : [];
     const blob = DriveApp.getFileById(st.fileId).getBlob().setName(st.name);
     const isImage = /^image\//.test(st.mimeType);
-    const html = buildBroadcastHtml(message, st.mimeType, st.name);
-    const plain = (message.trim() ? message.trim() + "\n\n" : "") + FROM_NAME + " | " + HOST_PHONE + "\n" + BOOKING_PAGE_URL;
     const res = { ok: true, sent: [], skipped: [], failed: [], quotaExceeded: false };
     for (let i = 0; i < emails.length; i++) {
       const to = emails[i];
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) { res.failed.push({ email: to, error: "כתובת לא תקינה" }); continue; }
       if (!isTest && st.sent.indexOf(to) !== -1) { res.skipped.push(to); continue; }
       try {
+        const name = String(names[i] || "").trim();
+        const msg = personalize(message, name);
+        const html = buildBroadcastHtml(msg, st.mimeType, st.name);
+        const plain = (msg.trim() ? msg.trim() + "\n\n" : "") + FROM_NAME + " | " + HOST_PHONE + "\n" + BOOKING_PAGE_URL;
         const opts = { htmlBody: html, name: FROM_NAME, replyTo: FROM_EMAIL };
         if (isImage) opts.inlineImages = { broadcastimg: blob };
         else opts.attachments = [blob];
-        GmailApp.sendEmail(to, subject, plain, opts);
+        GmailApp.sendEmail(to, personalize(subject, name), plain, opts);
         res.sent.push(to);
         if (!isTest) {
           st.sent.push(to);
@@ -231,6 +236,16 @@ function broadcastSend(body) {
   } finally {
     lock.releaseLock();
   }
+}
+
+// {שם} → שם הנמען. בלי שם — מסירים את הפלייסהולדר ומנקים רווח/פסיק מיותר שנשאר
+// ("שלום {שם}," ⇒ "שלום,"), כדי שלא יישלח מייל עם סוגריים מסולסלים.
+function personalize(text, name) {
+  const t = String(text || "");
+  if (!/\{שם\}/.test(t)) return t;
+  const n = String(name || "").trim();
+  if (n) return t.replace(/\{שם\}/g, n);
+  return t.replace(/ *\{שם\}/g, "").replace(/^([^\S\n]*)([,،] *)/gm, "$1");
 }
 
 function escHtml(s) {
