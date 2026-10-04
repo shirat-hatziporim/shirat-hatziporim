@@ -430,9 +430,18 @@ const JEWISH_HOLIDAYS = { has: function (ds) { return !!holidayName(ds); } };
 function toDS(d){ return d.toISOString().split("T")[0]; }
 function fd(ds){ if(!ds)return""; const[y,m,d]=ds.split("-"); return `${d}/${m}/${y}`; }
 
+// יציאה בשבת = יציאה במוצאי שבת: השבת עצמה תפוסה, ולכן "סוף" ההזמנה לחישובי חפיפה הוא יום ראשון
+function effCheckout(co) {
+  co = String(co || "").slice(0, 10);
+  if (!co) return co;
+  const d = new Date(co + "T12:00:00");
+  if (d.getDay() !== 6) return co;
+  d.setDate(d.getDate() + 1);
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
 function isBlocked(ds){ return blockedDates.includes(ds); }
 function isBooked(ds){
-  return bookedRanges.some(b=>ds>=b.checkin && ds<b.checkout);
+  return bookedRanges.some(b=>ds>=b.checkin && ds<effCheckout(b.checkout));
 }
 function isPast(ds){ return ds < toDS(new Date()); }
 function isUnavailable(ds){ return isPast(ds)||isBlocked(ds)||isBooked(ds); }
@@ -726,7 +735,7 @@ async function submitBooking(){
   if(checkout<=checkin){alert("תאריך יציאה חייב להיות אחרי כניסה");return;}
   // בדיקת כפילות תאריכים
   const hasOverlap = bookedRanges.some(b=>{
-    return checkin < b.checkout && checkout > b.checkin;
+    return checkin < effCheckout(b.checkout) && effCheckout(checkout) > b.checkin;
   });
   if(hasOverlap){
     alert("התאריכים שבחרת תפוסים. אנא בחר תאריכים אחרים.");
