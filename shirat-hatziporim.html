@@ -536,6 +536,93 @@ function getDisplayStatus(b) {
 }
 const MONTHS_HE = ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"];
 const DAYS_HE = ["א", "ב", "ג", "ד", "ה", "ו", "ש"];
+// ── לוח עברי משולב + פרשות שבוע ──
+// תאריך עברי מחושב מקומית (Intl, ללא תלות ברשת). פרשות וחגים — Hebcal (מנהג ארץ ישראל), במטמון.
+function gematria(n) {
+  const ones = ["", "א", "ב", "ג", "ד", "ה", "ו", "ז", "ח", "ט"],
+    tens = ["", "י", "כ", "ל", "מ", "נ", "ס", "ע", "פ", "צ"],
+    hund = ["", "ק", "ר", "ש", "ת"];
+  n = n % 1000;
+  let s = "";
+  while (n >= 400) { s += "ת"; n -= 400; }
+  if (n >= 100) { s += hund[Math.floor(n / 100)]; n %= 100; }
+  if (n === 15) s += "טו";else if (n === 16) s += "טז";else s += tens[Math.floor(n / 10)] + ones[n % 10];
+  return s.length === 1 ? s + "׳" : s.slice(0, -1) + "״" + s.slice(-1);
+}
+const _hebDateMem = {};
+const _hebNumFmt = new Intl.DateTimeFormat("en-u-ca-hebrew", { day: "numeric", year: "numeric", timeZone: "UTC" });
+const _hebMonFmt = new Intl.DateTimeFormat("he-u-ca-hebrew", { month: "long", timeZone: "UTC" });
+function hebDate(ds) {
+  if (!ds) return null;
+  if (_hebDateMem[ds]) return _hebDateMem[ds];
+  try {
+    const d = new Date(String(ds).slice(0, 10) + "T12:00:00Z");
+    if (isNaN(d)) return null;
+    const parts = _hebNumFmt.formatToParts(d);
+    const day = parseInt((parts.find(x => x.type === "day") || {}).value, 10);
+    const year = parseInt((parts.find(x => x.type === "year") || {}).value, 10);
+    const month = _hebMonFmt.format(d);
+    if (!day || !year) return null;
+    return _hebDateMem[ds] = { day, year, month, dayStr: gematria(day), yearStr: gematria(year) };
+  } catch {
+    return null;
+  }
+}
+// "יום ה׳, כ״ג תשרי תשפ״ז · פרשת בראשית"
+function hebDateLabel(ds) {
+  const h = hebDate(ds);
+  if (!h) return "";
+  const d = new Date(String(ds).slice(0, 10) + "T12:00:00");
+  let s = "יום " + DAYS_HE[d.getDay()] + "׳, " + h.dayStr + " " + h.month + " " + h.yearStr;
+  const sat = new Date(d);
+  sat.setDate(sat.getDate() + (6 - d.getDay()));
+  const sds = sat.getFullYear() + "-" + String(sat.getMonth() + 1).padStart(2, "0") + "-" + String(sat.getDate()).padStart(2, "0");
+  const ev = (_hebcalMem[sat.getFullYear()] || {})[sds];
+  if (ev && ev.parasha) s += " · פרשת " + ev.parasha;
+  return s;
+}
+// כותרת חודש עברי לחודש לועזי: "תשרי – חשוון תשפ״ז"
+function hebMonthRange(yr, mo) {
+  const pad = n => String(n).padStart(2, "0");
+  const a = hebDate(`${yr}-${pad(mo + 1)}-01`),
+    b = hebDate(`${yr}-${pad(mo + 1)}-${pad(new Date(yr, mo + 1, 0).getDate())}`);
+  if (!a || !b) return "";
+  if (a.month === b.month) return a.month + " " + a.yearStr;
+  if (a.year === b.year) return a.month + " – " + b.month + " " + b.yearStr;
+  return a.month + " " + a.yearStr + " – " + b.month + " " + b.yearStr;
+}
+const _hebcalMem = {};
+const _hebcalPending = {};
+const _stripNikud = t => String(t || "").replace(/[\u0591-\u05BD\u05BF-\u05C7]/g, "");
+function loadHebcalYear(year) {
+  if (_hebcalMem[year]) return Promise.resolve(_hebcalMem[year]);
+  if (_hebcalPending[year]) return _hebcalPending[year];
+  const key = "shirat_hebcal_" + year;
+  try {
+    const c = JSON.parse(localStorage.getItem(key) || "null");
+    if (c && c.v === 1 && c.map) return Promise.resolve(_hebcalMem[year] = c.map);
+  } catch {}
+  const url = "https://www.hebcal.com/hebcal?v=1&cfg=json&s=on&maj=on&min=on&mod=on&nx=on&ss=off&mf=off&c=off&i=on&lg=he-x-NoNikud&year=" + year;
+  return _hebcalPending[year] = fetch(url).then(r => r.json()).then(j => {
+    const map = {};
+    (j.items || []).forEach(it => {
+      const ds = String(it.date || "").slice(0, 10);
+      if (!ds) return;
+      const e = map[ds] || (map[ds] = {});
+      const name = _stripNikud(it.hebrew || it.title);
+      if (it.category === "parashat") e.parasha = name.replace(/^פרשת\s*/, "");else if (it.category === "holiday" || it.category === "roshchodesh") (e.holidays = e.holidays || []).push(name);
+    });
+    _hebcalMem[year] = map;
+    try { localStorage.setItem(key, JSON.stringify({ v: 1, map })); } catch {}
+    return map;
+  }).finally(() => { delete _hebcalPending[year]; });
+}
+// טעינה מוקדמת — כדי שפרשת השבוע תופיע גם בטופס ההזמנה בלי לפתוח את היומן קודם
+try {
+  const _y = new Date().getFullYear();
+  loadHebcalYear(_y).catch(() => {});
+  loadHebcalYear(_y + 1).catch(() => {});
+} catch {}
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby9elcqlGzqijWnXWUYFo3QeW-wWwIt9pj4XmQSsN8RkgkRCwI7eRlRv9AvMLxVC1rTZg/exec";
 window.SCRIPT_URL = SCRIPT_URL; // נגיש גם ל-sendConfirmationEmail שבסקריפט הנפרד בראש הקובץ
 function jsonp(url) {
@@ -1720,6 +1807,10 @@ function BookingForm({
                     set("checkout", "");
                   }
                 }
+              }), f.checkin && /*#__PURE__*/_jsx("div", {
+                className: "heb-date-label",
+                style: { fontSize: 12, color: "#8a6a3a", marginTop: 4 },
+                children: hebDateLabel(f.checkin)
               })]
             }), /*#__PURE__*/_jsxs("div", {
               children: [/*#__PURE__*/_jsxs(Lbl, {
@@ -1739,6 +1830,10 @@ function BookingForm({
                 })() : "",
                 value: f.checkout,
                 onChange: e => set("checkout", e.target.value)
+              }), f.checkout && /*#__PURE__*/_jsx("div", {
+                className: "heb-date-label",
+                style: { fontSize: 12, color: "#8a6a3a", marginTop: 4 },
+                children: hebDateLabel(f.checkout)
               })]
             })]
           })
@@ -2150,6 +2245,12 @@ function CalendarView({
     mo = vd.getMonth();
   const firstDay = new Date(yr, mo, 1).getDay(),
     dim = new Date(yr, mo + 1, 0).getDate();
+  const [hcal, setHcal] = useState(() => _hebcalMem[yr] || {});
+  useEffect(() => {
+    let alive = true;
+    loadHebcalYear(yr).then(m => { if (alive) setHcal(m); }).catch(() => {});
+    return () => { alive = false; };
+  }, [yr]);
   const occ = {};
   blockedDates.forEach(bd => {
     const ds = bd.date && bd.date.includes("T") ? bd.date.split("T")[0] : bd.date || "";
@@ -2208,9 +2309,20 @@ function CalendarView({
         style: {
           margin: 0,
           fontSize: 17,
-          color: "#1a1a2e"
+          color: "#1a1a2e",
+          textAlign: "center"
         },
-        children: [MONTHS_HE[mo], " ", yr]
+        children: [MONTHS_HE[mo], " ", yr, /*#__PURE__*/_jsx("div", {
+          className: "cal-heb-month",
+          style: {
+            fontSize: 13,
+            fontWeight: 600,
+            color: "#8a6a3a",
+            marginTop: 2,
+            textAlign: "center"
+          },
+          children: hebMonthRange(yr, mo)
+        })]
       }), /*#__PURE__*/_jsx("button", {
         onClick: () => setVd(new Date(yr, mo - 1, 1)),
         style: {
@@ -2257,6 +2369,11 @@ function CalendarView({
           isToday = ds === today.toISOString().split("T")[0],
           p = getDailyPrice(ds);
         const holiday = isHoliday(ds);
+        const hd = hebDate(ds),
+          ev = hcal[ds] || {};
+        const hebDayTxt = hd ? hd.day === 1 ? hd.dayStr + " " + hd.month : hd.dayStr : "";
+        const evTxt = ev.parasha ? ev.parasha : ev.holidays && ev.holidays.length ? ev.holidays[0] : "";
+        const evTitle = [hd ? hd.dayStr + " " + hd.month + " " + hd.yearStr : "", ev.parasha ? "פרשת " + ev.parasha : ""].concat(ev.holidays || []).filter(Boolean).join(" · ");
         return /*#__PURE__*/_jsxs("div", {
           onClick: () => {
             if (booked && booked[0]._blocked) {
@@ -2267,7 +2384,7 @@ function CalendarView({
               onToggleBlock && onToggleBlock(ds, 'add');
             }
           },
-          title: booked ? booked[0]._blocked ? "🔓 לחץ לשחרור החסימה" : "✏️ לחץ לעריכת ההזמנה" : holiday ? "🕍 חג — " + getDayType(ds) : "🔒 לחץ לחסימת התאריך",
+          title: (evTitle ? evTitle + "\n" : "") + (booked ? booked[0]._blocked ? "🔓 לחץ לשחרור החסימה" : "✏️ לחץ לעריכת ההזמנה" : holiday ? "🕍 חג — " + getDayType(ds) : "🔒 לחץ לחסימת התאריך"),
           style: {
             borderRadius: 9,
             padding: window.innerWidth < 600 ? "2px 1px" : "5px 3px",
@@ -2275,7 +2392,8 @@ function CalendarView({
             cursor: "pointer",
             background: booked ? "#1a1a2e" : isToday ? "#f0eee8" : holiday && !booked ? "#f3e8ff" : "transparent",
             border: isToday && !booked ? "2px solid #c8b898" : holiday && !booked ? "2px solid #c4b5fd" : "2px solid transparent",
-            minHeight: window.innerWidth < 600 ? 32 : 46,
+            minHeight: window.innerWidth < 600 ? 44 : 62,
+            overflow: "hidden",
             transition: "opacity .15s"
           },
           onMouseEnter: e => {
@@ -2289,6 +2407,17 @@ function CalendarView({
               color: booked ? "#fff" : holiday ? "#7c3aed" : "#3d2c1e"
             },
             children: d
+          }), hebDayTxt && /*#__PURE__*/_jsx("div", {
+            className: "cal-heb-day",
+            style: {
+              fontSize: window.innerWidth < 600 ? 9 : 10,
+              lineHeight: 1.2,
+              color: booked ? "#c9c4d8" : "#a0784a",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis"
+            },
+            children: hebDayTxt
           }), booked ? /*#__PURE__*/_jsx("div", {
             className: "cal-name",
             style: {
@@ -2306,6 +2435,19 @@ function CalendarView({
               color: holiday ? "#7c3aed" : "#b0a090"
             },
             children: [holiday ? "חג | " : "", fm(p)]
+          }), evTxt && /*#__PURE__*/_jsx("div", {
+            className: ev.parasha ? "cal-parasha" : "cal-holiday",
+            style: {
+              fontSize: window.innerWidth < 600 ? 8 : 9,
+              lineHeight: 1.2,
+              fontWeight: 700,
+              color: booked ? "#f4c26a" : ev.parasha ? "#8a5a1a" : "#7c3aed",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              padding: "0 1px"
+            },
+            children: evTxt
           })]
         }, ds);
       })
