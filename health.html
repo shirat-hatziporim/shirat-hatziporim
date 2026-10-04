@@ -620,6 +620,24 @@ function checkBusiness(g, src){
   chk(g, "תוספת החופש מצוינת במידע ללקוחות (מחירון)",
       src.indexOf("תקופת החופש")!==-1 && /החופש[^\n]*20%/.test(src));
   chk(g, "סטטוסים: מאושר/ממתין/בוטל", src.indexOf('"confirmed"')!==-1 && src.indexOf('"pending"')!==-1 && src.indexOf('"cancelled"')!==-1);
+  // ── חגים לתמחור מחושבים מהלוח העברי (4.10.2026) — הרשימה הידנית הייתה מוסטת ביום/בחודש ──
+  {
+    let ok=false, detail="בלוק החגים המחושב לא נמצא";
+    const a=src.indexOf("// ── חגים לתמחור"), b=src.indexOf("// ── סוף בלוק החגים");
+    if (a!==-1 && b>a){
+      try {
+        const H=new Function(src.slice(a,b)+"; return holidayName;")();
+        const cases=[["2027-04-21",true],["2027-04-22",true],["2027-03-22",false],["2027-10-02",true],["2027-09-01",false],
+                     ["2026-09-12",true],["2026-09-10",false],["2026-10-03",true],["2026-09-21",true],["2026-04-02",true]];
+        const bad=cases.filter(c=>!!H(c[0])!==c[1]);
+        ok=bad.length===0;
+        detail= ok ? "פסח 2027 = 22.4 (לא 22.3); ר״ה תשפ״ח = 2.10.2027" : "שגוי: "+bad.map(c=>c[0]+(c[1]?" אמור להיות חג":" אינו חג")).join(", ");
+      } catch(e){ detail="שגיאה בהרצה: "+e.message; }
+    }
+    chk(g, "חגים לתמחור — מחושבים מהלוח העברי ונכונים (סימולציה)", ok, detail);
+    chk(g, "חגים לתמחור — אין רשימה ידנית (const HOLIDAYS = [...])",
+        src.indexOf("const HOLIDAYS = [")===-1 && /function isHoliday\(ds\)\s*\{\s*return !!holidayName\(ds\)/.test(src));
+  }
   // ── רגרסיה: "יתרה לגביה" מסכמת יתרות חסומות ב-0 לכל הזמנה ──
   // הבאג: totalRev - totalPaid נתן 960 במקום 1200, כי הזמנה ששולמה ביתר קיזזה חוב אמיתי.
   chk(g, "יתרה לגביה — סכום יתרות לפי הזמנה (totalDue)",
@@ -722,6 +740,11 @@ async function checkAssets(g, src){
     chk(g, "טופס ההזמנה — selStart/selEnd מוצהרים (renderCal לא קורס לפני בחירה)",
         /var selStart\s*=\s*null/.test(r.text),
         "renderCal נקרא גם מטעינת הפרשות — בלי הצהרה הוא זורק ReferenceError");
+    chk(g, "חגים לתמחור — אותו חישוב בטופס ובניהול (ללא דריפט)",
+        !!src && (()=>{ const ex=t=>{const a=t.indexOf("// ── חגים לתמחור"), b=t.indexOf("// ── סוף בלוק החגים"); return a>-1&&b>a?t.slice(a,b):null;};
+                         const x=ex(r.text), y=ex(src); return x && x===y; })()
+        && r.text.indexOf("const JEWISH_HOLIDAYS = new Set(")===-1,
+        "פער כאן = מחיר שונה ללקוח ובמערכת");
     chk(g, "לוח עברי — אותה גימטריה בטופס ובניהול (ללא דריפט)",
         !!src && (()=>{ const ex=t=>{const a=t.indexOf("function gematria"), b=t.indexOf("const _hebDateMem"); return a>-1&&b>a?t.slice(a,b):null;};
                          const x=ex(r.text), y=ex(src); return x && x===y; })());
