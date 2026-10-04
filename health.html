@@ -290,6 +290,33 @@ async function checkPage(g){
   chk(g, "מתעניינים — כפתור 'שלח בדיקה לעצמי' קיים ושולח במצב בדיקה",
       src.indexOf('id: "bulkTestSend"')!==-1 && /test:\s*true/.test(src) && src.indexOf("attempt < (test ? 1 : 3)")!==-1,
       "נמען אחד, בלי ניסיון חוזר אוטומטי (לא יישלחו כמה מיילי בדיקה)");
+  // ── לוח עברי משולב + פרשות שבוע (4.10.2026) ──
+  chk(g, "יומן — תאריך עברי בכל משבצת + כותרת חודש עברי",
+      src.indexOf("function hebDate(")!==-1 && src.indexOf('className: "cal-heb-day"')!==-1
+      && src.indexOf("hebMonthRange(yr, mo)")!==-1,
+      "מחושב מקומית דרך Intl (ללא תלות ברשת)");
+  chk(g, "יומן — פרשת השבוע וחגים מ-Hebcal (מנהג א\"י, במטמון)",
+      src.indexOf("function loadHebcalYear(")!==-1 && /hebcal\.com\/hebcal\?[^"]*i=on/.test(src)
+      && src.indexOf('"cal-parasha"')!==-1 && src.indexOf("shirat_hebcal_")!==-1);
+  chk(g, "טופס הזמנה — תאריך עברי ופרשה מתחת לכניסה/יציאה",
+      (src.match(/className: "heb-date-label"/g) || []).length === 2);
+  {
+    let ok=false, detail="פונקציות הלוח העברי לא נמצאו";
+    const a=src.indexOf("function gematria"), b=src.indexOf("const _hebcalMem = {};");
+    if (a!==-1 && b>a){
+      try {
+        const T = new Function(src.slice(a,b) + "; return {gematria, hebDate, hebMonthRange};")();
+        const h = T.hebDate("2026-10-04");
+        const res = [T.gematria(15), T.gematria(16), T.gematria(23), T.gematria(5787),
+                     h && (h.dayStr + " " + h.month), T.hebMonthRange(2026, 9)];
+        const exp = ["ט״ו","ט״ז","כ״ג","תשפ״ז","כ״ג תשרי","תשרי – חשוון תשפ״ז"];
+        const badIdx = exp.map((e,i)=>res[i]===e?-1:i).filter(i=>i>=0);
+        ok = badIdx.length===0;
+        detail = ok ? "4.10.2026 = כ״ג תשרי תשפ״ז; ט״ו/ט״ז (לא י״ה/י״ו)" : "התקבל: " + badIdx.map(i=>res[i]+" במקום "+exp[i]).join(", ");
+      } catch(e){ detail = "שגיאה בהרצה: " + e.message; }
+    }
+    chk(g, "לוח עברי — המרה וגימטריה נכונות (סימולציה)", ok, detail);
+  }
   return src;
 }
 
@@ -747,6 +774,16 @@ async function checkExternal(g){
   chk(g, "unpkg — React זמין", react.ok);
   const dom = await loadScript("https://unpkg.com/react-dom@18/umd/react-dom.production.min.js", 10000);
   chk(g, "unpkg — ReactDOM זמין", dom.ok);
+  try {
+    const t0 = Date.now();
+    const ctl = new AbortController(); const tm = setTimeout(()=>ctl.abort(), 10000);
+    const r = await fetch("https://www.hebcal.com/hebcal?v=1&cfg=json&s=on&i=on&lg=he-x-NoNikud&year=" + new Date().getFullYear(), {signal: ctl.signal});
+    clearTimeout(tm);
+    const j = await r.json();
+    const n = (j.items||[]).filter(x=>x.category==="parashat").length;
+    if (n>40) chk(g, "Hebcal — פרשות השבוע זמינות", true, n + " פרשות · " + (Date.now()-t0) + "ms");
+    else row(g, "warn", "Hebcal — פרשות השבוע זמינות", "התקבלו רק " + n + " פרשות");
+  } catch(e){ row(g, "warn", "Hebcal — פרשות השבוע זמינות", "לא נגיש (" + e.message + ") — היומן יציג תאריך עברי בלי פרשות"); }
   try {
     const { ms } = await jsonp(SCRIPT_URL + "?action=get", 12000);
     chk(g, "Google Apps Script מגיב", true, ms + "ms");
