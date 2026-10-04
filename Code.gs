@@ -587,6 +587,174 @@ function fd(ds) {
   return d.getDate() + "." + (d.getMonth()+1) + "." + d.getFullYear();
 }
 
+// שורת תאריך במייל: לועזי + מתחתיו התאריך העברי ("יום ו׳, ה׳ חשוון תשפ״ז")
+function dateRow(label, ds) {
+  const h = hebDateStr(ds);
+  return rw(label, fd(ds) + (h ? "<br><span style='font-weight:400;color:#8a6a3a;font-size:13px;'>" + h + "</span>" : ""));
+}
+// "🕯 שבת: פרשת נח" — רק אם השהייה כוללת שבת
+function shabbatRow(b) {
+  const s = stayShabbatLine(b.checkin, b.checkout);
+  return s ? rw("&#x1F56F; שבת", s) : "";
+}
+
+// ════════ לוח עברי + פרשות שבוע (מנהג ארץ ישראל) — חישוב מקומי, ללא רשת ════════
+// אין כאן קריאת רשת בכוונה: הוספת הרשאת רשת הייתה מחייבת אישור מחדש של הסקריפט.
+// האלגוריתם אומת מול @hebcal/core על פני עשרות שנים (ראו health.html / יומן הסקיל).
+var HEB_EPOCH = -1373427; // R.D. של א׳ תשרי שנה 1
+var HEB_MONTHS = ["", "ניסן", "אייר", "סיוון", "תמוז", "אב", "אלול", "תשרי", "חשוון", "כסלו", "טבת", "שבט", "אדר", "אדר ב׳"];
+var PARASHOT = ["בראשית","נח","לך לך","וירא","חיי שרה","תולדות","ויצא","וישלח","וישב","מקץ","ויגש","ויחי",
+  "שמות","וארא","בא","בשלח","יתרו","משפטים","תרומה","תצוה","כי תשא","ויקהל","פקודי",
+  "ויקרא","צו","שמיני","תזריע","מצורע","אחרי מות","קדושים","אמור","בהר","בחוקותי",
+  "במדבר","נשא","בהעלותך","שלח","קרח","חוקת","בלק","פינחס","מטות","מסעי",
+  "דברים","ואתחנן","עקב","ראה","שופטים","כי תצא","כי תבוא","נצבים","וילך","האזינו","וזאת הברכה"];
+function hebLeap(y) { return ((7 * y + 1) % 19) < 7; }
+function hebElapsed(y) {
+  var m = Math.floor((235 * y - 234) / 19);
+  var parts = 12084 + 13753 * m;
+  var d = m * 29 + Math.floor(parts / 25920);
+  if ((3 * (d + 1)) % 7 < 3) d++;
+  return d;
+}
+var _hebNY = {};
+function hebNewYear(y) {
+  if (_hebNY[y] !== undefined) return _hebNY[y];
+  var a = hebElapsed(y - 1), b = hebElapsed(y), c = hebElapsed(y + 1);
+  var delay = (c - b === 356) ? 2 : (b - a === 382) ? 1 : 0;
+  return _hebNY[y] = HEB_EPOCH + b + delay;
+}
+function hebYearDays(y) { return hebNewYear(y + 1) - hebNewYear(y); }
+function hebMonthDays(y, m) {
+  if (m === 2 || m === 4 || m === 6 || m === 10 || m === 13) return 29;
+  if (m === 12) return hebLeap(y) ? 30 : 29;
+  if (m === 8) return hebYearDays(y) % 10 === 5 ? 30 : 29;
+  if (m === 9) return hebYearDays(y) % 10 === 3 ? 29 : 30;
+  return 30;
+}
+function hebToRd(y, m, d) {
+  var rd = hebNewYear(y) + d - 1, i;
+  var last = hebLeap(y) ? 13 : 12;
+  if (m < 7) {
+    for (i = 7; i <= last; i++) rd += hebMonthDays(y, i);
+    for (i = 1; i < m; i++) rd += hebMonthDays(y, i);
+  } else {
+    for (i = 7; i < m; i++) rd += hebMonthDays(y, i);
+  }
+  return rd;
+}
+function gregToRd(y, m, d) {
+  var py = y - 1;
+  return 365 * py + Math.floor(py / 4) - Math.floor(py / 100) + Math.floor(py / 400)
+    + Math.floor((367 * m - 362) / 12) + (m <= 2 ? 0 : (((y % 4 === 0 && y % 100 !== 0) || y % 400 === 0) ? -1 : -2)) + d;
+}
+function rdToGregStr(rd) {
+  var d = new Date(Date.UTC(1970, 0, 1) + (rd - 719163) * 86400000);
+  return d.getUTCFullYear() + "-" + String(d.getUTCMonth() + 1).padStart(2, "0") + "-" + String(d.getUTCDate()).padStart(2, "0");
+}
+function dsToRd(ds) {
+  var p = String(ds).slice(0, 10).split("-");
+  return gregToRd(+p[0], +p[1], +p[2]);
+}
+function rdToHeb(rd) {
+  var y = Math.floor((rd - HEB_EPOCH) / 365.2468) + 1;
+  while (hebNewYear(y) > rd) y--;
+  while (hebNewYear(y + 1) <= rd) y++;
+  var left = rd - hebNewYear(y), last = hebLeap(y) ? 13 : 12;
+  var order = [];
+  for (var i = 7; i <= last; i++) order.push(i);
+  for (i = 1; i <= 6; i++) order.push(i);
+  for (var k = 0; k < order.length; k++) {
+    var md = hebMonthDays(y, order[k]);
+    if (left < md) return { y: y, m: order[k], d: left + 1 };
+    left -= md;
+  }
+  return null;
+}
+function hebGematria(n) {
+  var ones = ["", "א", "ב", "ג", "ד", "ה", "ו", "ז", "ח", "ט"], tens = ["", "י", "כ", "ל", "מ", "נ", "ס", "ע", "פ", "צ"], hund = ["", "ק", "ר", "ש", "ת"];
+  n = n % 1000; var s = "";
+  while (n >= 400) { s += "ת"; n -= 400; }
+  if (n >= 100) { s += hund[Math.floor(n / 100)]; n %= 100; }
+  if (n === 15) s += "טו"; else if (n === 16) s += "טז"; else s += tens[Math.floor(n / 10)] + ones[n % 10];
+  return s.length === 1 ? s + "׳" : s.slice(0, -1) + "״" + s.slice(-1);
+}
+function hebMonthName(y, m) { return (m === 12 && hebLeap(y)) ? "אדר א׳" : HEB_MONTHS[m]; }
+// "יום ו׳, ה׳ חשוון תשפ״ז"
+function hebDateStr(ds) {
+  if (!ds) return "";
+  try {
+    var rd = dsToRd(ds), h = rdToHeb(rd);
+    if (!h) return "";
+    var dow = ((rd % 7) + 7) % 7; // 0=ראשון
+    return "יום " + ["א","ב","ג","ד","ה","ו","ש"][dow] + "׳, " + hebGematria(h.d) + " " + hebMonthName(h.y, h.m) + " " + hebGematria(h.y);
+  } catch (e) { return ""; }
+}
+// חג שבו לא קוראים פרשת שבוע (ארץ ישראל)
+function hebNoParashaDay(h) {
+  if (h.m === 7) return h.d === 1 || h.d === 2 || h.d === 10 || (h.d >= 15 && h.d <= 22);
+  if (h.m === 1) return h.d >= 15 && h.d <= 21;
+  if (h.m === 3) return h.d === 6;
+  return false;
+}
+function hebShabbatsIn(fromRd, toRd) { // fromRd < shabbat <= toRd, ללא חגים
+  var out = [], rd = fromRd + 1;
+  while (((rd % 7) + 7) % 7 !== 6) rd++;
+  for (; rd <= toRd; rd += 7) if (!hebNoParashaDay(rdToHeb(rd))) out.push(rd);
+  return out;
+}
+function hebFill(map, shabbats, from, to, combos) {
+  var k = (to - from + 1) - shabbats.length;
+  if (k < 0 || k > combos.length) return false;
+  var join = {};
+  for (var i = 0; i < k; i++) join[combos[i]] = true;
+  var p = from;
+  for (var s = 0; s < shabbats.length; s++) {
+    if (join[p]) { map[shabbats[s]] = PARASHOT[p] + "-" + PARASHOT[p + 1]; p += 2; }
+    else { map[shabbats[s]] = PARASHOT[p]; p += 1; }
+  }
+  return p === to + 1;
+}
+var _hebCycle = {};
+// לוח הקריאה ממחרת שמיני עצרת של שנה Y ועד שמיני עצרת של Y+1
+function hebCycle(Y) {
+  if (_hebCycle[Y]) return _hebCycle[Y];
+  // השנה העברית מתחילה בתשרי — ולכן ניסן/סיוון/אב שאחרי שמיני עצרת שייכים לאותה שנה Y
+  var map = {}, leap = hebLeap(Y);
+  var start = hebToRd(Y, 7, 22), pesach = hebToRd(Y, 1, 15), shavuot = hebToRd(Y, 3, 6);
+  var av9 = hebToRd(Y, 5, 9), end = hebToRd(Y + 1, 7, 22);
+  // לפני פסח: בדרך כלל צו בשנה פשוטה ומצורע במעוברת — אך לא תמיד (למשל אחרי מות), ולכן גמיש
+  var aShab = hebShabbatsIn(start, pesach - 1), aCombos = leap ? [21, 26] : [21];
+  var base = leap ? 27 : 24, tries = [base, base + 1, base + 2, base - 1], aEnd = base;
+  for (var t = 0; t < tries.length; t++) {
+    var k = (tries[t] + 1) - aShab.length;
+    if (k >= 0 && k <= aCombos.length) { aEnd = tries[t]; break; }
+  }
+  hebFill(map, aShab, 0, aEnd, aCombos);
+  // מפסח עד שבת חזון (דברים בשבת שלפני ט׳ באב או בו) — קטע אחד, כי במדבר לא תמיד צמודה לשבועות
+  hebFill(map, hebShabbatsIn(pesach - 1, av9), aEnd + 1, 43, [41, 26, 28, 31, 38]);
+  hebFill(map, hebShabbatsIn(av9, end), 44, 52, [50]);
+  return _hebCycle[Y] = map;
+}
+// פרשת השבת שבתאריך ds (חייב להיות שבת), או "" בחג
+function parashaOnShabbat(ds) {
+  var rd = dsToRd(ds), h = rdToHeb(rd);
+  if (!h) return "";
+  var Y = (h.m === 7 && h.d <= 22) ? h.y - 1 : h.y;
+  return hebCycle(Y)[rd] || "";
+}
+// השבתות שבתוך השהייה (כולל יום היציאה) — לשורת "שבת פרשת …" במיילים
+function stayShabbatLine(checkin, checkout) {
+  if (!checkin || !checkout) return "";
+  var a = dsToRd(checkin), b = dsToRd(checkout), out = [];
+  for (var rd = a; rd <= b && out.length < 4; rd++) {
+    if (((rd % 7) + 7) % 7 !== 6) continue;
+    var p = parashaOnShabbat(rdToGregStr(rd));
+    out.push(p ? "פרשת " + p : "חג");
+  }
+  return out.join(" · ");
+}
+
+
 function sendMail(to, subject, htmlBody) {
   GmailApp.sendEmail(to, subject, "", {
     htmlBody: htmlBody,
@@ -603,6 +771,9 @@ function sendConfirmEmail(b) {
       .replace(/{שם}/g, b.name||"")
       .replace(/{כניסה}/g, fd(b.checkin))
       .replace(/{יציאה}/g, fd(b.checkout))
+      .replace(/{כניסה_עברי}/g, hebDateStr(b.checkin))
+      .replace(/{יציאה_עברי}/g, hebDateStr(b.checkout))
+      .replace(/{פרשה}/g, stayShabbatLine(b.checkin, b.checkout))
       .replace(/{לילות}/g, b.nights||"")
       .replace(/{סכום}/g, Number(b.total||0).toLocaleString())
       .replace(/{סוג}/g, b.roomLabel||"");
@@ -625,7 +796,8 @@ function previewReview() {
 }
 
 function previewConfirm() {
-  return { html: buildConfirmHtml({ name: "בדיקה", checkin: "2026-07-15", checkout: "2026-07-17", nights: 2, guests: 2, extraGuests: 0, babies: 0, total: 1600 }) };
+  // שישי→שבת 16–17.10.2026: ה׳–ו׳ חשוון תשפ״ז, שבת פרשת נח — לבדיקת התאריך העברי והפרשה
+  return { html: buildConfirmHtml({ name: "בדיקה", checkin: "2026-10-16", checkout: "2026-10-17", nights: 1, guests: 2, extraGuests: 0, babies: 0, total: 1200 }) };
 }
 
 // גוף מייל האישור (מסלול ה-HTML המעוצב)
@@ -635,8 +807,9 @@ function buildConfirmBody(b) {
     + "<p style='font-size:15px;color:#444;margin:0 0 24px;line-height:1.8;'>שמחים לאשר את הזמנתכם בצימר שירת הציפורים!</p>"
     + "<p style='font-size:15px;color:#222;font-weight:700;margin:0 0 12px;'>&#x1F4C5; פרטי ההזמנה:</p>"
     + bx(
-        rw("&#x1F4C5; תאריך הגעה", fd(b.checkin))
-        + rw("&#x1F4C5; תאריך יציאה", fd(b.checkout))
+        dateRow("&#x1F4C5; תאריך הגעה", b.checkin)
+        + dateRow("&#x1F4C5; תאריך יציאה", b.checkout)
+        + shabbatRow(b)
         + rw("&#x1F319; מספר לילות", b.nights||"")
         + rw("&#x1F46A; מספר אורחים", ((b.guests||2)+(b.extraGuests||0)) + " נפשות")
         + (b.babies>0 ? rw("&#x1F476; תינוקות", b.babies) : "")
@@ -678,6 +851,9 @@ function sendReminderEmail(b) {
       .replace(/{שם}/g, b.name||"")
       .replace(/{כניסה}/g, fd(b.checkin))
       .replace(/{יציאה}/g, fd(b.checkout))
+      .replace(/{כניסה_עברי}/g, hebDateStr(b.checkin))
+      .replace(/{יציאה_עברי}/g, hebDateStr(b.checkout))
+      .replace(/{פרשה}/g, stayShabbatLine(b.checkin, b.checkout))
       .replace(/{לילות}/g, b.nights||"")
       .replace(/{יתרה}/g, balance > 0 ? Number(balance).toLocaleString() + ' ש"ח' : 'שולם במלואו');
     GmailApp.sendEmail(b.email, "מחר אתם מגיעים! תזכורת - שירת הציפורים", text, {
@@ -690,8 +866,9 @@ function sendReminderEmail(b) {
     + "<p style='font-size:15px;color:#444;margin:0 0 24px;line-height:1.8;'>מזכירים לכם שמחר אתם מגיעים אלינו! מחכים לכם ומתרגשים לארח אתכם.</p>"
     + "<p style='font-size:15px;color:#222;font-weight:700;margin:0 0 12px;'>&#x1F4C5; פרטי ההזמנה:</p>"
     + bx(
-        rw("&#x1F4C5; תאריך הגעה", fd(b.checkin))
-        + rw("&#x1F4C5; תאריך יציאה", fd(b.checkout))
+        dateRow("&#x1F4C5; תאריך הגעה", b.checkin)
+        + dateRow("&#x1F4C5; תאריך יציאה", b.checkout)
+        + shabbatRow(b)
         + "<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&bull; מספר לילות: <strong>" + (b.nights||"") + "</strong></p>",
         "#5a9e4f"
       )
@@ -1177,6 +1354,7 @@ function notifyOwner(d) {
       )
     + bx(
         "<p style='margin:0 0 8px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F4C5; כניסה: <strong>" + fd(d.checkin) + "</strong> | יציאה: <strong>" + fd(d.checkout) + "</strong></p>"
+        + "<p style='margin:0 0 8px;font-size:13px;color:#8a6a3a;font-family:Arial,sans-serif;'>" + hebDateStr(d.checkin) + " &ndash; " + hebDateStr(d.checkout) + (stayShabbatLine(d.checkin, d.checkout) ? " | &#x1F56F; " + stayShabbatLine(d.checkin, d.checkout) : "") + "</p>"
         + "<p style='margin:0 0 8px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F319; לילות: <strong>" + (d.nights||"") + "</strong> | אורחים: <strong>" + (d.guests||"") + "</strong></p>"
         + "<p style='margin:0;font-size:15px;color:#2d5a27;font-weight:700;font-family:Arial,sans-serif;'>&#x20AA;" + Number(d.total||0).toLocaleString() + " סהכ</p>",
         "#5a9e4f"
