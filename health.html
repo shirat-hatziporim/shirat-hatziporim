@@ -302,6 +302,21 @@ async function checkPage(g){
       src.indexOf("function HebDatePicker(")!==-1 && (src.match(/_jsx\(HebDatePicker,/g) || []).length === 2
       && src.indexOf('className: "hdp-heb"')!==-1 && src.indexOf('className: "heb-date-label"')!==-1,
       "כניסה + יציאה; תאריך עברי, פרשה, חגים ולילות תפוסים");
+  {
+    // ── יציאה בשבת = מוצ"ש: השבת תפוסה (5.10.2026) ──
+    let ok=false, detail="effCheckout לא נמצא";
+    const a=src.indexOf("function effCheckout("), b=src.indexOf("\n}\n", a);
+    if (a!==-1 && b>a){
+      try {
+        const F=new Function(src.slice(a,b+2)+"; return effCheckout;")();
+        ok = F("2026-10-17")==="2026-10-18" && F("2026-10-16")==="2026-10-16" && F("2026-10-18")==="2026-10-18";
+        detail = ok ? "יציאה 17.10 (שבת) ⇒ השבת תפוסה; שישי/ראשון ללא שינוי" : "17.10 ⇒ "+F("2026-10-17");
+      } catch(e){ detail="שגיאה: "+e.message; }
+    }
+    chk(g, "יציאה בשבת — השבת מסומנת תפוסה (סימולציה)", ok, detail);
+    chk(g, "יציאה בשבת — בבורר התאריכים ובבדיקת החפיפה בטופס",
+        src.indexOf("ds < effCheckout(b.checkout)")!==-1 && src.indexOf("f.checkin < effCheckout(b.checkout)")!==-1);
+  }
   chk(g, "טופס הזמנה — אין יותר input type=date לכניסה/יציאה",
       !/style: iS\(err\.check(in|out)\),\s*type: "date"/.test(src));
   {
@@ -744,6 +759,9 @@ async function checkAssets(g, src){
     chk(g, "טופס ההזמנה — selStart/selEnd מוצהרים (renderCal לא קורס לפני בחירה)",
         /var selStart\s*=\s*null/.test(r.text),
         "renderCal נקרא גם מטעינת הפרשות — בלי הצהרה הוא זורק ReferenceError");
+    chk(g, "טופס ההזמנה — יציאה בשבת חוסמת את השבת (לוח זמינות + חפיפה)",
+        r.text.indexOf("function effCheckout(")!==-1 && r.text.indexOf("ds<effCheckout(b.checkout)")!==-1
+        && r.text.indexOf("checkin < effCheckout(b.checkout)")!==-1);
     chk(g, "חגים לתמחור — אותו חישוב בטופס ובניהול (ללא דריפט)",
         !!src && (()=>{ const ex=t=>{const a=t.indexOf("// ── חגים לתמחור"), b=t.indexOf("// ── סוף בלוק החגים"); return a>-1&&b>a?t.slice(a,b):null;};
                          const x=ex(r.text), y=ex(src); return x && x===y; })()
