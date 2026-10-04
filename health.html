@@ -682,7 +682,7 @@ function checkRuntime(g){
 }
 
 // ════════ 5. קבצים נלווים ════════
-async function checkAssets(g){
+async function checkAssets(g, src){
   try {
     const r = await req("booking.html");
     chk(g, "טופס ההזמנה הציבורי (booking.html) נטען", r.code===200, "HTTP "+r.code);
@@ -706,6 +706,19 @@ async function checkAssets(g){
         r.text.indexOf('<option value="5">')!==-1
           ? "עדיין ניתן לבחור 5 אורחים בטופס הציבורי — סתירה מול המייל והמחירון (2+2=4)"
           : "1–4 אורחים");
+    // ── לוח עברי + פרשות בטופס הציבורי (4.10.2026) ──
+    chk(g, "טופס ההזמנה — לוח זמינות עם תאריך עברי, פרשות וחגים",
+        r.text.indexOf("function hebDate(")!==-1 && r.text.indexOf("function loadHebcalYear(")!==-1
+        && r.text.indexOf('h.className="cal-heb-day"')!==-1 && r.text.indexOf('id="calHebMonth"')!==-1,
+        "כותרת חודש עברי + תאריך עברי + פרשה בכל שבת");
+    chk(g, "טופס ההזמנה — תאריך עברי מתחת לשדות כניסה/יציאה",
+        r.text.indexOf('id="checkinHeb"')!==-1 && r.text.indexOf('id="checkoutHeb"')!==-1);
+    chk(g, "טופס ההזמנה — selStart/selEnd מוצהרים (renderCal לא קורס לפני בחירה)",
+        /var selStart\s*=\s*null/.test(r.text),
+        "renderCal נקרא גם מטעינת הפרשות — בלי הצהרה הוא זורק ReferenceError");
+    chk(g, "לוח עברי — אותה גימטריה בטופס ובניהול (ללא דריפט)",
+        !!src && (()=>{ const ex=t=>{const a=t.indexOf("function gematria"), b=t.indexOf("const _hebDateMem"); return a>-1&&b>a?t.slice(a,b):null;};
+                         const x=ex(r.text), y=ex(src); return x && x===y; })());
   } catch(e){ chk(g, "booking.html נטען", false, e.message); }
   // ── עותק המראה של Code.gs — מאמת שהתיקונים קיימים במקור, לא רק בפריסה ──
   try {
@@ -806,7 +819,7 @@ function copyReport(){
   await checkBackend(group("🗄️ שרת הנתונים — Google Apps Script"));
   checkBusiness(group("🧮 לוגיקה עסקית ומחירון"), src);
   await checkRuntime(group("🐞 זמן ריצה — תצוגה חיה (תופס מסך לבן)"));
-  await checkAssets(group("🔗 קבצים נלווים"));
+  await checkAssets(group("🔗 קבצים נלווים"), src);
   await checkExternal(group("🌐 ספקים חיצוניים"));
   finishSummary();
 })();
