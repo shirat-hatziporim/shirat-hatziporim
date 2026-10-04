@@ -1509,6 +1509,15 @@ function Sec({
 }
 
 // ── Booking Form ──
+// יציאה בשבת = יציאה במוצאי שבת: השבת עצמה תפוסה, ולכן "סוף" ההזמנה לחישובי חפיפה הוא יום ראשון
+function effCheckout(co) {
+  co = String(co || "").slice(0, 10);
+  if (!co) return co;
+  const d = new Date(co + "T12:00:00");
+  if (d.getDay() !== 6) return co;
+  d.setDate(d.getDate() + 1);
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
 // ── בורר תאריכים עם לוח עברי משולב (4.10.2026) ──
 // מחליף את <input type="date"> בטופס ההזמנה: בורר המערכת של אנדרואיד לא יודע להציג תאריך עברי.
 // מציג: תאריך עברי בכל יום, פרשת השבוע, חגים, לילות תפוסים/חסומים, וחסימת תאריכים לפני min.
@@ -1629,8 +1638,8 @@ function BookingForm({
 }) {
   // לילה תפוס/חסום — לסימון בבורר התאריכים העברי (לא כולל את ההזמנה הנערכת)
   const nightInfo = ds => {
-    const ob = existingBookings.find(b => b.status !== "cancelled" && b.id !== (booking && booking.id) && b.checkin <= ds && ds < b.checkout);
-    if (ob) return "תפוס — " + (ob.name || "");
+    const ob = existingBookings.find(b => b.status !== "cancelled" && b.id !== (booking && booking.id) && b.checkin <= ds && ds < effCheckout(b.checkout));
+    if (ob) return (ds === String(ob.checkout).slice(0, 10) ? "יציאה במוצ״ש — " : "תפוס — ") + (ob.name || "");
     const bl = blockedDates.find(b => b.date === ds);
     return bl ? "חסום" + (bl.note ? " — " + bl.note : "") : null;
   };
@@ -1682,7 +1691,7 @@ function BookingForm({
       const conflict = existingBookings.find(b => {
         if (b.id === f.id) return false;
         if (b.status === "cancelled") return false;
-        return f.checkin < b.checkout && f.checkout > b.checkin;
+        return f.checkin < effCheckout(b.checkout) && effCheckout(f.checkout) > b.checkin;
       });
       if (conflict) e.checkin = `תאריכים תפוסים! (${conflict.name})`;
       // בדיקת חפיפה עם תאריכים חסומים
