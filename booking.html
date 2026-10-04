@@ -69,11 +69,19 @@ textarea{resize:vertical;min-height:70px;direction:rtl;}
 .cal-day-label{text-align:center;font-size:10px;color:var(--muted);font-weight:600;padding:3px 0;}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
 .cal-day{
-  aspect-ratio:1;display:flex;align-items:center;justify-content:center;
+  min-height:46px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:2px 1px;overflow:hidden;
   border-radius:8px;font-size:12px;cursor:pointer;transition:all .15s;
   font-weight:500;border:1.5px solid transparent;
 }
 .cal-day.empty{cursor:default;}
+.cal-g{font-size:12px;line-height:1.1;}
+.cal-heb-day{font-size:9px;line-height:1.1;color:#a0784a;white-space:nowrap;}
+.cal-ev{font-size:8px;line-height:1.1;font-weight:700;color:#8a5a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+.cal-ev.hol{color:#7c3aed;}
+.cal-day.past .cal-heb-day,.cal-day.past .cal-ev{color:#ccc;}
+.cal-day.selected-start .cal-heb-day,.cal-day.selected-start .cal-ev{color:#f4c26a;}
+.cal-heb-month{font-size:12px;font-weight:600;color:#8a6a3a;margin-top:2px;}
+.heb-date-label{font-size:12px;color:#8a6a3a;margin-top:4px;min-height:14px;}
 .cal-day.past{color:#ccc;cursor:not-allowed;}
 .cal-day.blocked{background:#fee2e2;color:#c62828;cursor:not-allowed;font-size:10px;}
 .cal-day.booked{background:#fce4ec;color:#c62828;cursor:not-allowed;}
@@ -145,7 +153,7 @@ textarea{resize:vertical;min-height:70px;direction:rtl;}
     <div class="cal-wrap">
       <div class="cal-header">
         <button class="cal-nav" onclick="prevMonth()">‹</button>
-        <div class="cal-title" id="calTitle"></div>
+        <div style="text-align:center;"><div class="cal-title" id="calTitle"></div><div class="cal-heb-month" id="calHebMonth"></div></div>
         <button class="cal-nav" onclick="nextMonth()">›</button>
       </div>
       <div class="cal-days-header">
@@ -170,10 +178,12 @@ textarea{resize:vertical;min-height:70px;direction:rtl;}
       <div>
         <label>תאריך כניסה</label>
         <input type="date" id="checkin" onchange="onDateInput()" min="">
+        <div class="heb-date-label" id="checkinHeb"></div>
       </div>
       <div>
         <label>תאריך יציאה</label>
         <input type="date" id="checkout" onchange="onDateInput()" min="">
+        <div class="heb-date-label" id="checkoutHeb"></div>
       </div>
     </div>
     <div id="dateError" class="error-msg"></div>
@@ -247,12 +257,103 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby9elcqlGzqijWnXWUYF
 let calYear = null, calMonth = null;
 let bookedRanges = [];
 let blockedDates = [];
+var selStart = null, selEnd = null; // הוצהרו במפורש — renderCal נקרא גם מטעינת הפרשות לפני בחירה
 const OWNER_PHONE = "972504103353";
 const EMAILJS_SERVICE = "service_0on84wi";
 const EMAILJS_TEMPLATE = "template_v5sfvff";
 const EMAILJS_KEY = "vjxirKrtHb4jblDmc";
 let PRICES = { weekday:800, weekend:1200, packageDeal:1700, sundayExtra:350, extraGuest:200 };
 const MONTHS = ["ינואר","פברואר","מרץ","אפריל","מאי","יוני","יולי","אוגוסט","ספטמבר","אוקטובר","נובמבר","דצמבר"];
+const HEB_DAYS = ["א", "ב", "ג", "ד", "ה", "ו", "ש"];
+// ── לוח עברי משולב + פרשות שבוע ──
+// תאריך עברי מחושב מקומית (Intl, ללא תלות ברשת). פרשות וחגים — Hebcal (מנהג ארץ ישראל), במטמון.
+function gematria(n) {
+  const ones = ["", "א", "ב", "ג", "ד", "ה", "ו", "ז", "ח", "ט"],
+    tens = ["", "י", "כ", "ל", "מ", "נ", "ס", "ע", "פ", "צ"],
+    hund = ["", "ק", "ר", "ש", "ת"];
+  n = n % 1000;
+  let s = "";
+  while (n >= 400) { s += "ת"; n -= 400; }
+  if (n >= 100) { s += hund[Math.floor(n / 100)]; n %= 100; }
+  if (n === 15) s += "טו";else if (n === 16) s += "טז";else s += tens[Math.floor(n / 10)] + ones[n % 10];
+  return s.length === 1 ? s + "׳" : s.slice(0, -1) + "״" + s.slice(-1);
+}
+const _hebDateMem = {};
+const _hebNumFmt = new Intl.DateTimeFormat("en-u-ca-hebrew", { day: "numeric", year: "numeric", timeZone: "UTC" });
+const _hebMonFmt = new Intl.DateTimeFormat("he-u-ca-hebrew", { month: "long", timeZone: "UTC" });
+function hebDate(ds) {
+  if (!ds) return null;
+  if (_hebDateMem[ds]) return _hebDateMem[ds];
+  try {
+    const d = new Date(String(ds).slice(0, 10) + "T12:00:00Z");
+    if (isNaN(d)) return null;
+    const parts = _hebNumFmt.formatToParts(d);
+    const day = parseInt((parts.find(x => x.type === "day") || {}).value, 10);
+    const year = parseInt((parts.find(x => x.type === "year") || {}).value, 10);
+    const month = _hebMonFmt.format(d);
+    if (!day || !year) return null;
+    return _hebDateMem[ds] = { day, year, month, dayStr: gematria(day), yearStr: gematria(year) };
+  } catch {
+    return null;
+  }
+}
+// "יום ה׳, כ״ג תשרי תשפ״ז · פרשת בראשית"
+function hebDateLabel(ds) {
+  const h = hebDate(ds);
+  if (!h) return "";
+  const d = new Date(String(ds).slice(0, 10) + "T12:00:00");
+  let s = "יום " + HEB_DAYS[d.getDay()] + "׳, " + h.dayStr + " " + h.month + " " + h.yearStr;
+  const sat = new Date(d);
+  sat.setDate(sat.getDate() + (6 - d.getDay()));
+  const sds = sat.getFullYear() + "-" + String(sat.getMonth() + 1).padStart(2, "0") + "-" + String(sat.getDate()).padStart(2, "0");
+  const ev = (_hebcalMem[sat.getFullYear()] || {})[sds];
+  if (ev && ev.parasha) s += " · פרשת " + ev.parasha;
+  return s;
+}
+// כותרת חודש עברי לחודש לועזי: "תשרי – חשוון תשפ״ז"
+function hebMonthRange(yr, mo) {
+  const pad = n => String(n).padStart(2, "0");
+  const a = hebDate(`${yr}-${pad(mo + 1)}-01`),
+    b = hebDate(`${yr}-${pad(mo + 1)}-${pad(new Date(yr, mo + 1, 0).getDate())}`);
+  if (!a || !b) return "";
+  if (a.month === b.month) return a.month + " " + a.yearStr;
+  if (a.year === b.year) return a.month + " – " + b.month + " " + b.yearStr;
+  return a.month + " " + a.yearStr + " – " + b.month + " " + b.yearStr;
+}
+const _hebcalMem = {};
+const _hebcalPending = {};
+const _stripNikud = t => String(t || "").replace(/[\u0591-\u05BD\u05BF-\u05C7]/g, "");
+function loadHebcalYear(year) {
+  if (_hebcalMem[year]) return Promise.resolve(_hebcalMem[year]);
+  if (_hebcalPending[year]) return _hebcalPending[year];
+  const key = "shirat_hebcal_" + year;
+  try {
+    const c = JSON.parse(localStorage.getItem(key) || "null");
+    if (c && c.v === 1 && c.map) return Promise.resolve(_hebcalMem[year] = c.map);
+  } catch {}
+  const url = "https://www.hebcal.com/hebcal?v=1&cfg=json&s=on&maj=on&min=on&mod=on&nx=on&ss=off&mf=off&c=off&i=on&lg=he-x-NoNikud&year=" + year;
+  return _hebcalPending[year] = fetch(url).then(r => r.json()).then(j => {
+    const map = {};
+    (j.items || []).forEach(it => {
+      const ds = String(it.date || "").slice(0, 10);
+      if (!ds) return;
+      const e = map[ds] || (map[ds] = {});
+      const name = _stripNikud(it.hebrew || it.title);
+      if (it.category === "parashat") e.parasha = name.replace(/^פרשת\s*/, "");else if (it.category === "holiday" || it.category === "roshchodesh") (e.holidays = e.holidays || []).push(name);
+    });
+    _hebcalMem[year] = map;
+    try { localStorage.setItem(key, JSON.stringify({ v: 1, map })); } catch {}
+    return map;
+  }).finally(() => { delete _hebcalPending[year]; });
+}
+try { const _y=new Date().getFullYear(); loadHebcalYear(_y).then(()=>{renderCal();updateHebLabels();}).catch(()=>{}); loadHebcalYear(_y+1).catch(()=>{}); } catch {}
+function updateHebLabels(){
+  ["checkin","checkout"].forEach(id=>{
+    const inp=document.getElementById(id), out=document.getElementById(id+"Heb");
+    if(inp&&out) out.textContent=inp.value?hebDateLabel(inp.value):"";
+  });
+}
+
 
 // חגים יהודיים — מחיר סוף שבוע
 const JEWISH_HOLIDAYS = new Set([
@@ -346,6 +447,10 @@ function renderCal(){
   const today=new Date();
   if(!calYear){ calYear=today.getFullYear(); calMonth=today.getMonth(); }
   document.getElementById("calTitle").textContent=MONTHS[calMonth]+" "+calYear;
+  const hm=document.getElementById("calHebMonth"); if(hm) hm.textContent=hebMonthRange(calYear,calMonth);
+  const hcal=_hebcalMem[calYear]||{};
+  if(!_hebcalMem[calYear]){ const y=calYear; loadHebcalYear(y).then(()=>{ if(calYear===y) renderCal(); }).catch(()=>{}); }
+  updateHebLabels();
   const grid=document.getElementById("calGrid");
   grid.innerHTML="";
   const first=new Date(calYear,calMonth,1);
@@ -359,7 +464,12 @@ function renderCal(){
   for(let d=1;d<=days;d++){
     const ds=`${calYear}-${String(calMonth+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
     const el=document.createElement("div");
-    el.textContent=d;
+    const hd=hebDate(ds), ev=hcal[ds]||{};
+    const g=document.createElement("span"); g.className="cal-g"; g.textContent=d; el.appendChild(g);
+    if(hd){ const h=document.createElement("span"); h.className="cal-heb-day"; h.textContent=hd.day===1?hd.dayStr+" "+hd.month:hd.dayStr; el.appendChild(h); }
+    const evTxt=ev.parasha||(ev.holidays&&ev.holidays[0])||"";
+    if(evTxt){ const e=document.createElement("span"); e.className="cal-ev"+(ev.parasha?" parasha":" hol"); e.textContent=evTxt; el.appendChild(e); }
+    el.title=[hd?hd.dayStr+" "+hd.month+" "+hd.yearStr:"", ev.parasha?"פרשת "+ev.parasha:""].concat(ev.holidays||[]).filter(Boolean).join(" · ");
     const todayDs=toDS(today);
     let cls="cal-day ";
     const isHoliday=JEWISH_HOLIDAYS.has(ds);
@@ -370,7 +480,7 @@ function renderCal(){
       cls+="available";
       if(isHoliday){
         cls+=" holiday";
-        el.title=HOLIDAY_NAMES[ds]||"חג";
+        if(!el.title) el.title=HOLIDAY_NAMES[ds]||"חג";
       }
       el.onclick=()=>selectDay(ds);
     }
