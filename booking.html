@@ -355,57 +355,77 @@ function updateHebLabels(){
 }
 
 
-// חגים יהודיים — מחיר סוף שבוע
-const JEWISH_HOLIDAYS = new Set([
-  // 2025
-  "2025-04-11","2025-04-12",
-  "2025-04-17","2025-04-18",
-  "2025-05-31","2025-06-01",
-  "2025-09-21","2025-09-22","2025-09-23",
-  "2025-09-30","2025-10-01",
-  "2025-10-05","2025-10-06",
-  "2025-10-12","2025-10-13",
-  // 2026
-  "2026-03-31","2026-04-01",
-  "2026-04-06","2026-04-07",
-  "2026-05-21","2026-05-22",
-  "2026-09-10","2026-09-11","2026-09-12",
-  "2026-09-19","2026-09-20",
-  "2026-09-24","2026-09-25",
-  "2026-10-01","2026-10-02",
-  // 2027
-  "2027-03-21","2027-03-22",
-  "2027-03-27","2027-03-28",
-  "2027-05-10","2027-05-11",
-  "2027-08-31","2027-09-01","2027-09-02",
-  "2027-09-09","2027-09-10",
-  "2027-09-14","2027-09-15",
-  "2027-09-21","2027-09-22",
-]);
+// ── חגים לתמחור — מחושבים אוטומטית מהלוח העברי (מנהג ארץ ישראל) ──
+// מחליף רשימה ידנית שהייתה מוסטת ביום ב-2025/2026 ובחודש שלם ב-2027 (שנה מעוברת). תוקן 4.10.2026.
+// ⚠ הבלוק זהה ב-booking.html וב-shirat-hatziporim.html — health.html בודק שאין דריפט.
+var HEB_EPOCH = -1373427; // R.D. של א׳ תשרי שנה 1
+function hebLeap(y) { return ((7 * y + 1) % 19) < 7; }
+function hebElapsed(y) {
+  var m = Math.floor((235 * y - 234) / 19);
+  var parts = 12084 + 13753 * m;
+  var d = m * 29 + Math.floor(parts / 25920);
+  if ((3 * (d + 1)) % 7 < 3) d++;
+  return d;
+}
+var _hebNY = {};
+function hebNewYear(y) {
+  if (_hebNY[y] !== undefined) return _hebNY[y];
+  var a = hebElapsed(y - 1), b = hebElapsed(y), c = hebElapsed(y + 1);
+  var delay = (c - b === 356) ? 2 : (b - a === 382) ? 1 : 0;
+  return _hebNY[y] = HEB_EPOCH + b + delay;
+}
+function hebYearDays(y) { return hebNewYear(y + 1) - hebNewYear(y); }
+function hebMonthDays(y, m) {
+  if (m === 2 || m === 4 || m === 6 || m === 10 || m === 13) return 29;
+  if (m === 12) return hebLeap(y) ? 30 : 29;
+  if (m === 8) return hebYearDays(y) % 10 === 5 ? 30 : 29;
+  if (m === 9) return hebYearDays(y) % 10 === 3 ? 29 : 30;
+  return 30;
+}
+function hebToRd(y, m, d) {
+  var rd = hebNewYear(y) + d - 1, i;
+  var last = hebLeap(y) ? 13 : 12;
+  if (m < 7) {
+    for (i = 7; i <= last; i++) rd += hebMonthDays(y, i);
+    for (i = 1; i < m; i++) rd += hebMonthDays(y, i);
+  } else {
+    for (i = 7; i < m; i++) rd += hebMonthDays(y, i);
+  }
+  return rd;
+}
+function gregToRd(y, m, d) {
+  var py = y - 1;
+  return 365 * py + Math.floor(py / 4) - Math.floor(py / 100) + Math.floor(py / 400)
+    + Math.floor((367 * m - 362) / 12) + (m <= 2 ? 0 : (((y % 4 === 0 && y % 100 !== 0) || y % 400 === 0) ? -1 : -2)) + d;
+}
+function rdToGregStr(rd) {
+  var d = new Date(Date.UTC(1970, 0, 1) + (rd - 719163) * 86400000);
+  return d.getUTCFullYear() + "-" + String(d.getUTCMonth() + 1).padStart(2, "0") + "-" + String(d.getUTCDate()).padStart(2, "0");
+}
+var HOLIDAY_SPEC = [[1,14,"ערב פסח"],[1,15,"פסח"],[1,20,"ערב שביעי של פסח"],[1,21,"שביעי של פסח"],
+  [3,5,"ערב שבועות"],[3,6,"שבועות"],[6,29,"ערב ראש השנה"],[7,1,"ראש השנה"],[7,2,"ראש השנה"],
+  [7,9,"ערב יום כיפור"],[7,10,"יום כיפור"],[7,14,"ערב סוכות"],[7,15,"סוכות"],[7,21,"ערב שמחת תורה"],[7,22,"שמחת תורה"]];
+var _holCache = {};
+function holidaysForYear(gy) {
+  if (_holCache[gy]) return _holCache[gy];
+  var map = {}, pre = String(gy) + "-";
+  [gy + 3760, gy + 3761].forEach(function (hy) {
+    HOLIDAY_SPEC.forEach(function (h) {
+      var ds = rdToGregStr(hebToRd(hy, h[0], h[1]));
+      if (ds.indexOf(pre) === 0) map[ds] = h[2];
+    });
+  });
+  return _holCache[gy] = map;
+}
+function holidayName(ds) {
+  ds = String(ds || "").slice(0, 10);
+  if (!/^\d{4}-\d\d-\d\d$/.test(ds)) return "";
+  return holidaysForYear(+ds.slice(0, 4))[ds] || "";
+}
+// ── סוף בלוק החגים ──
+// ממשק תואם לקוד הקיים: JEWISH_HOLIDAYS.has(ds)
+const JEWISH_HOLIDAYS = { has: function (ds) { return !!holidayName(ds); } };
 
-const HOLIDAY_NAMES = {
-  "2025-04-11":"ערב פסח","2025-04-12":"פסח",
-  "2025-04-17":"ערב פסח","2025-04-18":"פסח",
-  "2025-05-31":"ערב שבועות","2025-06-01":"שבועות",
-  "2025-09-21":"ערב ראש השנה","2025-09-22":"ראש השנה","2025-09-23":"ראש השנה",
-  "2025-09-30":"ערב יום כיפור","2025-10-01":"יום כיפור",
-  "2025-10-05":"ערב סוכות","2025-10-06":"סוכות",
-  "2025-10-12":"ערב שמחת תורה","2025-10-13":"שמחת תורה",
-  "2026-03-31":"ערב פסח","2026-04-01":"פסח",
-  "2026-04-06":"ערב פסח","2026-04-07":"פסח",
-  "2026-05-21":"ערב שבועות","2026-05-22":"שבועות",
-  "2026-09-10":"ערב ראש השנה","2026-09-11":"ראש השנה","2026-09-12":"ראש השנה",
-  "2026-09-19":"ערב יום כיפור","2026-09-20":"יום כיפור",
-  "2026-09-24":"ערב סוכות","2026-09-25":"סוכות",
-  "2026-10-01":"ערב שמחת תורה","2026-10-02":"שמחת תורה",
-  "2027-03-21":"ערב פסח","2027-03-22":"פסח",
-  "2027-03-27":"ערב פסח","2027-03-28":"פסח",
-  "2027-05-10":"ערב שבועות","2027-05-11":"שבועות",
-  "2027-08-31":"ערב ראש השנה","2027-09-01":"ראש השנה","2027-09-02":"ראש השנה",
-  "2027-09-09":"ערב יום כיפור","2027-09-10":"יום כיפור",
-  "2027-09-14":"ערב סוכות","2027-09-15":"סוכות",
-  "2027-09-21":"ערב שמחת תורה","2027-09-22":"שמחת תורה",
-};
 
 function toDS(d){ return d.toISOString().split("T")[0]; }
 function fd(ds){ if(!ds)return""; const[y,m,d]=ds.split("-"); return `${d}/${m}/${y}`; }
@@ -480,7 +500,7 @@ function renderCal(){
       cls+="available";
       if(isHoliday){
         cls+=" holiday";
-        if(!el.title) el.title=HOLIDAY_NAMES[ds]||"חג";
+        el.title=(holidayName(ds)||"חג")+(el.title?" · "+el.title:"");
       }
       el.onclick=()=>selectDay(ds);
     }
