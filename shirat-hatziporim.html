@@ -1509,6 +1509,116 @@ function Sec({
 }
 
 // ── Booking Form ──
+// ── בורר תאריכים עם לוח עברי משולב (4.10.2026) ──
+// מחליף את <input type="date"> בטופס ההזמנה: בורר המערכת של אנדרואיד לא יודע להציג תאריך עברי.
+// מציג: תאריך עברי בכל יום, פרשת השבוע, חגים, לילות תפוסים/חסומים, וחסימת תאריכים לפני min.
+function HebDatePicker({
+  value,
+  onChange,
+  min = "",
+  err = false,
+  nightInfo = null,
+  placeholder = "בחר תאריך"
+}) {
+  const h = React.createElement;
+  const [open, setOpen] = useState(false);
+  const base = value || min || new Date().toISOString().slice(0, 10);
+  const [vd, setVd] = useState(() => new Date(+base.slice(0, 4), +base.slice(5, 7) - 1, 1));
+  const yr = vd.getFullYear(),
+    mo = vd.getMonth();
+  const [hcal, setHcal] = useState(() => _hebcalMem[yr] || {});
+  useEffect(() => {
+    if (!open) return;
+    let alive = true;
+    loadHebcalYear(yr).then(m => { if (alive) setHcal(m); }).catch(() => {});
+    return () => { alive = false; };
+  }, [yr, open]);
+  const pad = n => String(n).padStart(2, "0");
+  const todayDs = (() => { const t = new Date(); return t.getFullYear() + "-" + pad(t.getMonth() + 1) + "-" + pad(t.getDate()); })();
+  const openPicker = () => {
+    const b = value || min || todayDs;
+    setVd(new Date(+b.slice(0, 4), +b.slice(5, 7) - 1, 1));
+    setOpen(true);
+  };
+  const pick = ds => { onChange(ds); setOpen(false); };
+  const firstDay = new Date(yr, mo, 1).getDay(),
+    dim = new Date(yr, mo + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < firstDay; i++) cells.push(h("div", { key: "e" + i }));
+  for (let d = 1; d <= dim; d++) {
+    const ds = yr + "-" + pad(mo + 1) + "-" + pad(d);
+    const hd = hebDate(ds),
+      ev = hcal[ds] || {};
+    const disabled = !!(min && ds < min);
+    const sel = ds === value;
+    const info = nightInfo ? nightInfo(ds) : null;
+    const hol = typeof isHoliday === "function" && isHoliday(ds);
+    const evTxt = ev.parasha || (ev.holidays && ev.holidays[0]) || "";
+    const bg = sel ? "#8b5a2b" : info ? "#2a2a40" : hol ? "#f3e8ff" : ds === todayDs ? "#f0ece3" : "#fff";
+    const fg = sel || info ? "#fff" : disabled ? "#ccc" : "#1a1a2e";
+    cells.push(h("div", {
+      key: ds,
+      className: "hdp-day",
+      title: [hd ? hd.dayStr + " " + hd.month + " " + hd.yearStr : "", ev.parasha ? "פרשת " + ev.parasha : ""].concat(ev.holidays || [], info ? [info] : []).filter(Boolean).join(" · "),
+      onClick: () => { if (!disabled) pick(ds); },
+      style: {
+        background: bg,
+        color: fg,
+        opacity: disabled ? 0.45 : 1,
+        borderRadius: 9,
+        border: ds === todayDs && !sel ? "1.5px solid #c9b48a" : "1.5px solid transparent",
+        minHeight: 52,
+        padding: "3px 1px",
+        cursor: disabled ? "default" : "pointer",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "flex-start",
+        overflow: "hidden",
+        gap: 1
+      }
+    }, h("span", { style: { fontSize: 15, fontWeight: 700, lineHeight: 1.2 } }, d),
+       hd && h("span", { className: "hdp-heb", style: { fontSize: 10, lineHeight: 1.1, color: sel || info ? "#f4dcb0" : "#a0784a", whiteSpace: "nowrap" } }, hd.day === 1 ? hd.dayStr + " " + hd.month : hd.dayStr),
+       evTxt && h("span", { className: "hdp-ev", style: { fontSize: 9, lineHeight: 1.1, fontWeight: 700, maxWidth: "100%", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: sel || info ? "#f4c26a" : ev.parasha ? "#8a5a1a" : "#7c3aed" } }, evTxt),
+       info && !evTxt && h("span", { style: { fontSize: 9, lineHeight: 1.1, color: "#c9c4d8" } }, "תפוס")));
+  }
+  const navBtn = (lbl, delta) => h("button", {
+    type: "button",
+    onClick: () => setVd(new Date(yr, mo + delta, 1)),
+    style: { border: "none", background: "#f0ece3", borderRadius: 10, width: 40, height: 40, fontSize: 18, cursor: "pointer" }
+  }, lbl);
+  const display = value ? fd(value) : placeholder;
+  const hebLine = value ? hebDateLabel(value) : "";
+  return h("div", { className: "heb-date-picker" },
+    h("div", {
+      role: "button",
+      tabIndex: 0,
+      onClick: openPicker,
+      style: { ...iS(err), cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, color: value ? "#1a1a2e" : "#999" }
+    }, h("span", null, display), h("span", { style: { fontSize: 16 } }, "📅")),
+    hebLine && h("div", { className: "heb-date-label", style: { fontSize: 12, color: "#8a6a3a", marginTop: 4 } }, hebLine),
+    open && h("div", {
+      onClick: () => setOpen(false),
+      style: { position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: 10 }
+    }, h("div", {
+      onClick: e => e.stopPropagation(),
+      dir: "rtl",
+      style: { background: "#fffaf3", borderRadius: 18, padding: 14, width: "100%", maxWidth: 420, boxShadow: "0 10px 40px rgba(0,0,0,.3)", fontFamily: "'Heebo',sans-serif" }
+    },
+      h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 } },
+        navBtn("→", -1),
+        h("div", { style: { textAlign: "center" } },
+          h("div", { style: { fontSize: 17, fontWeight: 800, color: "#1a1a2e" } }, MONTHS_HE[mo] + " " + yr),
+          h("div", { className: "hdp-heb-month", style: { fontSize: 13, fontWeight: 600, color: "#8a6a3a" } }, hebMonthRange(yr, mo))),
+        navBtn("←", 1)),
+      h("div", { style: { display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 3, marginBottom: 4 } },
+        DAYS_HE.map(d => h("div", { key: d, style: { textAlign: "center", fontSize: 12, fontWeight: 700, color: "#8a7a6a" } }, d))),
+      h("div", { style: { display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 3 } }, cells),
+      h("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, gap: 8 } },
+        h("button", { type: "button", onClick: () => { if (!min || todayDs >= min) pick(todayDs); else setVd(new Date()); }, style: bS("#f0ece3", "#5a4a3a") }, "היום"),
+        h("span", { style: { fontSize: 11, color: "#999" } }, "■ כהה = לילה תפוס"),
+        h("button", { type: "button", onClick: () => setOpen(false), style: bS("#1a1a2e", "#fff") }, "סגור")))));
+}
 function BookingForm({
   booking,
   onSave,
@@ -1517,6 +1627,13 @@ function BookingForm({
   blockedDates = [],
   nextId = 1
 }) {
+  // לילה תפוס/חסום — לסימון בבורר התאריכים העברי (לא כולל את ההזמנה הנערכת)
+  const nightInfo = ds => {
+    const ob = existingBookings.find(b => b.status !== "cancelled" && b.id !== (booking && booking.id) && b.checkin <= ds && ds < b.checkout);
+    if (ob) return "תפוס — " + (ob.name || "");
+    const bl = blockedDates.find(b => b.date === ds);
+    return bl ? "חסום" + (bl.note ? " — " + bl.note : "") : null;
+  };
   const empty = {
     name: "",
     phone: "",
@@ -1819,20 +1936,16 @@ function BookingForm({
                   },
                   children: [" — ", err.checkin]
                 })]
-              }), /*#__PURE__*/_jsx("input", {
-                style: iS(err.checkin),
-                type: "date",
+              }), /*#__PURE__*/_jsx(HebDatePicker, {
+                err: !!err.checkin,
                 value: f.checkin,
-                onChange: e => {
-                  set("checkin", e.target.value);
-                  if (f.checkout && f.checkout <= e.target.value) {
+                nightInfo: nightInfo,
+                onChange: v => {
+                  set("checkin", v);
+                  if (f.checkout && f.checkout <= v) {
                     set("checkout", "");
                   }
                 }
-              }), f.checkin && /*#__PURE__*/_jsx("div", {
-                className: "heb-date-label",
-                style: { fontSize: 12, color: "#8a6a3a", marginTop: 4 },
-                children: hebDateLabel(f.checkin)
               })]
             }), /*#__PURE__*/_jsxs("div", {
               children: [/*#__PURE__*/_jsxs(Lbl, {
@@ -1842,20 +1955,16 @@ function BookingForm({
                   },
                   children: [" — ", err.checkout]
                 })]
-              }), /*#__PURE__*/_jsx("input", {
-                style: iS(err.checkout),
-                type: "date",
+              }), /*#__PURE__*/_jsx(HebDatePicker, {
+                err: !!err.checkout,
                 min: f.checkin ? (() => {
                   const d = new Date(f.checkin);
                   d.setDate(d.getDate() + 1);
                   return d.toISOString().split("T")[0];
                 })() : "",
                 value: f.checkout,
-                onChange: e => set("checkout", e.target.value)
-              }), f.checkout && /*#__PURE__*/_jsx("div", {
-                className: "heb-date-label",
-                style: { fontSize: 12, color: "#8a6a3a", marginTop: 4 },
-                children: hebDateLabel(f.checkout)
+                nightInfo: nightInfo,
+                onChange: v => set("checkout", v)
               })]
             })]
           })
