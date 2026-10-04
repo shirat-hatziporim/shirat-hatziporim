@@ -463,6 +463,12 @@ async function checkBackend(g){
         html.indexOf("צאת השבת")!==-1 && html.indexOf("שעה וחצי")!==-1,
         (html.indexOf("צאת השבת")===-1 || html.indexOf("שעה וחצי")===-1)
           ? "חסרה שורת היציאה במוצאי שבת במייל האישור — צריך לתקן ב-Code.gs ולפרוס מחדש" : ms+"ms");
+    // ── לוח עברי במייל (4.10.2026): ה-preview הוא שישי→שבת 16–17.10.2026 ──
+    chk(g, "מייל אישור — תאריך עברי ליד התאריכים",
+        html.indexOf("ה׳ חשוון תשפ״ז")!==-1 && html.indexOf("ו׳ חשוון תשפ״ז")!==-1,
+        html.indexOf("חשוון")===-1 ? "אין תאריך עברי במייל — ייתכן שהפריסה לא התעדכנה" : "16.10.2026 = ה׳ חשוון תשפ״ז");
+    chk(g, "מייל אישור — שורת 'שבת: פרשת …' כשהשהייה כוללת שבת",
+        html.indexOf("פרשת נח")!==-1, html.indexOf("פרשת נח")===-1 ? "צפוי: פרשת נח (17.10.2026)" : "פרשת נח");
   } catch(e){
     chk(g, "מייל אישור — preview (action=previewConfirm)", false, e.message + " (ייתכן שצריך לפרוס מחדש את Code.gs עם previewConfirm)");
   }
@@ -724,6 +730,26 @@ async function checkAssets(g, src){
   try {
     const rc = await req("Code.gs");
     chk(g, "Code.gs (עותק מראה) נטען", rc.code===200, "HTTP "+rc.code+" | "+Math.round(rc.text.length/1024)+"KB");
+    // ── מנוע לוח עברי + פרשות ב-Code.gs (מקומי — בלי UrlFetchApp ובלי הרשאה חדשה) ──
+    {
+      let ok=false, detail="מנוע הלוח העברי לא נמצא ב-Code.gs";
+      const a=rc.text.indexOf("var HEB_EPOCH"), b=rc.text.indexOf("// השבתות שבתוך השהייה");
+      if (a!==-1 && b>a){
+        try {
+          const E=new Function(rc.text.slice(a,b)+"; return {hebDateStr, parashaOnShabbat};")();
+          const cases=[["2026-10-17","נח"],["2026-10-10","בראשית"],["2026-09-26",""],["2025-05-03","תזריע-מצורע"],
+                       ["2024-04-20","מצורע"],["2026-08-15","שופטים"],["2026-09-05","נצבים-וילך"],["2027-07-31","מטות-מסעי"]];
+          const bad=cases.filter(c=>E.parashaOnShabbat(c[0])!==c[1]);
+          const dOk = E.hebDateStr("2026-10-16")==="יום ו׳, ה׳ חשוון תשפ״ז";
+          ok = bad.length===0 && dOk;
+          detail = ok ? "8 שבתות מוכרות (כולל חג ופרשות מחוברות) + המרת תאריך" :
+            (!dOk ? "המרת תאריך שגויה: "+E.hebDateStr("2026-10-16")+" " : "") + bad.map(c=>c[0]+": "+E.parashaOnShabbat(c[0])+" במקום "+(c[1]||"(חג)")).join(", ");
+        } catch(e){ detail="שגיאה בהרצה: "+e.message; }
+      }
+      chk(g, "Code.gs — לוח עברי ופרשות במיילים (סימולציה)", ok, detail);
+      chk(g, "Code.gs — הלוח העברי לא משתמש ב-UrlFetchApp (בלי הרשאה חדשה)",
+          rc.text.indexOf("UrlFetchApp")===-1, "הוספת UrlFetchApp מחייבת אישור מחדש של הסקריפט");
+    }
     chk(g, "Code.gs — safeDecode במקום decodeURIComponent על e.parameter",
         rc.text.indexOf("function safeDecode")!==-1
         && rc.text.indexOf("decodeURIComponent(e.parameter.")===-1,
