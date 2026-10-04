@@ -298,8 +298,12 @@ async function checkPage(g){
   chk(g, "יומן — פרשת השבוע וחגים מ-Hebcal (מנהג א\"י, במטמון)",
       src.indexOf("function loadHebcalYear(")!==-1 && /hebcal\.com\/hebcal\?[^"]*i=on/.test(src)
       && src.indexOf('"cal-parasha"')!==-1 && src.indexOf("shirat_hebcal_")!==-1);
-  chk(g, "טופס הזמנה — תאריך עברי ופרשה מתחת לכניסה/יציאה",
-      (src.match(/className: "heb-date-label"/g) || []).length === 2);
+  chk(g, "טופס הזמנה — בורר תאריכים עם לוח עברי (במקום בורר אנדרואיד)",
+      src.indexOf("function HebDatePicker(")!==-1 && (src.match(/_jsx\(HebDatePicker,/g) || []).length === 2
+      && src.indexOf('className: "hdp-heb"')!==-1 && src.indexOf('className: "heb-date-label"')!==-1,
+      "כניסה + יציאה; תאריך עברי, פרשה, חגים ולילות תפוסים");
+  chk(g, "טופס הזמנה — אין יותר input type=date לכניסה/יציאה",
+      !/style: iS\(err\.check(in|out)\),\s*type: "date"/.test(src));
   {
     let ok=false, detail="פונקציות הלוח העברי לא נמצאו";
     const a=src.indexOf("function gematria"), b=src.indexOf("const _hebcalMem = {};");
