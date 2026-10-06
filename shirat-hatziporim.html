@@ -8,6 +8,35 @@
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
+// 🔐 מפתח ניהול (6.10.2026) — השרת דוחה כל פעולת ניהול בלי key=ADMIN_KEY.
+// במקום לגעת בכ-30 מקומות שבונים s.src ל-SCRIPT_URL, עוטפים את ה-setter של src
+// בתגיות <script>: כל כתובת שמתחילה ב-exec של הצימר מקבלת את המפתח אוטומטית.
+// המפתח נשמר ב-localStorage של הדומיין (משותף ל-health.html) ולא בקוד.
+(function(){
+  var BASE = "https://script.google.com/macros/s/AKfycby9elcqlGzqijWnXWUYFo3QeW-wWwIt9pj4XmQSsN8RkgkRCwI7eRlRv9AvMLxVC1rTZg/exec";
+  window.getAdminKey = function(){ try { return localStorage.getItem("shirat_admin_key") || ""; } catch(e){ return ""; } };
+  window.setAdminKey = function(k){ try { if (k) localStorage.setItem("shirat_admin_key", String(k).trim()); else localStorage.removeItem("shirat_admin_key"); } catch(e){} };
+  window.withAdminKey = function(url){
+    var k = window.getAdminKey();
+    if (!k || typeof url !== "string" || url.indexOf(BASE) !== 0 || /[?&]key=/.test(url)) return url;
+    return url + (url.indexOf("?") === -1 ? "?" : "&") + "key=" + encodeURIComponent(k);
+  };
+  window.askAdminKey = function(msg){
+    var k = prompt(msg || "🔐 הזן את מפתח הניהול של המערכת:");
+    if (k && k.trim()) { window.setAdminKey(k); return true; }
+    return false;
+  };
+  try {
+    var d = Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, "src");
+    Object.defineProperty(HTMLScriptElement.prototype, "src", {
+      configurable: true, enumerable: d.enumerable, get: d.get,
+      set: function(v){ d.set.call(this, window.withAdminKey(String(v))); }
+    });
+  } catch(e) { console.error("admin key hook failed", e); }
+  if (!window.getAdminKey() && window.self === window.top) window.askAdminKey();
+})();
+</script>
+<script>
 function sendConfirmationEmail(booking){
   if(!booking.email) return;
   if(booking.status!=="confirmed") return;
@@ -656,6 +685,11 @@ function jsonp(url) {
     window[cb] = function (data) {
       if (done) return;
       done = true;
+      if (data && data.error === "unauthorized" && !window.__keyAsked) {
+        window.__keyAsked = true;
+        window.setAdminKey("");
+        if (window.askAdminKey("🔐 מפתח הניהול חסר או שגוי — הזן אותו שוב (ואז רענן את הדף):")) location.reload();
+      }
       resolve(data);
       delete window[cb];
       try {
@@ -911,7 +945,7 @@ async function postScript(payload, timeoutMs = 120000) {
   try {
     r = await fetch(SCRIPT_URL, {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: JSON.stringify(Object.assign({ key: window.getAdminKey() }, payload)),
       signal: ctrl.signal
     });
   } catch (e) {
