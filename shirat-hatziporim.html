@@ -622,20 +622,22 @@ function loadHebcalYear(year) {
   const key = "shirat_hebcal_" + year;
   try {
     const c = JSON.parse(localStorage.getItem(key) || "null");
-    if (c && c.v === 1 && c.map) return Promise.resolve(_hebcalMem[year] = c.map);
+    if (c && c.v === 2 && c.map) return Promise.resolve(_hebcalMem[year] = c.map);
   } catch {}
-  const url = "https://www.hebcal.com/hebcal?v=1&cfg=json&s=on&maj=on&min=on&mod=on&nx=on&ss=off&mf=off&c=off&i=on&lg=he-x-NoNikud&year=" + year;
+  const url = "https://www.hebcal.com/hebcal?v=1&cfg=json&s=on&maj=on&min=on&mod=off&nx=on&ss=off&mf=off&c=off&i=on&lg=he-x-NoNikud&year=" + year;
   return _hebcalPending[year] = fetch(url).then(r => r.json()).then(j => {
     const map = {};
     (j.items || []).forEach(it => {
       const ds = String(it.date || "").slice(0, 10);
       if (!ds) return;
+      // רק חגי ישראל המסורתיים + ראש חודש — בלי ימים ממלכתיים/מודרניים (יום בן-גוריון, סיגד וכד')
+      if (it.subcat === "modern") return;
       const e = map[ds] || (map[ds] = {});
       const name = _stripNikud(it.hebrew || it.title);
       if (it.category === "parashat") e.parasha = name.replace(/^פרשת\s*/, "");else if (it.category === "holiday" || it.category === "roshchodesh") (e.holidays = e.holidays || []).push(name);
     });
     _hebcalMem[year] = map;
-    try { localStorage.setItem(key, JSON.stringify({ v: 1, map })); } catch {}
+    try { localStorage.setItem(key, JSON.stringify({ v: 2, map })); } catch {}
     return map;
   }).finally(() => { delete _hebcalPending[year]; });
 }
