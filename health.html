@@ -298,6 +298,10 @@ async function checkPage(g){
   chk(g, "יומן — פרשת השבוע וחגים מ-Hebcal (מנהג א\"י, במטמון)",
       src.indexOf("function loadHebcalYear(")!==-1 && /hebcal\.com\/hebcal\?[^"]*i=on/.test(src)
       && src.indexOf('"cal-parasha"')!==-1 && src.indexOf("shirat_hebcal_")!==-1);
+  // ── 6.10.2026: רק חגי ישראל המסורתיים + ר"ח, בלי ימים ממלכתיים (בן-גוריון, סיגד, יום העלייה...) ──
+  chk(g, "יומן — ללא ימים ממלכתיים/מודרניים (mod=off + סינון subcat modern + מטמון v2)",
+      /hebcal\.com\/hebcal\?[^"]*mod=off/.test(src) && !/hebcal\.com\/hebcal\?[^"]*mod=on/.test(src)
+      && src.indexOf('it.subcat === "modern"')!==-1 && src.indexOf("c.v === 2")!==-1);
   chk(g, "טופס הזמנה — בורר תאריכים עם לוח עברי (במקום בורר אנדרואיד)",
       src.indexOf("function HebDatePicker(")!==-1 && (src.match(/_jsx\(HebDatePicker,/g) || []).length === 2
       && src.indexOf('className: "hdp-heb"')!==-1 && src.indexOf('className: "heb-date-label"')!==-1,
@@ -754,6 +758,9 @@ async function checkAssets(g, src){
         r.text.indexOf("function hebDate(")!==-1 && r.text.indexOf("function loadHebcalYear(")!==-1
         && r.text.indexOf('h.className="cal-heb-day"')!==-1 && r.text.indexOf('id="calHebMonth"')!==-1,
         "כותרת חודש עברי + תאריך עברי + פרשה בכל שבת");
+    chk(g, "טופס ההזמנה — ללא ימים ממלכתיים/מודרניים בלוח (mod=off + סינון + מטמון v2)",
+        /hebcal\.com\/hebcal\?[^"]*mod=off/.test(r.text) && !/hebcal\.com\/hebcal\?[^"]*mod=on/.test(r.text)
+        && r.text.indexOf('it.subcat === "modern"')!==-1 && r.text.indexOf("c.v === 2")!==-1);
     chk(g, "טופס ההזמנה — תאריך עברי מתחת לשדות כניסה/יציאה",
         r.text.indexOf('id="checkinHeb"')!==-1 && r.text.indexOf('id="checkoutHeb"')!==-1);
     chk(g, "טופס ההזמנה — selStart/selEnd מוצהרים (renderCal לא קורס לפני בחירה)",
