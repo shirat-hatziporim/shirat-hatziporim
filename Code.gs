@@ -1133,11 +1133,11 @@ function dailyEmailTrigger() {
     if (b.status === "cancelled") return;
     if (!b.email) return;
     if (b.checkin === tomorrowStr && !b.sentAutoReminder) {
-      try { sendReminderEmail(b); b.sentAutoReminder = true; updated = true; Logger.log("תזכורת: " + b.name); }
+      try { sendReminderEmail(b); b.sentAutoReminder = true; updated = true; Logger.log("תזכורת: #" + b.id); }
       catch(err) { Logger.log("שגיאה תזכורת: " + err); }
     }
     if (b.checkout === yesterdayStr && !b.sentAutoReview) {
-      try { sendReviewEmail(b); b.sentAutoReview = true; updated = true; Logger.log("ביקורת: " + b.name); }
+      try { sendReviewEmail(b); b.sentAutoReview = true; updated = true; Logger.log("ביקורת: #" + b.id); }
       catch(err) { Logger.log("שגיאה ביקורת: " + err); }
     }
   });
@@ -1168,17 +1168,17 @@ function motzeiShabatTrigger() {
     if (!b.email) return;
 
     if (b.checkin === sundayStr && !b.sentAutoReminder) {
-      try { sendReminderEmail(b); b.sentAutoReminder = true; updated = true; Logger.log("מוצש תזכורת ליום ראשון: " + b.name); }
+      try { sendReminderEmail(b); b.sentAutoReminder = true; updated = true; Logger.log("מוצש תזכורת ליום ראשון: #" + b.id); }
       catch(err) { Logger.log("שגיאה: " + err); }
     }
 
     if (b.checkout === fridayStr && !b.sentAutoReview) {
-      try { sendReviewEmail(b); b.sentAutoReview = true; updated = true; Logger.log("מוצש ביקורת יום שישי: " + b.name); }
+      try { sendReviewEmail(b); b.sentAutoReview = true; updated = true; Logger.log("מוצש ביקורת יום שישי: #" + b.id); }
       catch(err) { Logger.log("שגיאה: " + err); }
     }
 
     if (b.checkout === saturdayStr && !b.sentAutoReview) {
-      try { sendReviewEmail(b); b.sentAutoReview = true; updated = true; Logger.log("מוצש ביקורת שבת: " + b.name); }
+      try { sendReviewEmail(b); b.sentAutoReview = true; updated = true; Logger.log("מוצש ביקורת שבת: #" + b.id); }
       catch(err) { Logger.log("שגיאה: " + err); }
     }
   });
