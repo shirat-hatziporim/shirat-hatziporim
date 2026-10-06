@@ -146,6 +146,12 @@ async function checkPage(g){
       src.indexOf("window.withAdminKey")!==-1 && src.indexOf("HTMLScriptElement.prototype")!==-1
       && src.indexOf("key: window.getAdminKey()")!==-1,
       "בלי זה כל קריאה מהניהול תיחסם ב-unauthorized");
+  chk(g, "🔐 React נעול לגרסה מדויקת עם SRI",
+      /react@18\.3\.1\/umd\/react\.production\.min\.js" integrity="sha384-/.test(src)
+      && /react-dom@18\.3\.1\/umd\/react-dom\.production\.min\.js" integrity="sha384-/.test(src)
+      && !/unpkg\.com\/react(-dom)?@18\//.test(src),
+      "react@18 צף בלי integrity = כל שינוי ב-CDN רץ בלוח הניהול עם המפתח");
+  chk(g, "🔐 אין סיסמה ישנה (0561) בקוד", src.indexOf('PASSWORD = "0561"')===-1);
   chk(g, "🔐 אין מפתח ניהול מוטמע בקוד", !/ADMIN_KEY\s*[=:]\s*["'][^"']{8,}/.test(src));
   chk(g, "אין טוקן Airtable בקוד", !/pat[A-Za-z0-9]{14}\.[a-f0-9]{40,}/.test(src) && src.indexOf("AIRTABLE_TOKEN")===-1);
   chk(g, "כתובת ה-Apps Script מוגדרת", src.indexOf("script.google.com/macros/")!==-1);
@@ -360,7 +366,9 @@ async function checkSecurity(g){
   try {
     const { data } = await jsonp(SCRIPT_URL + "?action=authStatus", 20000);
     chk(g, "🔐 מפתח ניהול (ADMIN_KEY) מוגדר בשרת", !!(data && data.configured),
-        data && data.configured ? "Script Properties" : "לא הוגדר — השרת פתוח לכל העולם! להגדיר ב-Project Settings ← Script Properties");
+        data && data.configured ? "Script Properties"
+          : data && data.error === "unauthorized" ? "המפתח בדפדפן הזה חסר/שגוי — היכנס ללוח הניהול והזן אותו"
+          : "לא הוגדר — השרת פתוח לכל העולם! להגדיר ב-Project Settings ← Script Properties");
   } catch(e){ row(g, "warn", "🔐 מצב מפתח הניהול", e.message); }
   try {
     const { data } = await jsonp(SCRIPT_URL + "?action=get", 20000, true);
@@ -908,9 +916,9 @@ async function checkAssets(g, src){
 
 // ════════ 6. ספקים חיצוניים ════════
 async function checkExternal(g){
-  const react = await loadScript("https://unpkg.com/react@18/umd/react.production.min.js", 10000);
+  const react = await loadScript("https://unpkg.com/react@18.3.1/umd/react.production.min.js", 10000);
   chk(g, "unpkg — React זמין", react.ok);
-  const dom = await loadScript("https://unpkg.com/react-dom@18/umd/react-dom.production.min.js", 10000);
+  const dom = await loadScript("https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js", 10000);
   chk(g, "unpkg — ReactDOM זמין", dom.ok);
   try {
     const t0 = Date.now();
