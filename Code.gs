@@ -24,12 +24,100 @@ function safeDecode(v) {
   try { return decodeURIComponent(s); } catch (err) { return s; }
 }
 
+// ════════ 🔐 אבטחה (6.10.2026) ════════════════════════════════════════════════
+// ה-web app פרוס כ-ANYONE_ANONYMOUS וה-SCRIPT_URL גלוי ב-booking.html, ולכן כל action
+// שאינו ברשימה הציבורית דורש מפתח ניהול (פרמטר key). המפתח נשמר ב-Script Properties
+// בשם ADMIN_KEY — ⚠ לעולם לא בקוד (עותק המראה של הקובץ ציבורי!).
+// PropertiesService לא דורש scope חדש ⇒ לא משבית את ה-web app.
+// מצב מעבר: כל עוד ADMIN_KEY לא הוגדר — הכל פתוח כמו קודם (health.html מתריע באדום).
+const PUBLIC_ACTIONS = {
+  getAvailability: 1, addBooking: 1, notifyOwner: 1, getTemplates: 1,
+  previewInquiry: 1, previewConfirm: 1, previewReview: 1, previewBroadcast: 1
+};
+// שם callback של JSONP — מזהה JS בלבד. אחרת callback=alert(1)// מזריק קוד לתשובה.
+const CALLBACK_RE = /^[A-Za-z_$][\w$.]{0,63}$/;
+
+function adminKeyConfigured() {
+  return !!PropertiesService.getScriptProperties().getProperty("ADMIN_KEY");
+}
+
+function isAdmin(key) {
+  const real = PropertiesService.getScriptProperties().getProperty("ADMIN_KEY");
+  if (!real) return true;                       // מצב מעבר — טרם הוגדר מפתח
+  if (typeof key !== "string" || key.length !== real.length) return false;
+  let diff = 0;                                 // השוואה בזמן קבוע
+  for (let i = 0; i < real.length; i++) diff |= real.charCodeAt(i) ^ key.charCodeAt(i);
+  return diff === 0;
+}
+
+// מונה גלובלי ב-CacheService (Apps Script לא חושף IP). לא אטומי — מספיק לבלימת הצפה.
+function rateLimit(bucket, max, windowSec) {
+  const c = CacheService.getScriptCache();
+  const k = "rl_" + bucket + "_" + Math.floor(Date.now() / 1000 / windowSec);
+  const n = Number(c.get(k) || 0) + 1;
+  c.put(k, String(n), windowSec + 5);
+  if (n > max) throw new Error("rate limited");
+}
+
+// מונע פירוש ערך טקסט כנוסחה בגיליון (=IMAGE(...) היה מדליף את הגיליון החוצה).
+function cellSafe(v) {
+  return (typeof v === "string" && /^[=+\-@\t\r]/.test(v)) ? "'" + v : v;
+}
+
+// הזמנה מהטופס הציבורי — רק שדות מותרים; סטטוס/תשלום/דגלים נקבעים כאן ולא ע"י הלקוח.
+const PUBLIC_BOOKING_FIELDS = ["name","phone","email","checkin","checkout","guests",
+  "extraGuests","babies","babyCrib","notes","total","nights","guestExtra"];
+const NUMERIC_BOOKING_FIELDS = { guests: 1, extraGuests: 1, babies: 1, total: 1, nights: 1 };
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function sanitizePublicBooking(b) {
+  if (!b || typeof b !== "object") throw new Error("bad booking");
+  const out = {};
+  PUBLIC_BOOKING_FIELDS.forEach(function(f) {
+    if (b[f] === undefined || b[f] === null) return;
+    out[f] = NUMERIC_BOOKING_FIELDS[f] ? (Number(b[f]) || 0) : String(b[f]).slice(0, 500);
+  });
+  if (!DATE_RE.test(out.checkin || "") || !DATE_RE.test(out.checkout || "") || out.checkout <= out.checkin)
+    throw new Error("bad dates");
+  if (!String(out.name || "").trim()) throw new Error("missing name");
+  const id = Number(b.id);
+  out.id = (id > 0 && id < 1e14) ? id : Date.now();
+  out.status = "pending";
+  out.source = "online";
+  out.paid = 0;
+  out.discount = 0;
+  return out;
+}
+
+// זמינות לטופס הציבורי — תאריכים בלבד, בלי שום פרט אישי (קודם booking.html טען את כל ההזמנות).
+function getAvailability() {
+  const booked = getBookings()
+    .filter(function(b) { return b.status !== "cancelled" && b.checkin && b.checkout; })
+    .map(function(b) { return { checkin: String(b.checkin), checkout: String(b.checkout) }; });
+  const blocked = getBlocked().map(function(x) { return x.date; });
+  return { booked: booked, blocked: blocked };
+}
+
+// גרסה ציבורית של getTemplates — רק המחירון (הטופס צריך אותו). תבניות ומטא נשארים לניהול.
+function getPublicTemplates() {
+  const t = getTemplates();
+  return t.shirat_prices !== undefined ? { shirat_prices: t.shirat_prices } : {};
+}
+
 function doGet(e) {
-  const action = e.parameter.action;
-  const callback = e.parameter.callback || "";
+  const p = (e && e.parameter) || {};
+  const action = p.action;
+  const callback = CALLBACK_RE.test(p.callback || "") ? p.callback : "";
+  const admin = isAdmin(p.key);
   let result;
   try {
-    if (action === "get") result = getBookings();
+    if (!admin && !PUBLIC_ACTIONS[action]) {
+      result = { error: "unauthorized" };
+    } else if (action === "getAvailability") {
+      result = getAvailability();
+    } else if (action === "authStatus") {
+      result = { ok: true, configured: adminKeyConfigured() };
+    } else if (action === "get") result = getBookings();
     else if (action === "save") {
       const bookings = JSON.parse(safeDecode(e.parameter.bookings));
       if (!Array.isArray(bookings)) throw new Error("save: הנתונים אינם מערך");
@@ -46,9 +134,13 @@ function doGet(e) {
     else if (action === "saveManualGuests") {
       const guests = JSON.parse(safeDecode(e.parameter.guests));
       saveManualGuests(guests); result = "ok";
-    } else if (action === "getTemplates") result = getTemplates();
+    } else if (action === "getTemplates") result = admin ? getTemplates() : getPublicTemplates();
     else if (action === "addBooking") {
-      const booking = JSON.parse(safeDecode(e.parameter.booking));
+      rateLimit("addBooking", 15, 3600);
+      const raw = JSON.parse(safeDecode(e.parameter.booking));
+      // גם מהניהול עובר חיטוי, אבל מנהל רשאי לקבוע סטטוס
+      const booking = sanitizePublicBooking(raw);
+      if (admin && adminKeyConfigured() && raw.status) booking.status = String(raw.status);
       addBooking(booking); result = "ok";
     } else if (action === "saveTemplate") {
       const key = safeDecode(e.parameter.key);
@@ -83,6 +175,7 @@ function doGet(e) {
     } else if (action === "getTrash") {
       result = getTrash();
     } else if (action === "notifyOwner") {
+      rateLimit("notifyOwner", 15, 3600);
       const data = JSON.parse(safeDecode(e.parameter.data));
       notifyOwner(data); result = "ok";
     } else if (action === "upsertBooking") {
@@ -111,7 +204,11 @@ function doGet(e) {
       // HTML של מייל התפוצה בלי לשלוח ובלי Drive — לבדיקת רגרסיה ב-health.html
       result = { html: buildBroadcastHtml("שנה טובה מצימר שירת הציפורים!\nשורה שנייה <b>לא מודגשת</b>", "image/jpeg", "בדיקה.jpg") };
     } else result = "ok";
-  } catch(err) { result = {error: err.toString()}; }
+  } catch(err) {
+    Logger.log((action || "?") + ": " + err);
+    // פרטי שגיאה רק למנהל — לציבור הודעה כללית (לא לחשוף מבנה פנימי)
+    result = (admin && adminKeyConfigured()) || !PUBLIC_ACTIONS[action] ? { error: err.toString() } : { error: "server error" };
+  }
 
   const json = JSON.stringify(result);
   if (callback) return ContentService.createTextOutput(callback+"("+json+");").setMimeType(ContentService.MimeType.JAVASCRIPT);
@@ -148,7 +245,8 @@ function doPost(e) {
   let result;
   try {
     const body = JSON.parse((e && e.postData && e.postData.contents) || "{}");
-    if (body.action === "broadcastUpload") result = broadcastUpload(body);
+    if (!isAdmin(body.key)) result = { error: "unauthorized" };
+    else if (body.action === "broadcastUpload") result = broadcastUpload(body);
     else if (body.action === "broadcastSend") result = broadcastSend(body);
     else result = { error: "פעולה לא מוכרת: " + body.action };
   } catch (err) { result = { error: err.toString() }; }
@@ -300,7 +398,9 @@ function broadcastSend(body) {
     const subject = String(body.subject || "").trim().slice(0, 150) || FROM_NAME;
     const message = String(body.message || "").slice(0, 5000);
     const emails = (Array.isArray(body.emails) ? body.emails : []).slice(0, isTest ? 1 : BROADCAST_MAX_BATCH)
-      .map(function(x) { return String(x || "").trim().toLowerCase(); });
+      .map(function(x) { return String(x || "").trim().toLowerCase(); })
+      // 🔐 מייל בדיקה — רק לכתובת העסק, לעולם לא לכתובת שרירותית
+      .map(function(x) { return isTest ? FROM_EMAIL : x; });
     // שמות מקבילים ל-emails (אופציונלי) — להחלפת {שם} בכל מייל בנפרד. רשימת המתעניינים
     // לא שולחת שמות, ואז {שם} פשוט לא מוחלף — התנהגות זהה לקודם.
     const names = Array.isArray(body.names) ? body.names : [];
@@ -493,8 +593,8 @@ function upsertBooking(b) {
       }
     }
     const row = headers.map(function(h) {
-      if (h === "phone" && b[h]) return String(b[h]);
-      return b[h] !== undefined && b[h] !== null ? b[h] : "";
+      if (h === "phone" && b[h]) return cellSafe(String(b[h]));
+      return b[h] !== undefined && b[h] !== null ? cellSafe(b[h]) : "";
     });
     const target = rowIdx > 0 ? rowIdx : Math.max(sheet.getLastRow(), 1) + 1;
     sheet.getRange(target, 1, 1, headers.length).setValues([row]);
@@ -803,7 +903,7 @@ function previewConfirm() {
 // גוף מייל האישור (מסלול ה-HTML המעוצב)
 function buildConfirmBody(b) {
   const body = "<tr><td style='padding:28px 24px;font-family:Arial,sans-serif;'>"
-    + "<p style='font-size:16px;color:#222;margin:0 0 8px;line-height:1.8;'>שלום וברכה <strong>" + b.name + "</strong>,</p>"
+    + "<p style='font-size:16px;color:#222;margin:0 0 8px;line-height:1.8;'>שלום וברכה <strong>" + escHtml(b.name || "") + "</strong>,</p>"
     + "<p style='font-size:15px;color:#444;margin:0 0 24px;line-height:1.8;'>שמחים לאשר את הזמנתכם בצימר שירת הציפורים!</p>"
     + "<p style='font-size:15px;color:#222;font-weight:700;margin:0 0 12px;'>&#x1F4C5; פרטי ההזמנה:</p>"
     + bx(
@@ -862,7 +962,7 @@ function sendReminderEmail(b) {
     return;
   }
   const body = "<tr><td style='padding:28px 24px;font-family:Arial,sans-serif;'>"
-    + "<p style='font-size:16px;color:#222;margin:0 0 8px;line-height:1.8;'>שלום וברכה <strong>" + b.name + "</strong>,</p>"
+    + "<p style='font-size:16px;color:#222;margin:0 0 8px;line-height:1.8;'>שלום וברכה <strong>" + escHtml(b.name || "") + "</strong>,</p>"
     + "<p style='font-size:15px;color:#444;margin:0 0 24px;line-height:1.8;'>מזכירים לכם שמחר אתם מגיעים אלינו! מחכים לכם ומתרגשים לארח אתכם.</p>"
     + "<p style='font-size:15px;color:#222;font-weight:700;margin:0 0 12px;'>&#x1F4C5; פרטי ההזמנה:</p>"
     + bx(
@@ -911,7 +1011,7 @@ function sendReviewEmail(b) {
 // יוכל להחזיר בדיוק את אותו HTML בלי לשלוח — אותו זוג כמו buildConfirmHtml/previewConfirm.
 function buildReviewHtml(b) {
   const body = "<tr><td style='padding:28px 24px;font-family:Arial,sans-serif;'>"
-    + "<p style='font-size:16px;color:#222;margin:0 0 8px;line-height:1.8;'>שלום וברכה <strong>" + b.name + "</strong>,</p>"
+    + "<p style='font-size:16px;color:#222;margin:0 0 8px;line-height:1.8;'>שלום וברכה <strong>" + escHtml(b.name || "") + "</strong>,</p>"
     + "<p style='font-size:15px;color:#444;margin:0 0 16px;line-height:1.8;'>רצינו להודות לכם מקרב לב על שבחרתם להתארח אצלנו בצימר &quot;שירת הציפורים&quot;.</p>"
     + "<p style='font-size:15px;color:#444;margin:0 0 24px;line-height:1.8;'>שמחנו מאוד לארח אתכם, ומקווים שנהנתם מהשהות, מהאווירה הנעימה ומהשקט הייחודי של המקום.</p>"
     + bx(
@@ -1168,8 +1268,8 @@ function saveAll(bookingsRaw) {
   // הכפילות של 18.8.2026. setValues כותב לטווח מפורש ולא תלוי במצב הקודם.
   const values = [headers].concat(bookings.map(function(b) {
     return headers.map(function(h) {
-      if (h === "phone" && b[h]) return String(b[h]);
-      return b[h] !== undefined && b[h] !== null ? b[h] : "";
+      if (h === "phone" && b[h]) return cellSafe(String(b[h]));
+      return b[h] !== undefined && b[h] !== null ? cellSafe(b[h]) : "";
     });
   }));
   sheet.getRange(1, 1, values.length, headers.length).setValues(values);
@@ -1186,8 +1286,8 @@ function addBooking(b) {
   const headers = BOOKING_HEADERS;
   if (sheet.getLastRow() === 0) sheet.appendRow(headers);
   sheet.appendRow(headers.map(function(h) {
-    if (h === "phone" && b[h]) return String(b[h]);
-    return b[h] !== undefined ? b[h] : "";
+    if (h === "phone" && b[h]) return cellSafe(String(b[h]));
+    return b[h] !== undefined ? cellSafe(b[h]) : "";
   }));
 }
 
@@ -1210,7 +1310,7 @@ function getBlocked() {
 // (או שנשארות שורות שרד בסוף). כאן: setValues לטווח מפורש + ניקוי מפורש של הזנב + flush.
 function writeSheet(sheet, headers, rows) {
   const before = sheet.getLastRow();
-  const values = [headers].concat(rows);
+  const values = [headers].concat(rows.map(function(r) { return r.map(cellSafe); }));
   sheet.getRange(1, 1, values.length, headers.length).setValues(values);
   if (before > values.length) {
     sheet.getRange(values.length + 1, 1, before - values.length, sheet.getLastColumn() || headers.length).clearContent();
@@ -1281,9 +1381,9 @@ function saveTemplate(key, value) {
   const sheet = getOrCreateSheet(TEMPLATES_SHEET);
   const rows = sheet.getDataRange().getValues();
   for (let i = 0; i < rows.length; i++) {
-    if (rows[i][0] === key) { sheet.getRange(i+1, 2).setValue(value); return; }
+    if (rows[i][0] === key) { sheet.getRange(i+1, 2).setValue(cellSafe(value)); return; }
   }
-  sheet.appendRow([key, value]);
+  sheet.appendRow([cellSafe(key), cellSafe(value)]);
 }
 
 const LEADS_SHEET = "מתעניינים";
@@ -1347,9 +1447,9 @@ function notifyOwner(d) {
     + "<tr><td style='padding:28px 24px;font-family:Arial,sans-serif;'>"
     + "<p style='font-size:16px;color:#222;margin:0 0 16px;line-height:1.8;'>התקבלה בקשת הזמנה חדשה דרך אתר הבוקינג:</p>"
     + bx(
-        "<p style='margin:0 0 8px;font-size:15px;font-weight:700;color:#1a1a2e;font-family:Arial,sans-serif;'>" + (d.name||"") + "</p>"
-        + "<p style='margin:0 0 6px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F4DE; " + (d.phone||"") + "</p>"
-        + "<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x2709; " + (d.email||"לא הוזן") + "</p>",
+        "<p style='margin:0 0 8px;font-size:15px;font-weight:700;color:#1a1a2e;font-family:Arial,sans-serif;'>" + escHtml(d.name||"") + "</p>"
+        + "<p style='margin:0 0 6px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F4DE; " + escHtml(d.phone||"") + "</p>"
+        + "<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x2709; " + escHtml(d.email||"לא הוזן") + "</p>",
         "#1565c0"
       )
     + bx(
@@ -1359,7 +1459,7 @@ function notifyOwner(d) {
         + "<p style='margin:0;font-size:15px;color:#2d5a27;font-weight:700;font-family:Arial,sans-serif;'>&#x20AA;" + Number(d.total||0).toLocaleString() + " סהכ</p>",
         "#5a9e4f"
       )
-    + (d.notes ? bx("<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'><strong>הערות:</strong> " + d.notes + "</p>", "#c8860a") : "")
+    + (d.notes ? bx("<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'><strong>הערות:</strong> " + escHtml(d.notes) + "</p>", "#c8860a") : "")
     + "<p style='margin:0 0 10px;font-size:14px;color:#666;font-family:Arial,sans-serif;'>לאישור ההזמנה:</p>"
     + "<a href='https://shirat-hatziporim.github.io/shirat-hatziporim/shirat-hatziporim.html' style='display:inline-block;background:#1a1a2e;color:#fff;text-decoration:none;padding:10px 20px;border-radius:6px;font-size:14px;font-weight:700;font-family:Arial,sans-serif;'>&#x1F4CB; פתח מערכת ההזמנות</a>"
     + "</td></tr>"
