@@ -84,7 +84,12 @@ function loadImg(url, timeoutMs){
   });
 }
 // JSONP — מדבר עם Apps Script בדיוק כמו האפליקציה
-function jsonp(url, timeoutMs){
+// 🔐 (6.10.2026) השרת דורש מפתח ניהול. המפתח נקרא מ-localStorage של הדומיין — אותו מפתח
+//    שהוזן בלוח הניהול. noKey=true ⇒ קריאה כמו מבקר אנונימי (לבדיקת החסימות).
+function adminKey(){ try { return localStorage.getItem("shirat_admin_key") || ""; } catch(e){ return ""; } }
+function jsonp(url, timeoutMs, noKey){
+  const k = adminKey();
+  if (!noKey && k) url += (url.includes("?") ? "&" : "?") + "key=" + encodeURIComponent(k);
   return new Promise((resolve,reject)=>{
     const cb = "hcb_" + Math.random().toString(36).slice(2);
     let done = false;
@@ -135,7 +140,13 @@ async function checkPage(g){
       /getElementById\(["']root["']\)\.innerHTML/.test(src) && src.indexOf("createRoot")!==-1);
 
   // ── אבטחה — אסור שטוקנים סודיים יחשפו בקוד הלקוח ──
-  chk(g, "אין GitHub PAT בקוד", !/ghp_[A-Za-z0-9]{20,}/.test(src));
+  chk(g, "אין GitHub PAT בקוד", !/(ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{30,})/.test(src));
+  // ── 🔐 6.10.2026: מפתח הניהול נשלח לשרת אוטומטית, ואינו מוטמע בקוד ──
+  chk(g, "🔐 לוח הניהול שולח מפתח ניהול לשרת (withAdminKey)",
+      src.indexOf("window.withAdminKey")!==-1 && src.indexOf("HTMLScriptElement.prototype")!==-1
+      && src.indexOf("key: window.getAdminKey()")!==-1,
+      "בלי זה כל קריאה מהניהול תיחסם ב-unauthorized");
+  chk(g, "🔐 אין מפתח ניהול מוטמע בקוד", !/ADMIN_KEY\s*[=:]\s*["'][^"']{8,}/.test(src));
   chk(g, "אין טוקן Airtable בקוד", !/pat[A-Za-z0-9]{14}\.[a-f0-9]{40,}/.test(src) && src.indexOf("AIRTABLE_TOKEN")===-1);
   chk(g, "כתובת ה-Apps Script מוגדרת", src.indexOf("script.google.com/macros/")!==-1);
   // ── קיבולת 4 נופשים (הוכרעה 26.8.2026): 2 בסיס + עד 2 תוספת ──
@@ -344,6 +355,38 @@ async function checkPage(g){
 }
 
 // ════════ 2. שרת הנתונים — Apps Script (JSONP) ════════
+async function checkSecurity(g){
+  // ── 🔐 6.10.2026 — השרת סגור למבקר אנונימי ──
+  try {
+    const { data } = await jsonp(SCRIPT_URL + "?action=authStatus", 20000);
+    chk(g, "🔐 מפתח ניהול (ADMIN_KEY) מוגדר בשרת", !!(data && data.configured),
+        data && data.configured ? "Script Properties" : "לא הוגדר — השרת פתוח לכל העולם! להגדיר ב-Project Settings ← Script Properties");
+  } catch(e){ row(g, "warn", "🔐 מצב מפתח הניהול", e.message); }
+  try {
+    const { data } = await jsonp(SCRIPT_URL + "?action=get", 20000, true);
+    chk(g, "🔐 הזמנות חסומות לגולש אנונימי (get בלי מפתח)",
+        !Array.isArray(data) && data && data.error === "unauthorized",
+        Array.isArray(data) ? "דליפה! " + data.length + " הזמנות עם פרטים אישיים נגישות לכל אחד" : "unauthorized ✓");
+  } catch(e){ row(g, "warn", "🔐 חסימת get אנונימי", e.message); }
+  try {
+    const { data } = await jsonp(SCRIPT_URL + "?action=getLeads", 20000, true);
+    chk(g, "🔐 לידים חסומים לגולש אנונימי", !Array.isArray(data), Array.isArray(data) ? "דליפה!" : "unauthorized ✓");
+  } catch(e){ row(g, "warn", "🔐 חסימת getLeads אנונימי", e.message); }
+  try {
+    const { data } = await jsonp(SCRIPT_URL + "?action=getAvailability", 20000, true);
+    const ok = data && Array.isArray(data.booked) && Array.isArray(data.blocked);
+    const extra = ok ? data.booked.filter(b => Object.keys(b).some(k => k!=="checkin" && k!=="checkout")).length : -1;
+    chk(g, "🔐 זמינות ציבורית — תאריכים בלבד, בלי פרטים אישיים", ok && extra===0,
+        ok ? data.booked.length + " טווחים, " + data.blocked.length + " חסימות" : "getAvailability לא החזיר מבנה תקין");
+  } catch(e){ row(g, "warn", "🔐 getAvailability", e.message); }
+  try {
+    const { data } = await jsonp(SCRIPT_URL + "?action=getTemplates", 20000, true);
+    const keys = data && typeof data === "object" ? Object.keys(data) : [];
+    chk(g, "🔐 תבניות לגולש אנונימי — רק המחירון", keys.every(k => k === "shirat_prices"),
+        keys.length ? keys.join(", ") : "ריק");
+  } catch(e){ row(g, "warn", "🔐 getTemplates אנונימי", e.message); }
+}
+
 async function checkBackend(g){
   let bookings = null;
   let templates = null;
@@ -733,6 +776,10 @@ async function checkAssets(g, src){
   try {
     const r = await req("booking.html");
     chk(g, "טופס ההזמנה הציבורי (booking.html) נטען", r.code===200, "HTTP "+r.code);
+    // ── 🔐 6.10.2026: הטופס הציבורי לא טוען את רשימת ההזמנות המלאה ──
+    chk(g, "🔐 טופס ההזמנה — טוען getAvailability ולא את כל ההזמנות",
+        r.text.indexOf("action=getAvailability")!==-1 && !/action=get[&"']/.test(r.text),
+        "action=get בטופס הציבורי חושף שמות/טלפונים/מיילים של כל האורחים");
     // ── מינימום 2 לילות בוטל 26.8.2026 — ניתן להזמין לילה אחד בכל יום ──
     chk(g, "טופס ההזמנה — אין חסימת מינימום לילות",
         r.text.indexOf("מינימום 2 לילות")===-1 && r.text.indexOf("nights<2")===-1
@@ -893,7 +940,13 @@ function copyReport(){
 }
 
 (async ()=>{
+  // 🔐 בלי מפתח — כל בדיקות השרת ייחסמו. מבקשים פעם אחת ושומרים (משותף ללוח הניהול).
+  if (!adminKey()) {
+    const k = prompt("🔐 הזן את מפתח הניהול (אותו מפתח של לוח הניהול):");
+    if (k && k.trim()) try { localStorage.setItem("shirat_admin_key", k.trim()); } catch(e){}
+  }
   const src = await checkPage(group("🩺 שלמות הדף — קוד צד לקוח"));
+  await checkSecurity(group("🔐 אבטחה — חסימת גישה אנונימית"));
   await checkBackend(group("🗄️ שרת הנתונים — Google Apps Script"));
   checkBusiness(group("🧮 לוגיקה עסקית ומחירון"), src);
   await checkRuntime(group("🐞 זמן ריצה — תצוגה חיה (תופס מסך לבן)"));
