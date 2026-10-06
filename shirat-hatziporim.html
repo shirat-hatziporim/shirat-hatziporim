@@ -5,8 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>שירת הציפורים — ניהול הזמנות</title>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<!-- 🔐 (6.10.2026) גרסה נעולה + SRI: הדפדפן מסרב להריץ קובץ ששונה ב-CDN. hash חושב מה-tarball של npm. -->
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" integrity="sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" integrity="sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1" crossorigin="anonymous"></script>
 <script>
 // 🔐 מפתח ניהול (6.10.2026) — השרת דוחה כל פעולת ניהול בלי key=ADMIN_KEY.
 // במקום לגעת בכ-30 מקומות שבונים s.src ל-SCRIPT_URL, עוטפים את ה-setter של src
@@ -113,7 +114,7 @@ const {
   useMemo,
   useEffect
 } = React;
-const PASSWORD = "0561";
+const PASSWORD = null; // 🔐 6.10.2026: הסיסמה הוסרה — ההגנה האמיתית היא ADMIN_KEY שנבדק בשרת
 const DEFAULT_PRICES = {
   weekday: 800,
   weekend: 1200,
