@@ -449,29 +449,19 @@ function isPast(ds){ return ds < toDS(new Date()); }
 function isUnavailable(ds){ return isPast(ds)||isBlocked(ds)||isBooked(ds); }
 
 // טען נתונים מ-Sheets
+// 🔐 (6.10.2026) getAvailability מחזיר תאריכים בלבד. קודם נטענו כאן כל ההזמנות
+//    (שמות, טלפונים, מיילים) לדפדפן של כל מבקר — דליפת מידע אישי.
 function loadData(){
   const cb="cb"+Date.now();
   const s=document.createElement("script");
-  s.src=SCRIPT_URL+"?action=get&callback="+cb+"&t="+Date.now();
+  s.src=SCRIPT_URL+"?action=getAvailability&callback="+cb+"&t="+Date.now();
   window[cb]=function(data){
-    if(Array.isArray(data)){
-      bookedRanges=data.filter(b=>b.status!=="cancelled"&&b.checkin&&b.checkout)
-        .map(b=>({checkin:b.checkin,checkout:b.checkout}));
-    }
-    delete window[cb]; document.body.removeChild(s);
+    if(data&&Array.isArray(data.booked)) bookedRanges=data.booked.filter(b=>b.checkin&&b.checkout);
+    if(data&&Array.isArray(data.blocked)) blockedDates=data.blocked;
+    delete window[cb]; try{document.body.removeChild(s);}catch(e){}
     renderCal();
   };
   document.body.appendChild(s);
-
-  const cb2="cb2"+Date.now();
-  const s2=document.createElement("script");
-  s2.src=SCRIPT_URL+"?action=getBlocked&callback="+cb2+"&t="+Date.now();
-  window[cb2]=function(data){
-    if(Array.isArray(data)) blockedDates=data.map(b=>b.date);
-    delete window[cb2]; document.body.removeChild(s2);
-    renderCal();
-  };
-  document.body.appendChild(s2);
 }
 
 function renderCal(){
