@@ -109,6 +109,14 @@ try{
 const _Fragment = React.Fragment;
 const _jsx = (type, props, key) => React.createElement(type, key !== undefined ? Object.assign({}, props, { key: key }) : (props || {}));
 const _jsxs = _jsx;
+// נרמול טלפון ל-WhatsApp: מקבל 050-..., 50..., +972 50-..., 00972..., 972...
+function waPhone(p) {
+  let d = String(p || "").replace(/\D/g, "");
+  if (d.indexOf("00") === 0) d = d.slice(2);
+  if (d.indexOf("972") === 0) d = d.slice(3);
+  d = d.replace(/^0+/, "");
+  return "972" + d;
+}
 const {
   useState,
   useMemo,
@@ -1213,12 +1221,12 @@ function buildMsg(b) {
 יעקב 📞 050-410-3353`;
 }
 function sendWhatsApp(b) {
-  const phone = "972" + (b.phone || "").replace(/\D/g, "").replace(/^0/, "");
+  const phone = waPhone(b.phone);
   const msg = encodeURIComponent(buildMsg(b));
   window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${msg}`, "_blank");
 }
 function sendReminderWhatsApp(b) {
-  const phone = "972" + (b.phone || "").replace(/\D/g, "").replace(/^0/, "");
+  const phone = waPhone(b.phone);
   const balance = Math.max(0, (b.total || 0) - (b.paid || 0));
   const custom = localStorage.getItem("shirat_reminder_template") || "";
   const text = custom ? custom.replace("{שם}", b.name).replace("{כניסה}", fd(b.checkin)).replace("{יציאה}", fd(b.checkout)) : `שלום ${b.name} 😊
@@ -1361,7 +1369,7 @@ function sendReviewWhatsApp(b) {
     alert("לא הוזן טלפון ללקוח זה");
     return;
   }
-  const phone = "972" + (b.phone || "").replace(/\D/g, "").replace(/^0/, "");
+  const phone = waPhone(b.phone);
   const custom = localStorage.getItem("shirat_review_template") || "";
   const text = custom ? custom.replace("{שם}", b.name) : `שלום ${b.name},
 רצינו להודות לכם מקרב לב על שבחרתם להתארח אצלנו בצימר "שירת הציפורים"
@@ -6199,7 +6207,7 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
                 },
                 children: [s.phone && /*#__PURE__*/_jsx("button", {
                   onClick: () => {
-                    const p = "972" + (s.phone || "").replace(/\D/g, "").replace(/^0/, "");
+                    const p = waPhone(s.phone);
                     window.open(`https://api.whatsapp.com/send?phone=${p}`, "_blank");
                   },
                   style: {
@@ -7662,7 +7670,7 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
           },
           children: [/*#__PURE__*/_jsx("button", {
             onClick: () => {
-              const phone = "972" + (guestPopup.phone || "").replace(/\D/g, "").replace(/^0/, "");
+              const phone = waPhone(guestPopup.phone);
               window.open(`https://api.whatsapp.com/send?phone=${phone}`, "_blank");
             },
             style: {
@@ -8083,7 +8091,7 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
                   }
                   withPhone.forEach((g, i) => {
                     setTimeout(() => {
-                      const phone = "972" + (g.phone || "").replace(/\D/g, "").replace(/^0/, "");
+                      const phone = waPhone(g.phone);
                       const msg = encodeURIComponent(broadcastMsg.replace("{שם}", g.name));
                       window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${msg}`, "_blank");
                     }, i * 800);
@@ -8974,7 +8982,7 @@ https://charedi.net/tzimar/25569/
                 alert("הזן מספר טלפון");
                 return;
               }
-              const phone = "972" + (inquiryPhone || "").replace(/\D/g, "").replace(/^0/, "");
+              const phone = waPhone(inquiryPhone);
               const msg = encodeURIComponent(DEFAULT_INQUIRY_TEMPLATE);
               addLead(inquiryEmail, inquiryPhone);
               window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${msg}`, "_blank");

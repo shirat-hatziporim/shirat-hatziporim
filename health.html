@@ -730,6 +730,23 @@ function checkBusiness(g, src){
     const due = sample.reduce((s, b) => s + Math.max(0, (b.total||0) - ((b.paid||0)+(b.deposit||0))), 0);
     chk(g, "יתרה לגביה — תשלום ביתר לא מקזז חוב אחר", due === 1200, due === 1200 ? "" : "חושב ₪" + due + " במקום ₪1,200");
   }
+  // ── רגרסיה: WhatsApp — מספר בפורמט בינלאומי (+972 50-...) לא מקבל 972 כפול ──
+  {
+    const m = src.match(/function waPhone\(p\)\s*\{[\s\S]*?\n\}/);
+    let ok = false, info = "waPhone לא נמצא בקוד";
+    if (m) {
+      try {
+        const waPhone = new Function(m[0] + "; return waPhone;")();
+        const cases = ["+972 50-821-2609", "050-821-2609", "00972508212609", "972508212609"];
+        const bad = cases.filter(c => waPhone(c) !== "972508212609");
+        ok = bad.length === 0;
+        info = ok ? "" : "פורמט שגוי עבור: " + bad.join(", ");
+      } catch (e) { info = "שגיאה בהרצת waPhone: " + e; }
+    }
+    chk(g, "WhatsApp — נרמול טלפון (גם +972 מועתק מווטסאפ)", ok, info);
+    const legacy = /"972"\s*\+\s*\([^)]*\)\.replace\(\/\\D\/g/.test(src);
+    chk(g, "WhatsApp — אין נרמול ישן שמוסיף 972 כפול", !legacy, legacy ? "נמצא \"972\" + phone.replace — יוצר 972972 למספר בינלאומי" : "");
+  }
 }
 
 // ════════ 4. זמן ריצה — האפליקציה באמת עולה (לא מסך לבן) ════════
