@@ -687,15 +687,30 @@ function fd(ds) {
   return d.getDate() + "." + (d.getMonth()+1) + "." + d.getFullYear();
 }
 
-// שורת תאריך במייל: לועזי + מתחתיו התאריך העברי ("יום ו׳, ה׳ חשוון תשפ״ז")
-function dateRow(label, ds) {
-  const h = hebDateStr(ds);
-  return rw(label, fd(ds) + (h ? "<br><span style='font-weight:400;color:#8a6a3a;font-size:13px;'>" + h + "</span>" : ""));
+// ── טבלת "פרטי ההזמנה" (אישור + תזכורת) ──
+// שתי עמודות: תווית | ערך. התאריך העברי יושב בשורה קטנה מתחת לערך, באותה עמודה —
+// כך הכל מיושר אחיד (במקום <br> בתוך שורת תבליט, שנראה לא מסודר).
+function dRow(label, value, sub, last) {
+  const border = last ? "" : "border-bottom:1px solid #ebe5d9;";
+  return "<tr>"
+    + "<td style='padding:9px 0 9px 12px;" + border + "width:120px;white-space:nowrap;vertical-align:top;font-size:14px;color:#777;font-family:Arial,sans-serif;'>" + label + "</td>"
+    + "<td style='padding:9px 0;" + border + "vertical-align:top;font-size:14px;color:#222;font-family:Arial,sans-serif;'><strong>" + value + "</strong>"
+    + (sub ? "<div style='margin-top:3px;font-size:12px;color:#8a6a3a;font-weight:400;'>" + sub + "</div>" : "")
+    + "</td></tr>";
 }
+// rows = [[label, value, sub?], ...] — שורה ריקה (null) מדולגת
+function detailsTable(rows) {
+  rows = rows.filter(function(r) { return r; });
+  return "<table width='100%' cellpadding='0' cellspacing='0' dir='rtl' style='border-collapse:collapse;'>"
+    + rows.map(function(r, i) { return dRow(r[0], r[1], r[2], i === rows.length - 1); }).join("")
+    + "</table>";
+}
+// שורת תאריך: לועזי + מתחתיו התאריך העברי ("יום ו׳, ה׳ חשוון תשפ״ז")
+function dateRow(label, ds) { return [label, fd(ds), hebDateStr(ds)]; }
 // "🕯 שבת: פרשת נח" — רק אם השהייה כוללת שבת
 function shabbatRow(b) {
   const s = stayShabbatLine(b.checkin, b.checkout);
-  return s ? rw("&#x1F56F; שבת", s) : "";
+  return s ? ["&#x1F56F; שבת", s] : null;
 }
 
 // ════════ לוח עברי + פרשות שבוע (מנהג ארץ ישראל) — חישוב מקומי, ללא רשת ════════
@@ -907,13 +922,15 @@ function buildConfirmBody(b) {
     + "<p style='font-size:15px;color:#444;margin:0 0 24px;line-height:1.8;'>שמחים לאשר את הזמנתכם בצימר שירת הציפורים!</p>"
     + "<p style='font-size:15px;color:#222;font-weight:700;margin:0 0 12px;'>&#x1F4C5; פרטי ההזמנה:</p>"
     + bx(
-        dateRow("&#x1F4C5; תאריך הגעה", b.checkin)
-        + dateRow("&#x1F4C5; תאריך יציאה", b.checkout)
-        + shabbatRow(b)
-        + rw("&#x1F319; מספר לילות", b.nights||"")
-        + rw("&#x1F46A; מספר אורחים", ((b.guests||2)+(b.extraGuests||0)) + " נפשות")
-        + (b.babies>0 ? rw("&#x1F476; תינוקות", b.babies) : "")
-        + "<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&bull; עלות: <strong style='color:#5a9e4f;'>&#8362;" + Number(b.total||0).toLocaleString() + "</strong></p>",
+        detailsTable([
+          dateRow("&#x1F4C5; הגעה", b.checkin),
+          dateRow("&#x1F4C5; יציאה", b.checkout),
+          shabbatRow(b),
+          ["&#x1F319; לילות", b.nights||""],
+          ["&#x1F46A; אורחים", ((b.guests||2)+(b.extraGuests||0)) + " נפשות"],
+          (b.babies>0 ? ["&#x1F476; תינוקות", b.babies] : null),
+          ["&#x1F4B0; עלות", "<span style='color:#5a9e4f;font-size:15px;'>&#8362;" + Number(b.total||0).toLocaleString() + "</span>"]
+        ]),
         "#5a9e4f"
       )
     + "<p style='font-size:15px;color:#222;font-weight:700;margin:0 0 10px;'>&#x1F4B3; נא להעביר מקדמה בסך 500 ש\"ח:</p>"
@@ -966,10 +983,12 @@ function sendReminderEmail(b) {
     + "<p style='font-size:15px;color:#444;margin:0 0 24px;line-height:1.8;'>מזכירים לכם שמחר אתם מגיעים אלינו! מחכים לכם ומתרגשים לארח אתכם.</p>"
     + "<p style='font-size:15px;color:#222;font-weight:700;margin:0 0 12px;'>&#x1F4C5; פרטי ההזמנה:</p>"
     + bx(
-        dateRow("&#x1F4C5; תאריך הגעה", b.checkin)
-        + dateRow("&#x1F4C5; תאריך יציאה", b.checkout)
-        + shabbatRow(b)
-        + "<p style='margin:0;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&bull; מספר לילות: <strong>" + (b.nights||"") + "</strong></p>",
+        detailsTable([
+          dateRow("&#x1F4C5; הגעה", b.checkin),
+          dateRow("&#x1F4C5; יציאה", b.checkout),
+          shabbatRow(b),
+          ["&#x1F319; לילות", b.nights||""]
+        ]),
         "#5a9e4f"
       )
     + bx(
