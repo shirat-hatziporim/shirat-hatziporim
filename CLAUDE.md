@@ -4,6 +4,11 @@
 > טוקנים או מידע על אורחים. התיעוד המלא נמצא בריפו הפרטי `shirat-hatziporim-backend`
 > (תיקייה שכנה `../shirat-hatziporim-backend/.claude/skills/shirat-hatziporim-booking/SKILL.md`).
 
+## 🔄 תחילת וסוף כל סשן — חובה
+- **ראשון בכל סשן, לפני כל דבר אחר:** `git pull`. יעקב עובד גם מהדפדפן, מהטלפון ומסשנים בענן, והעותק המקומי עלול להיות מאחור.
+  אם יש התנגשות (conflict) — לעצור, להראות ליעקב מה מתנגש, ולא לפתור בלי אישורו.
+- **בסוף עבודה:** commit + push, כדי ש-GitHub יישאר המקום העדכני.
+
 ## מה יש כאן (GitHub Pages — push ל-main עולה לאוויר תוך 1–2 דקות)
 - `shirat-hatziporim.html` — לוח הניהול (React 18 UMD, **JSX מקומפל מראש + shim**, בלי Babel).
 - `booking.html` — טופס ההזמנה הציבורי.
