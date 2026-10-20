@@ -141,7 +141,7 @@ function doGet(e) {
       // גם מהניהול עובר חיטוי, אבל מנהל רשאי לקבוע סטטוס
       const booking = sanitizePublicBooking(raw);
       if (admin && adminKeyConfigured() && raw.status) booking.status = String(raw.status);
-      addBooking(booking); result = "ok";
+      result = addPublicBooking(booking);
     } else if (action === "saveTemplate") {
       const key = safeDecode(e.parameter.key);
       const value = safeDecode(e.parameter.value);
@@ -1308,6 +1308,52 @@ function addBooking(b) {
     if (h === "phone" && b[h]) return cellSafe(String(b[h]));
     return b[h] !== undefined ? cellSafe(b[h]) : "";
   }));
+}
+
+// יציאה בשבת = יציאה במוצאי שבת ⇒ התאריך תפוס עד ראשון. זהה ל-effCheckout ב-booking.html.
+function effCheckoutDs(co) {
+  const p = String(co).split("-");
+  const d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+  if (d.getDay() !== 6) return String(co);
+  d.setDate(d.getDate() + 1);
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+
+// ⭐ (20.10.2026) בדיקת זמינות בשרת. קודם הבדיקה הייתה רק בדפדפן, ואם טעינת הזמינות נכשלה
+// (הפניית /u/1/ אצל גולש עם כמה חשבונות גוגל) — הטופס איפשר להזמין תאריך תפוס.
+function findDateConflict(b) {
+  const ci = b.checkin, co = effCheckoutDs(b.checkout);
+  const taken = getBookings().some(function(x) {
+    if (x.status === "cancelled" || !x.checkin || !x.checkout) return false;
+    return ci < effCheckoutDs(String(x.checkout)) && co > String(x.checkin);
+  });
+  if (taken) return "taken";
+  const blocked = getBlocked().some(function(x) { return x.date >= b.checkin && x.date < b.checkout; });
+  return blocked ? "blocked" : "";
+}
+
+// הזמנה מהטופס הציבורי: בדיקת זמינות + כתיבה תחת נעילה (מונע שתי הזמנות מקבילות לאותו תאריך),
+// ואז מייל לבעלים מאותה ריצה — אם ההזמנה נשמרה, גם המייל נשלח (קודם זו הייתה קריאה נפרדת שנכשלה בשקט).
+function addPublicBooking(b) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) return { ok: false, reason: "busy" };
+  try {
+    const conflict = findDateConflict(b);
+    if (conflict) return { ok: false, reason: conflict };
+    addBooking(b);
+    SpreadsheetApp.flush();
+  } finally {
+    lock.releaseLock();
+  }
+  let emailSent = true;
+  try {
+    notifyOwner({ name: b.name, phone: b.phone, email: b.email || "לא הוזן", checkin: b.checkin,
+      checkout: b.checkout, nights: b.nights, guests: b.guests, total: b.total, notes: b.notes || "", bookingId: b.id });
+  } catch (err) {
+    emailSent = false;
+    Logger.log("addPublicBooking notify #" + b.id + ": " + err);
+  }
+  return { ok: true, id: b.id, emailSent: emailSent };
 }
 
 function getBlocked() {

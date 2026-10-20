@@ -84,6 +84,9 @@ textarea{resize:vertical;min-height:70px;direction:rtl;}
 .heb-date-label{font-size:12px;color:#8a6a3a;margin-top:4px;min-height:14px;}
 .cal-day.past{color:#ccc;cursor:not-allowed;}
 .cal-day.blocked{background:#fee2e2;color:#c62828;cursor:not-allowed;font-size:10px;}
+.cal-status{margin-top:10px;font-size:13px;text-align:center;color:#8a7a5a;}
+.cal-status.err{color:#c62828;font-weight:700;}
+.cal-status button{margin-right:6px;font:inherit;font-size:12px;padding:3px 10px;border-radius:6px;border:1px solid #c62828;background:#fff;color:#c62828;cursor:pointer;}
 .cal-day.booked{background:#fce4ec;color:#c62828;cursor:not-allowed;}
 .cal-day.holiday{background:rgba(200,169,126,0.15);color:#8a6020;}
 .cal-day.holiday:hover{background:rgba(200,169,126,0.35);border-color:var(--gold);}
@@ -166,6 +169,7 @@ textarea{resize:vertical;min-height:70px;direction:rtl;}
         <div class="cal-day-label">ש'</div>
       </div>
       <div class="cal-grid" id="calGrid"></div>
+      <div id="calStatus" class="cal-status">⏳ טוען תאריכים פנויים...</div>
     </div>
     <div class="legend">
       <div class="legend-item"><div class="legend-dot" style="background:#1a1a2e;"></div>נבחר</div>
@@ -254,6 +258,21 @@ textarea{resize:vertical;min-height:70px;direction:rtl;}
 
 <script>
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby9elcqlGzqijWnXWUYFo3QeW-wWwIt9pj4XmQSsN8RkgkRCwI7eRlRv9AvMLxVC1rTZg/exec";
+
+// ⭐ (20.10.2026) כל הקריאות לשרת דרך fetch בלי עוגיות (credentials:"omit").
+// קודם הן היו JSONP (<script>), שנשלח עם עוגיות גוגל — אצל גולש עם כמה חשבונות מחוברים
+// גוגל הפנתה ל-/u/1/ והחזירה דף שגיאה: הזמינות לא נטענה (תאריך תפוס נראה פנוי)
+// והמייל לבעלים לא נשלח. השרת מחזיר Access-Control-Allow-Origin:* ולכן fetch עובד.
+async function api(params, timeoutMs){
+  const ctrl = new AbortController();
+  const timer = setTimeout(()=>ctrl.abort(), timeoutMs||30000);
+  try{
+    const qs = Object.keys(params).map(k=>k+"="+encodeURIComponent(params[k])).join("&");
+    const r = await fetch(SCRIPT_URL+"?"+qs+"&t="+Date.now(), {credentials:"omit", signal:ctrl.signal});
+    const txt = await r.text();
+    try{ return JSON.parse(txt); }catch(e){ throw new Error("bad response"); }
+  } finally { clearTimeout(timer); }
+}
 let calYear = null, calMonth = null;
 let bookedRanges = [];
 let blockedDates = [];
@@ -451,17 +470,28 @@ function isUnavailable(ds){ return isPast(ds)||isBlocked(ds)||isBooked(ds); }
 // טען נתונים מ-Sheets
 // 🔐 (6.10.2026) getAvailability מחזיר תאריכים בלבד. קודם נטענו כאן כל ההזמנות
 //    (שמות, טלפונים, מיילים) לדפדפן של כל מבקר — דליפת מידע אישי.
-function loadData(){
-  const cb="cb"+Date.now();
-  const s=document.createElement("script");
-  s.src=SCRIPT_URL+"?action=getAvailability&callback="+cb+"&t="+Date.now();
-  window[cb]=function(data){
-    if(data&&Array.isArray(data.booked)) bookedRanges=data.booked.filter(b=>b.checkin&&b.checkout);
-    if(data&&Array.isArray(data.blocked)) blockedDates=data.blocked;
-    delete window[cb]; try{document.body.removeChild(s);}catch(e){}
-    renderCal();
-  };
-  document.body.appendChild(s);
+let availState = "loading"; // loading | ok | error
+async function loadData(){
+  availState = "loading"; setCalStatus();
+  try{
+    const data = await api({action:"getAvailability"}, 30000);
+    if(!data || !Array.isArray(data.booked)) throw new Error(data&&data.error||"no data");
+    bookedRanges = data.booked.filter(b=>b.checkin&&b.checkout);
+    blockedDates = Array.isArray(data.blocked) ? data.blocked : [];
+    availState = "ok";
+  }catch(e){
+    availState = "error";
+    console.warn("getAvailability failed", e);
+  }
+  setCalStatus(); renderCal();
+}
+function setCalStatus(){
+  const el=document.getElementById("calStatus"); if(!el) return;
+  if(availState==="ok"){ el.style.display="none"; el.className="cal-status"; return; }
+  el.style.display="block";
+  if(availState==="loading"){ el.className="cal-status"; el.textContent="⏳ טוען תאריכים פנויים..."; return; }
+  el.className="cal-status err";
+  el.innerHTML='לא הצלחנו לטעון את התאריכים הפנויים. <button type="button" onclick="loadData()">נסו שוב</button>';
 }
 
 function renderCal(){
@@ -725,6 +755,11 @@ async function submitBooking(){
   if(!phone){alert("נא להזין טלפון");return;}
   if(!checkin||!checkout){alert("נא לבחור תאריכי כניסה ויציאה");return;}
   if(checkout<=checkin){alert("תאריך יציאה חייב להיות אחרי כניסה");return;}
+  if(availState!=="ok"){
+    alert(availState==="loading" ? "רגע, התאריכים הפנויים עדיין נטענים. נסו שוב בעוד כמה שניות." : "לא הצלחנו לבדוק זמינות. לחצו \"נסו שוב\" מתחת ללוח, או התקשרו 050-4103353.");
+    if(availState==="error") loadData();
+    return;
+  }
   // בדיקת כפילות תאריכים
   const hasOverlap = bookedRanges.some(b=>{
     return checkin < effCheckout(b.checkout) && effCheckout(checkout) > b.checkin;
@@ -763,58 +798,27 @@ async function submitBooking(){
     discount:0,
     source:"online",
   };
+  const slowTimer=setTimeout(()=>{ btn.textContent="עוד רגע... שומרים את ההזמנה"; }, 6000);
+  const resetBtn=()=>{ clearTimeout(slowTimer); btn.disabled=false; btn.textContent="שלח בקשת הזמנה ✦"; };
   try{
-    const url=SCRIPT_URL+"?action=addBooking&booking="+encodeURIComponent(JSON.stringify(b))+"&t="+Date.now();
-    await fetch(url,{mode:"no-cors"});
-
-    // שלח מייל התראה
-    const emailMsg=`🔔 בקשת הזמנה חדשה!
-
-שם: ${name}
-טלפון: ${phone}
-מייל: ${email||"לא הוזן"}
-כניסה: ${fd(checkin)} | יציאה: ${fd(checkout)}
-לילות: ${nights} | אורחים: ${guests}${babies>0?` + ${babies} תינוק`:""}
-סוג: ${roomLabel}
-סה"כ: ₪${total.toLocaleString()}
-${notes?"הערות: "+notes:""}
-
-לאישור ההזמנה: https://shirat-hatziporim.github.io/shirat-hatziporim/shirat-hatziporim.html?booking=${b.id}`;
-    // שלח התראה לבעל הצימר דרך Apps Script
-    const cbEmail = "cb_notify_" + Math.random().toString(36).slice(2);
-    const notifyData = encodeURIComponent(JSON.stringify({
-      name: name,
-      phone: phone,
-      email: email||"לא הוזן",
-      checkin: checkin,
-      checkout: checkout,
-      nights: nights,
-      guests: guests,
-      total: total,
-      notes: notes||"",
-      bookingId: b.id
-    }));
-    window[cbEmail] = function(r){ delete window[cbEmail]; console.log("notification sent", r); };
-    const notifyScript = document.createElement("script");
-    notifyScript.src = SCRIPT_URL + "?action=notifyOwner&data=" + notifyData + "&callback=" + cbEmail + "&t=" + Date.now();
-    document.head.appendChild(notifyScript);
-    const msg=encodeURIComponent(
-`🔔 בקשת הזמנה חדשה!
-שם: ${name}
-טלפון: ${phone}
-כניסה: ${fd(checkin)} | יציאה: ${fd(checkout)}
-לילות: ${nights} | אורחים: ${guests}${babies>0?` + ${babies} תינוק/ות`:""}
-סוג: ${roomLabel}
-סה"כ: ₪${total.toLocaleString()}
-${notes?"הערות: "+notes:""}
-לאישור: https://shirat-hatziporim.github.io/shirat-hatziporim/`);
-    // הצג הצלחה
+    // השרת בודק זמינות, שומר, ושולח מייל לבעלים — הכל בקריאה אחת
+    const r = await api({action:"addBooking", booking:JSON.stringify(b)}, 60000);
+    if(r && r.ok===false && (r.reason==="taken"||r.reason==="blocked")){
+      resetBtn();
+      alert("מצטערים, התאריכים שבחרת כבר תפוסים. אנא בחרו תאריכים אחרים.");
+      loadData();
+      return;
+    }
+    if(!r || r.ok!==true) throw new Error((r&&(r.error||r.reason))||"failed");
+    clearTimeout(slowTimer);
     document.getElementById("successBox").style.display="block";
     btn.style.display="none";
     document.getElementById("successBox").scrollIntoView({behavior:"smooth"});
   } catch(e){
-    btn.disabled=false; btn.textContent="שלח בקשת הזמנה ✦";
-    alert("אירעה שגיאה, אנא נסה שוב");
+    resetBtn();
+    alert(e&&e.name==="AbortError"
+      ? "השרת לא הגיב בזמן. ייתכן שהבקשה נקלטה — לפני שליחה חוזרת אנא התקשרו 050-4103353."
+      : "אירעה שגיאה בשליחה, אנא נסו שוב או התקשרו 050-4103353.");
   }
 }
 
@@ -823,28 +827,20 @@ const todayStr=new Date().toISOString().split("T")[0];
 document.getElementById("checkin").min=todayStr;
 document.getElementById("checkout").min=todayStr;
 
-// טען מחירים קודם, ואחר כך שאר הנתונים
-const cbpInit="cbpinit"+Date.now();
-const spInit=document.createElement("script");
-spInit.src=SCRIPT_URL+"?action=getTemplates&callback="+cbpInit+"&t="+Date.now();
-window[cbpInit]=function(data){
-  if(data&&data.shirat_prices){
-    try{
-      const p=JSON.parse(data.shirat_prices);
-      if(p.weekday)     PRICES.weekday=Number(p.weekday);
-      if(p.weekend)     PRICES.weekend=Number(p.weekend);
-      if(p.packageDeal) PRICES.packageDeal=Number(p.packageDeal);
-      if(p.sundayExtra) PRICES.sundayExtra=Number(p.sundayExtra);
-      if(p.extraGuest)  PRICES.extraGuest=Number(p.extraGuest);
-    }catch(e){}
-  }
-  delete window[cbpInit];
-  try{document.body.removeChild(spInit);}catch(e){}
-  // טען שאר הנתונים אחרי המחירים
-  loadData();
-};
-spInit.onerror=function(){delete window[cbpInit]; loadData();};
-document.body.appendChild(spInit);
+// טען מחירון וזמינות במקביל (קודם הזמינות חיכתה למחירון — ~10 שניות של לוח "פנוי")
+loadData();
+api({action:"getTemplates"}, 30000).then(data=>{
+  if(!data||!data.shirat_prices) return;
+  try{
+    const p=JSON.parse(data.shirat_prices);
+    if(p.weekday)     PRICES.weekday=Number(p.weekday);
+    if(p.weekend)     PRICES.weekend=Number(p.weekend);
+    if(p.packageDeal) PRICES.packageDeal=Number(p.packageDeal);
+    if(p.sundayExtra) PRICES.sundayExtra=Number(p.sundayExtra);
+    if(p.extraGuest)  PRICES.extraGuest=Number(p.extraGuest);
+    if(typeof calcPrice==="function") calcPrice();
+  }catch(e){}
+}).catch(e=>console.warn("getTemplates failed",e));
 </script>
 </body>
 </html>

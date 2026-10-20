@@ -387,6 +387,15 @@ async function checkSecurity(g){
     chk(g, "🔐 זמינות ציבורית — תאריכים בלבד, בלי פרטים אישיים", ok && extra===0,
         ok ? data.booked.length + " טווחים, " + data.blocked.length + " חסימות" : "getAvailability לא החזיר מבנה תקין");
   } catch(e){ row(g, "warn", "🔐 getAvailability", e.message); }
+  // ── 20.10.2026: booking.html קורא לשרת ב-fetch בלי עוגיות. אם CORS נשבר — הטופס לא יטען זמינות ──
+  try {
+    const t0 = Date.now();
+    const r = await fetch(SCRIPT_URL + "?action=getAvailability&t=" + t0, {credentials:"omit"});
+    const d = JSON.parse(await r.text());
+    chk(g, "🛡️ fetch בלי עוגיות (כמו booking.html) — זמינות נטענת", d && Array.isArray(d.booked),
+        (Date.now()-t0) + "ms");
+  } catch(e){ chk(g, "🛡️ fetch בלי עוגיות (כמו booking.html) — זמינות נטענת", false,
+        "נכשל: " + e.message + " — טופס ההזמנה לא יציג תאריכים תפוסים"); }
   try {
     const { data } = await jsonp(SCRIPT_URL + "?action=getTemplates", 20000, true);
     const keys = data && typeof data === "object" ? Object.keys(data) : [];
@@ -807,8 +816,27 @@ async function checkAssets(g, src){
     chk(g, "טופס ההזמנה הציבורי (booking.html) נטען", r.code===200, "HTTP "+r.code);
     // ── 🔐 6.10.2026: הטופס הציבורי לא טוען את רשימת ההזמנות המלאה ──
     chk(g, "🔐 טופס ההזמנה — טוען getAvailability ולא את כל ההזמנות",
-        r.text.indexOf("action=getAvailability")!==-1 && !/action=get[&"']/.test(r.text),
+        /action[=:]\s*"?getAvailability/.test(r.text) && !/action=get[&"']/.test(r.text) && !/action:\s*"get"/.test(r.text),
         "action=get בטופס הציבורי חושף שמות/טלפונים/מיילים של כל האורחים");
+    // ── 🛡️ 20.10.2026: הזמנה על תאריך תפוס + מייל שלא הגיע (הפניית /u/1/ ל-JSONP) ──
+    chk(g, "🛡️ טופס ההזמנה — אין JSONP (תגית script) לשרת",
+        r.text.indexOf('createElement("script")')===-1 && r.text.indexOf('credentials:"omit"')!==-1,
+        "JSONP שולח עוגיות גוגל ⇒ הפניית /u/1/ אצל גולש עם כמה חשבונות ⇒ זמינות לא נטענת");
+    chk(g, "🛡️ טופס ההזמנה — אין קריאת notifyOwner נפרדת (המייל נשלח מתוך addBooking)",
+        r.text.indexOf("action=notifyOwner")===-1, "קריאה נפרדת נכשלה בשקט והמייל לא הגיע");
+    chk(g, "🛡️ טופס ההזמנה — שליחה חסומה עד שהזמינות נטענה",
+        /if\(availState!=="ok"\)/.test(r.text), "בלי זה אפשר להזמין לפני שהתאריכים התפוסים ידועים");
+    chk(g, "🛡️ טופס ההזמנה — מטפל בדחיית שרת על תאריך תפוס",
+        r.text.indexOf('r.reason==="taken"')!==-1, "השרת דוחה, אבל הלקוח יראה הצלחה");
+    chk(g, "🛡️ טופס ההזמנה — זמינות נטענת במקביל למחירון (לא אחריו)",
+        r.text.indexOf("spInit")===-1, "הזמינות חיכתה ~10 שניות למחירון");
+    try {
+      const cg = await req("Code.gs");
+      chk(g, "🛡️ Code.gs — addBooking בודק זמינות בשרת ושולח מייל לבעלים",
+          cg.text.indexOf("function findDateConflict")!==-1 && /result\s*=\s*addPublicBooking\(/.test(cg.text)
+          && /function addPublicBooking[\s\S]{0,1500}notifyOwner\(/.test(cg.text),
+          "בלי בדיקה בשרת — הזמנה על תאריך תפוס אפשרית כשהדפדפן לא טען זמינות");
+    } catch(e){ row(g, "warn", "🛡️ Code.gs — בדיקת זמינות בשרת", e.message); }
     // ── מינימום 2 לילות בוטל 26.8.2026 — ניתן להזמין לילה אחד בכל יום ──
     chk(g, "טופס ההזמנה — אין חסימת מינימום לילות",
         r.text.indexOf("מינימום 2 לילות")===-1 && r.text.indexOf("nights<2")===-1
