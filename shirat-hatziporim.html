@@ -5493,6 +5493,34 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
                   padding: "8px 14px"
                 },
                 children: "📢 שידור"
+              }), /*#__PURE__*/_jsx("button", {
+                onClick: () => {
+                  const q = v => '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"';
+                  const head = ["שם", "טלפון", "מייל", "דירוג", "מספר ביקורים", "ביקור אחרון", "סה\"כ הוצאה (₪)", "הערות"];
+                  const rows = guests.map(g => {
+                    const vs = g.visits.slice().sort((a, b) => (b.checkin || "").localeCompare(a.checkin || ""));
+                    const spent = g.visits.reduce((s, b) => s + (Number(b.total) || 0), 0);
+                    return [q(g.name), g.phone ? '="' + String(g.phone).replace(/"/g, "") + '"' : "", q(g.email), g.rating || "", g.visits.length, vs[0] ? q(vs[0].checkin) : "", spent, q(g.notes)].join(",");
+                  });
+                  const csv = "\uFEFF" + [head.map(q).join(","), ...rows].join("\r\n");
+                  const blob = new Blob([csv], {
+                    type: "text/csv;charset=utf-8;"
+                  });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = "guests-" + new Date().toISOString().slice(0, 10) + ".csv";
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  setTimeout(() => URL.revokeObjectURL(url), 1000);
+                },
+                style: {
+                  ...bS("#e3f2fd", "#1565c0"),
+                  fontSize: 13,
+                  padding: "8px 14px"
+                },
+                children: "📥 ייצוא הכל"
               })]
             })]
           }), /*#__PURE__*/_jsxs("div", {
