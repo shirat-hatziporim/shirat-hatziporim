@@ -3597,6 +3597,56 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
       setDelC(null);
     }
   }
+  // ⬅ כפתור חזרה בנייד (7.11.2026): היסטוריית הדפדפן מנוהלת כך שחזרה סוגרת שכבה פתוחה
+  // (מחיקה / חסימות / טופס) או חוזרת לתצוגה הקודמת — ולעולם לא יוצאת מהאתר.
+  // מנגנון: רשומת-שמירה אחת תמיד "מעל" רשומת הבסיס; כל popstate מטופל ואז הרשומה נדחפת מחדש.
+  const navRef = React.useRef({});
+  navRef.current = {
+    view,
+    showForm,
+    showBlockedManager,
+    delC
+  };
+  const viewStackRef = React.useRef([]);
+  const prevViewRef = React.useRef("list");
+  const fromBackRef = React.useRef(false);
+  useEffect(() => {
+    if (fromBackRef.current) {
+      fromBackRef.current = false;
+    } else if (prevViewRef.current !== view) {
+      viewStackRef.current.push(prevViewRef.current);
+    }
+    prevViewRef.current = view;
+  }, [view]);
+  useEffect(() => {
+    const H = window.history;
+    try {
+      H.replaceState({
+        shiratBase: true
+      }, "");
+      H.pushState({
+        shiratGuard: true
+      }, "");
+    } catch (e) {}
+    const onPop = () => {
+      const n = navRef.current;
+      if (n.delC) setDelC(null);else if (n.showBlockedManager) setShowBlockedManager(false);else if (n.showForm) {
+        setShowForm(false);
+        setEditB(null);
+      } else if (n.view !== "list" || viewStackRef.current.length) {
+        const prev = viewStackRef.current.pop() || "list";
+        fromBackRef.current = true;
+        setView(prev);
+      }
+      try {
+        H.pushState({
+          shiratGuard: true
+        }, "");
+      } catch (e) {}
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
   const confirmed = bookings.filter(b => b.status === "confirmed");
   const totalRev = confirmed.reduce((s, b) => s + (b.total || 0), 0);
   const totalPaid = confirmed.reduce((s, b) => s + (b.paid || 0) + (b.deposit || 0), 0);

@@ -151,6 +151,10 @@ async function checkPage(g){
       && /react-dom@18\.3\.1\/umd\/react-dom\.production\.min\.js" integrity="sha384-/.test(src)
       && !/unpkg\.com\/react(-dom)?@18\//.test(src),
       "react@18 צף בלי integrity = כל שינוי ב-CDN רץ בלוח הניהול עם המפתח");
+  chk(g, "⬅ כפתור חזרה בנייד לא מוציא מהאתר (popstate + guard)",
+      src.indexOf('addEventListener("popstate"')!==-1 && src.indexOf("shiratGuard")!==-1
+      && src.indexOf("H.pushState")!==-1,
+      "בלי זה לחיצה על חזרה בנייד סוגרת את לוח הניהול");
   chk(g, "🔐 אין סיסמה ישנה (0561) בקוד", src.indexOf('PASSWORD = "0561"')===-1);
   chk(g, "🔐 אין מפתח ניהול מוטמע בקוד", !/ADMIN_KEY\s*[=:]\s*["'][^"']{8,}/.test(src));
   chk(g, "אין טוקן Airtable בקוד", !/pat[A-Za-z0-9]{14}\.[a-f0-9]{40,}/.test(src) && src.indexOf("AIRTABLE_TOKEN")===-1);
