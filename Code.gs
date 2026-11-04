@@ -104,9 +104,76 @@ function getPublicTemplates() {
   return t.shirat_prices !== undefined ? { shirat_prices: t.shirat_prices } : {};
 }
 
+// ════════ ייצוא ICS (4.11.2026) ═══════════════════════════════════════════════
+// קישור ICS לקריאה ע"י מערכות חיצוניות (למשל "חיבור יומן חיצוני" באתר מיצד).
+// תאריכים בלבד — "תפוס", בלי שם/טלפון/סכום. אותו כלל זמינות כמו getAvailability:
+// כל הזמנה שאינה cancelled (כולל pending) + תאריכים חסומים.
+// ההגנה: ICS_TOKEN ב-Script Properties (⚠ לא בקוד — עותק המראה ציבורי). בלי טוקן מוגדר ⇒ סגור.
+// יצירת הטוקן: להריץ פעם אחת setupIcsToken() בעורך Apps Script ולקרוא את הקישור ביומן הריצה.
+function icsTokenOk(t) {
+  const real = PropertiesService.getScriptProperties().getProperty("ICS_TOKEN");
+  if (!real || typeof t !== "string" || t.length !== real.length) return false;
+  let diff = 0;
+  for (let i = 0; i < real.length; i++) diff |= real.charCodeAt(i) ^ t.charCodeAt(i);
+  return diff === 0;
+}
+
+function icsCompact(ds) { return String(ds).replace(/-/g, ""); }
+
+function icsNextDay(ds) {
+  const m = String(ds).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3] + 1));
+  return d.getUTCFullYear() + String(d.getUTCMonth() + 1).padStart(2, "0") + String(d.getUTCDate()).padStart(2, "0");
+}
+
+function buildIcs() {
+  const av = getAvailability();
+  const stamp = Utilities.formatDate(new Date(), "UTC", "yyyyMMdd'T'HHmmss'Z'");
+  const L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Shirat HaTziporim//Booking//HE",
+    "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "X-WR-CALNAME:שירת הציפורים - תפוס"];
+  function ev(uid, start, end) {
+    L.push("BEGIN:VEVENT", "UID:" + uid + "@shirat-hatziporim", "DTSTAMP:" + stamp,
+      "DTSTART;VALUE=DATE:" + start, "DTEND;VALUE=DATE:" + end,
+      "SUMMARY:תפוס", "TRANSP:OPAQUE", "END:VEVENT");
+  }
+  av.booked.forEach(function(b, i) {
+    if (!DATE_RE.test(b.checkin) || !DATE_RE.test(b.checkout) || b.checkout <= b.checkin) return;
+    ev("b" + i + "-" + icsCompact(b.checkin), icsCompact(b.checkin), icsCompact(b.checkout));
+  });
+  av.blocked.forEach(function(d) {
+    if (!DATE_RE.test(String(d))) return;
+    ev("x-" + icsCompact(d), icsCompact(d), icsNextDay(d));
+  });
+  L.push("END:VCALENDAR");
+  return L.join("\r\n") + "\r\n";
+}
+
+function serveIcs(p) {
+  try {
+    rateLimit("ics", 120, 3600);
+    if (!icsTokenOk(p.token)) return ContentService.createTextOutput("unauthorized").setMimeType(ContentService.MimeType.TEXT);
+    return ContentService.createTextOutput(buildIcs()).setMimeType(ContentService.MimeType.ICAL);
+  } catch (err) {
+    Logger.log("ics: " + err);
+    return ContentService.createTextOutput("error").setMimeType(ContentService.MimeType.TEXT);
+  }
+}
+
+// הרצה חד-פעמית ידנית בעורך: יוצר ICS_TOKEN אקראי (אם אין) ורושם ביומן את הקישור המלא.
+function setupIcsToken() {
+  const props = PropertiesService.getScriptProperties();
+  let t = props.getProperty("ICS_TOKEN");
+  if (!t) {
+    t = (Utilities.getUuid() + Utilities.getUuid()).replace(/-/g, "");
+    props.setProperty("ICS_TOKEN", t);
+  }
+  Logger.log("ICS URL: " + ScriptApp.getService().getUrl() + "?action=ics&token=" + t);
+}
+
 function doGet(e) {
   const p = (e && e.parameter) || {};
   const action = p.action;
+  if (action === "ics") return serveIcs(p);
   const callback = CALLBACK_RE.test(p.callback || "") ? p.callback : "";
   const admin = isAdmin(p.key);
   let result;

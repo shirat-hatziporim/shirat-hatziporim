@@ -840,6 +840,11 @@ async function checkAssets(g, src){
           cg.text.indexOf("function findDateConflict")!==-1 && /result\s*=\s*addPublicBooking\(/.test(cg.text)
           && /function addPublicBooking[\s\S]{0,1500}notifyOwner\(/.test(cg.text),
           "בלי בדיקה בשרת — הזמנה על תאריך תפוס אפשרית כשהדפדפן לא טען זמינות");
+      chk(g, "🛡️ Code.gs — ייצוא ICS מוגן בטוקן, בלי פרטים אישיים ובלי טוקן בקוד",
+          /action\s*===\s*"ics"\)\s*return serveIcs/.test(cg.text) && /function serveIcs[\s\S]{0,400}icsTokenOk\(/.test(cg.text)
+          && cg.text.indexOf('getProperty("ICS_TOKEN")')!==-1 && !/ICS_TOKEN\s*=\s*["'][A-Za-z0-9]{16,}/.test(cg.text)
+          && !/function buildIcs[\s\S]{0,1800}(\.name|\.phone|\.email|\.total)/.test(cg.text),
+          "ה-ICS חייב לדרוש טוקן מ-Script Properties ולייצא תאריכים בלבד");
     } catch(e){ row(g, "warn", "🛡️ Code.gs — בדיקת זמינות בשרת", e.message); }
     // ── מינימום 2 לילות בוטל 26.8.2026 — ניתן להזמין לילה אחד בכל יום ──
     chk(g, "טופס ההזמנה — אין חסימת מינימום לילות",
