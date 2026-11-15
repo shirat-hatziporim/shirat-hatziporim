@@ -164,7 +164,7 @@ const DEFAULT_INQUIRY_TEMPLATE = `שלום וברכה,
 
 
 📍 כתובת: נחל קדם 93, מיצד
-🌐 אתר הצימר: https://639885bfa3564.site123.me/
+🌐 אתר הצימר: https://shirat-hatziporim.netlify.app/
 📅 לשליחת בקשת הזמנה: https://shirat-hatziporim.github.io/shirat-hatziporim/booking.html
 📞 לפרטים: 050-4103353
 
@@ -2966,10 +2966,13 @@ function App() {
     amount: ""
   });
   const [showAddSupplier, setShowAddSupplier] = useState(false);
+  const SITE_URL_NEW = "https://shirat-hatziporim.netlify.app/";
+  const OLD_SITE_RE = /https?:\/\/639885bfa3564\.site123\.me\/?/g;
   const [inquiryTemplate, setInquiryTemplate] = useState(() => {
     try {
       const s = localStorage.getItem("shirat_inquiry");
-      return s || DEFAULT_INQUIRY_TEMPLATE;
+      // כתובת האתר הישן (עד 15.11.2026) מוחלפת בחדשה גם בתבנית ששמורה בדפדפן
+      return (s || DEFAULT_INQUIRY_TEMPLATE).replace(OLD_SITE_RE, SITE_URL_NEW);
     } catch {
       return DEFAULT_INQUIRY_TEMPLATE;
     }
@@ -2977,9 +2980,9 @@ function App() {
   const [inquiryEmail, setInquiryEmail] = useState("");
   const [inquiryLinks, setInquiryLinks] = useState(() => {
     try {
-      return localStorage.getItem("shirat_inquiry_links") || "https://639885bfa3564.site123.me/";
+      return (localStorage.getItem("shirat_inquiry_links") || SITE_URL_NEW).replace(OLD_SITE_RE, SITE_URL_NEW);
     } catch {
-      return "https://639885bfa3564.site123.me/";
+      return SITE_URL_NEW;
     }
   });
   const [inquiryPhone, setInquiryPhone] = useState("");

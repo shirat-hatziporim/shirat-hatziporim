@@ -165,6 +165,13 @@ async function checkPage(g){
       /max:\s*4,\s*value:\s*f\.extraGuests/.test(src)
         ? "השדה עדיין max:4 — מאפשר להזין הזמנה של 6 נפשות. לתקן ב-shirat-hatziporim.html"
         : "2 בסיס + עד 2 תוספת = 4");
+  // ── כתובת אתר הצימר: עברה ל-Netlify ב-15.11.2026 (במקום site123) ──
+  chk(g, "לוח הניהול — תבנית המתעניינים מפנה לאתר החדש",
+      src.indexOf("אתר הצימר: https://shirat-hatziporim.netlify.app/")!==-1 && src.indexOf("https://639885bfa3564.site123.me")===-1,
+      "כתובת האתר הישן (site123) עדיין מופיעה בלוח הניהול");
+  chk(g, "לוח הניהול — תבנית ישנה ששמורה בדפדפן עוברת לכתובת החדשה",
+      src.indexOf("OLD_SITE_RE")!==-1 && src.indexOf(".replace(OLD_SITE_RE, SITE_URL_NEW)")!==-1,
+      "חסרה ההמרה האוטומטית של הכתובת הישנה ב-localStorage");
   chk(g, "לוח הניהול — תבנית המתעניינים מציגה 4 נופשים",
       src.indexOf("עד 4 נופשים")!==-1 && src.indexOf("עד 5 נופשים")===-1
       && src.indexOf("(עד 3): ₪300")===-1,
@@ -445,6 +452,9 @@ async function checkBackend(g){
         html.indexOf("אמצע שבוע")!==-1 && html.indexOf("סוף שבוע")!==-1 && html.indexOf("חבילת חמישי")!==-1
         && html.indexOf("תוספת יציאה ראשון")!==-1 && html.indexOf("תוספת מיטות")!==-1,
         "וידוא שהמחיקה לא בלעה שורות מחירון נוספות");
+    chk(g, "מייל מתעניינים — קישור לאתר החדש (15.11.2026)",
+        html.indexOf("https://shirat-hatziporim.netlify.app/")!==-1 && html.indexOf("site123")===-1,
+        html.indexOf("site123")!==-1 ? "המייל החי עדיין מפנה לאתר הישן — צריך לפרוס את Code.gs" : ms+"ms");
     chk(g, "מייל מתעניינים — יציאה במוצאי שבת (שעה וחצי לאחר צאת השבת)",
         html.indexOf("צאת השבת")!==-1 && html.indexOf("שעה וחצי")!==-1,
         (html.indexOf("צאת השבת")===-1 || html.indexOf("שעה וחצי")===-1)
