@@ -1,0 +1,15 @@
+{
+  "name": "שירת הציפורים — ניהול הזמנות",
+  "short_name": "שירת הציפורים",
+  "start_url": "./shirat-hatziporim.html",
+  "scope": "./",
+  "display": "standalone",
+  "lang": "he",
+  "dir": "rtl",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}

@@ -126,6 +126,10 @@ async function checkPage(g){
   chk(g, "React (UMD) נטען", src.indexOf("react.production.min.js")!==-1);
   chk(g, "ReactDOM (UMD) נטען", src.indexOf("react-dom.production.min.js")!==-1);
   chk(g, "אלמנט #root קיים", /id=["']root["']/.test(src));
+  // ── 24.11.2026: אייקון אפליקציה (לוגו הצימר) בקיצור הדרך של לוח הניהול ──
+  chk(g, "אייקון אפליקציה: apple-touch-icon + manifest (לוגו הצימר)",
+      src.indexOf('rel="apple-touch-icon"')!==-1 && src.indexOf('rel="manifest"')!==-1 && src.indexOf("manifest-admin.json")!==-1,
+      "בלי זה קיצור הדרך בטלפון מוצג כאות אפורה");
   chk(g, "RTL ועברית (lang=he, dir=rtl)", /lang=["']he["']/.test(src) && /dir=["']rtl["']/.test(src));
 
   // ── שמירה מפני באג ה-Babel (מסך לבן) ──
