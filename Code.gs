@@ -1002,7 +1002,7 @@ function buildConfirmBody(b) {
       )
     + "<p style='font-size:15px;color:#222;font-weight:700;margin:0 0 10px;'>&#x1F4B3; נא להעביר מקדמה בסך 500 ש\"ח:</p>"
     + bx(
-        "<p style='margin:0 0 8px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F4B8; בנק לאומי, סניף 904, חשבון 10765165 על שם יעקב גרזון</p>"
+        "<p style='margin:0 0 8px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F4B8; בנק הפועלים, סניף 290, חשבון 213193 על שם יעקב גרזון</p>"
         + "<p style='margin:0 0 10px;font-size:14px;color:#444;font-family:Arial,sans-serif;'>&#x1F4F1; ביט / פייבוקס: <strong>" + HOST_PHONE + "</strong></p>"
         + "<p style='margin:0;font-size:14px;color:#8b6000;font-weight:700;font-family:Arial,sans-serif;'>&#x1F449; נא לשלוח אסמכתא לאחר התשלום</p>",
         "#c8860a"
