@@ -1375,7 +1375,7 @@ function sendReviewWhatsApp(b) {
   }
   const phone = waPhone(b.phone);
   const custom = localStorage.getItem("shirat_review_template") || "";
-  const text = custom ? custom.replace("{שם}", b.name) : `שלום ${b.name},
+  const text = custom ? custom.replace("{שם}", b.name).replace("{המלצה}", "https://metzad.net/?review=recu7R502ndpO8cas") : `שלום ${b.name},
 רצינו להודות לכם מקרב לב על שבחרתם להתארח אצלנו בצימר "שירת הציפורים"
 שמחנו מאוד לארח אתכם, ומקווים שנהנתם מהשהות.
 
@@ -1390,9 +1390,114 @@ https://dira4shabat.co.il/listing/%D7%A6%D7%99%D7%9E%D7%A8-%D7%A9%D7%99%D7%A8%D7
 הלוח החרדי:
 https://charedi.net/tzimar/25569/
 
+אתר הישוב מיצד (טופס קצר עם דירוג בכוכבים):
+https://metzad.net/?review=recu7R502ndpO8cas
+
 בברכה ובהערכה,
 יעקב — שירת הציפורים 050-4103353`;
   window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(text)}`, "_blank");
+}
+// ⭐ בקשת ביקורת בלי הזמנה (25.11.2026) — לאורח שלא רשום במערכת. לא נשמר דבר בגיליון.
+function QuickReviewModal({
+  onClose
+}) {
+  const [f, setF] = useState({
+    name: "",
+    phone: "",
+    email: ""
+  });
+  const send = (field, missing, fn) => {
+    const b = {
+      name: f.name.trim(),
+      phone: f.phone.trim(),
+      email: f.email.trim()
+    };
+    if (!b.name) return alert("הזן שם");
+    if (!b[field]) return alert(missing);
+    fn(b);
+  };
+  const input = (key, label, type, placeholder) => /*#__PURE__*/_jsxs("label", {
+    style: {
+      display: "block",
+      fontSize: 12,
+      color: "#7a6a58",
+      fontWeight: 600,
+      marginBottom: 12
+    },
+    children: [label, /*#__PURE__*/_jsx("input", {
+      type: type,
+      value: f[key],
+      onChange: e => {
+        const v = e.target.value;
+        setF(x => ({
+          ...x,
+          [key]: v
+        }));
+      },
+      placeholder: placeholder,
+      dir: type === "text" ? "rtl" : "ltr",
+      style: {
+        display: "block",
+        width: "100%",
+        boxSizing: "border-box",
+        marginTop: 4,
+        padding: "9px 12px",
+        borderRadius: 10,
+        border: "1.5px solid #e0d8cc",
+        fontSize: 14,
+        fontFamily: "'Heebo',sans-serif"
+      }
+    })]
+  }, key);
+  const btn = (bg, color, label, onClick) => /*#__PURE__*/_jsx("button", {
+    onClick: onClick,
+    style: {
+      ...bS(bg, color),
+      fontSize: 13
+    },
+    children: label
+  });
+  return /*#__PURE__*/_jsx("div", {
+    style: {
+      position: "fixed",
+      inset: 0,
+      background: "rgba(20,20,35,.55)",
+      zIndex: 100,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center"
+    },
+    children: /*#__PURE__*/_jsxs("div", {
+      style: {
+        background: "#fff",
+        borderRadius: 20,
+        width: "min(420px,94vw)",
+        maxHeight: "90vh",
+        overflowY: "auto",
+        boxShadow: "0 24px 80px rgba(0,0,0,.22)",
+        direction: "rtl",
+        padding: "24px 22px",
+        fontFamily: "'Heebo',sans-serif"
+      },
+      children: [/*#__PURE__*/_jsx("h2", {
+        style: {
+          margin: "0 0 18px",
+          fontSize: 19,
+          color: "#1a1a2e",
+          fontWeight: 800
+        },
+        children: "⭐ בקשת ביקורת"
+      }), input("name", "שם האורח", "text", "שם"), input("phone", "טלפון", "tel", "050-0000000"), input("email", "מייל", "email", "example@gmail.com"), /*#__PURE__*/_jsxs("div", {
+        style: {
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+          marginTop: 6
+        },
+        children: [btn("#25d366", "#fff", "💬 שלח WhatsApp", () => send("phone", "הזן מספר טלפון", sendReviewWhatsApp)), btn("#7b1fa2", "#fff", "📧 שלח מייל", () => send("email", "הזן כתובת מייל", sendReviewEmail)), btn("#f0eee8", "#555", "סגור", onClose)]
+      })]
+    })
+  });
 }
 function openEmail(to, subject, body) {
   const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -2731,6 +2836,7 @@ function App() {
     }
   });
   const [showInquiry, setShowInquiry] = useState(false);
+  const [showQuickReview, setShowQuickReview] = useState(false);
   const [calSearch, setCalSearch] = useState("");
   const [guestSearch, setGuestSearch] = useState("");
   const [guestPopup, setGuestPopup] = useState(null);
@@ -3612,7 +3718,8 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
     view,
     showForm,
     showBlockedManager,
-    delC
+    delC,
+    showQuickReview
   };
   const viewStackRef = React.useRef([]);
   const prevViewRef = React.useRef("list");
@@ -3637,7 +3744,7 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
     } catch (e) {}
     const onPop = () => {
       const n = navRef.current;
-      if (n.delC) setDelC(null);else if (n.showBlockedManager) setShowBlockedManager(false);else if (n.showForm) {
+      if (n.showQuickReview) setShowQuickReview(false);else if (n.delC) setDelC(null);else if (n.showBlockedManager) setShowBlockedManager(false);else if (n.showForm) {
         setShowForm(false);
         setEditB(null);
       } else if (n.view !== "list" || viewStackRef.current.length) {
@@ -3901,6 +4008,23 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
                 children: "פנייה למתעניינים"
               })]
             }), /*#__PURE__*/_jsxs("button", {
+              onClick: () => setShowQuickReview(true),
+              style: {
+                background: "#252545",
+                color: "#ffd54f",
+                border: "1px solid #3a3a6e",
+                borderRadius: 8,
+                padding: "6px 12px",
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: "pointer",
+                fontFamily: "'Heebo',sans-serif"
+              },
+              children: ["⭐ ", /*#__PURE__*/_jsx("span", {
+                class: "btn-text",
+                children: "בקשת ביקורת"
+              })]
+            }), /*#__PURE__*/_jsxs("button", {
               onClick: () => {
                 setEmailEditorType("confirm");
                 setShowEmailEditor(true);
@@ -3938,6 +4062,21 @@ ${isDraft ? `<div style="position:fixed;top:50%;left:50%;transform:translate(-50
             border: "1px solid #3a3a6e"
           },
           children: "📨"
+        }), /*#__PURE__*/_jsx("button", {
+          className: "hamburger-btn",
+          onClick: () => setShowQuickReview(true),
+          title: "בקשת ביקורת",
+          "aria-label": "בקשת ביקורת",
+          style: {
+            background: "#252545",
+            borderRadius: 8,
+            padding: "6px 10px",
+            fontSize: 13,
+            cursor: "pointer",
+            display: "none",
+            border: "1px solid #3a3a6e"
+          },
+          children: "⭐"
         }), /*#__PURE__*/_jsx("button", {
           className: "hamburger-btn",
           onClick: () => setHamburgerOpen(true),
@@ -8671,6 +8810,9 @@ https://dira4shabat.co.il/listing/%D7%A6%D7%99%D7%9E%D7%A8-%D7%A9%D7%99%D7%A8%D7
 אתר הלוח החרדי:
 https://charedi.net/tzimar/25569/
 
+אתר הישוב מיצד (טופס קצר עם דירוג בכוכבים):
+https://metzad.net/?review=recu7R502ndpO8cas
+
 לכל צורך או ביקור נוסף בעתיד – נשמח לעמוד לשירותכם: 050-4103353
 
 בברכה ובהערכה,
@@ -8921,7 +9063,9 @@ https://charedi.net/tzimar/25569/
           })]
         })
       });
-    })(), showInquiry && /*#__PURE__*/_jsx("div", {
+    })(), showQuickReview && /*#__PURE__*/_jsx(QuickReviewModal, {
+      onClose: () => setShowQuickReview(false)
+    }), showInquiry && /*#__PURE__*/_jsx("div", {
       style: {
         position: "fixed",
         inset: 0,
