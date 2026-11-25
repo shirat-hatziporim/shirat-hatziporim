@@ -1359,14 +1359,14 @@ function sendReviewEmail(b) {
     alert("לא הוזן מייל ללקוח זה");
     return;
   }
-  const cb = "cb_" + Math.random().toString(36).slice(2);
-  window[cb] = function (r) {
-    delete window[cb];
+  // "נשלח" מוצג רק אם השרת אישר. בלי ניסיון חוזר — שליחת מייל אינה פעולה אידמפוטנטית.
+  return jsonp(SCRIPT_URL + "?action=sendReview&booking=" + encodeURIComponent(JSON.stringify(b))).then(res => {
+    assertOk(res, "sendReview");
     alert("מייל ביקורת נשלח ל־" + b.email + " ✅");
-  };
-  const s = document.createElement("script");
-  s.src = SCRIPT_URL + "?action=sendReview&booking=" + encodeURIComponent(JSON.stringify(b)) + "&authuser=0&callback=" + cb + "&t=" + Date.now();
-  document.head.appendChild(s);
+  }).catch(e => {
+    const noAnswer = e.message === "jsonp timeout" || e.message === "jsonp error";
+    alert(noAnswer ? "⚠️ לא התקבלה תשובה מהשרת, ולא ידוע אם המייל ל־" + b.email + " נשלח. בדוק בתיקיית \"נשלחו\" ב-Gmail לפני שליחה חוזרת." : "❌ מייל הביקורת ל־" + b.email + " לא נשלח.\n" + e.message);
+  });
 }
 function sendReviewWhatsApp(b) {
   if (!b.phone) {

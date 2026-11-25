@@ -618,6 +618,16 @@ async function checkBackend(g){
   } catch(e){
     chk(g, "בקשת ביקורת בלי הזמנה — חלון וכפתורים", false, e.message);
   }
+  try {
+    const src = await (await fetch("shirat-hatziporim.html?t=" + Date.now())).text();
+    const a = src.indexOf("function sendReviewEmail");
+    const fn = a === -1 ? "" : src.slice(a, src.indexOf("function sendReviewWhatsApp", a));
+    chk(g, "מייל ביקורת — 'נשלח' רק אחרי אישור השרת",
+        fn.indexOf('assertOk(res, "sendReview")') !== -1 && fn.indexOf(".catch(") !== -1,
+        "בלי זה מוצג 'נשלח' גם כשהשרת החזיר שגיאה");
+  } catch(e){
+    chk(g, "מייל ביקורת — 'נשלח' רק אחרי אישור השרת", false, e.message);
+  }
   // ══ רגרסיה חיה — upsertBooking קיים בפריסה ומאמת קלט ══
   // שולחים הזמנה **בלי id**: הפעולה חייבת להיחסם לפני כל נגיעה בגיליון.
   // ⚠ בדיקה בטוחה לחלוטין — id חסר = יציאה מיידית, שום שורה לא נכתבת.
